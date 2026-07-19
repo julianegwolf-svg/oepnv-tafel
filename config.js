@@ -1,18 +1,38 @@
 // ---------------------------------------------------------------
 // KONFIGURATION – hier anpassen, ohne app.js anzufassen
-//
-// Die Abfahrten selbst kommen jetzt über das offizielle VBN-Widget
-// (siehe das <div data-hfs-widget...> in index.html) — die Haltestelle
-// und Fahrtrichtung stellst du dort im Widgetgenerator ein
-// (https://fahrplaner.vbn.de/fahrplan/widgetgenerator.html?L=vs_vbn),
-// nicht hier.
 // ---------------------------------------------------------------
 const CONFIG = {
+  stopQuery: "Föhrenstraße, Bremen",
+  stopLimit: 2,
+
+  // Bekannte Haltestellen-ID aus dem VBN-Widget-Generator (Bremen
+  // Föhrenstraße). Wird zuerst probiert, damit keine Haltestellensuche
+  // nötig ist. Falls sie in v6.db.transport.rest nicht funktioniert,
+  // einfach auf [] setzen — dann sucht die Seite selbst über stopQuery.
+  stopIds: ["9013884"],
+
+  // API-Profil für v6.db.transport.rest. Leer lassen = Standard (dbnav).
+  // Falls die Föhrenstraße damit nicht gefunden wird, mal "db" oder
+  // "dbweb" probieren.
+  apiProfile: "",
+
+  // Fahrtziele, die NICHT angezeigt werden sollen (z.B. weil sie aus
+  // der Stadt raus fahren). Bekannte Linien an der Föhrenstraße:
+  // Bus 38, 39, 40, 41, 42, 730, 740, 745.
+  excludeDestinations: [],
+
+  // Falls stattdessen nur bestimmte Ziele erlaubt sein sollen, hier
+  // eintragen (z.B. ["Hauptbahnhof", "Domsheide", "Am Brill"]).
+  onlyDestinations: [],
+
+  maxRows: 8,
+
   // Koordinaten für die Wetteranzeige (Alter Postweg, Bremen-Hemelingen)
   weatherLat: 53.073,
   weatherLon: 8.887,
 
   // Update-Intervalle in Millisekunden
+  refreshDeparturesMs: 30 * 1000,
   refreshWeatherMs: 15 * 60 * 1000,
   refreshClockMs: 1000,
 

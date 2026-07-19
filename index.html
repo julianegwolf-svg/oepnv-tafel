@@ -11,7 +11,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-<script src="https://fahrplaner.vbn.de/fahrplan/staticfiles/hafas-widget-core.1.0.0.js?language=de_DE&L=vs_vbn"></script>
 </head>
 <body>
   <div class="panel">
@@ -33,19 +32,19 @@
       </div>
     </header>
 
-    <main class="board-wrap">
-      <div
-        data-hfs-widget="true"
-        data-hfs-widget-cfg-colorscheme="dark"
-        data-hfs-widget-sq="true"
-        data-hfs-widget-sq-displaymode="results"
-        data-hfs-widget-sq-location="A=1@O=Bremen Föhrenstraße@X=8877297@Y=53064313@U=80@L=9013884@p=1784333522@"
-        data-hfs-widget-sq-locationname="Bremen Föhrenstraße"
-      ></div>
+    <main class="board">
+      <div class="board-head">
+        <span class="col-line">Linie</span>
+        <span class="col-dest">Ziel</span>
+        <span class="col-time">Abfahrt</span>
+      </div>
+      <div class="board-rows" id="departureRows">
+        <div class="row placeholder">Lade Abfahrten…</div>
+      </div>
     </main>
 
     <footer class="statusbar">
-      <span>VBN FahrPlaner — offizielle Live-Daten</span>
+      <span id="statusText">Verbinde…</span>
       <span id="lastUpdate"></span>
     </footer>
   </div>
