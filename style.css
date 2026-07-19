@@ -10,6 +10,18 @@
   --steel-ink: #22303a;
   --danger: #b1402f;
   --ok: #3f7d52;
+
+  /* Glas-Karten: halbtransparenter Hintergrund + weicher, mehrschichtiger
+     Schatten statt flachem Weiß — braucht einen leicht strukturierten
+     Untergrund (siehe .panel-Verlauf unten), sonst ist der Blur-Effekt
+     kaum sichtbar. -webkit-backdrop-filter läuft seit iOS 9, also auch
+     auf dem alten iPad sicher. */
+  --glass-bg: rgba(255, 255, 255, 0.68);
+  --glass-shadow: 0 8px 24px rgba(28, 29, 31, 0.07), 0 1px 3px rgba(28, 29, 31, 0.05);
+
+  /* Panel-Akzentfarben — jede Ansicht bekommt ihren eigenen Farbton zur
+     Wiedererkennung, per Default Messing. */
+  --accent: var(--brass);
 }
 
 * { box-sizing: border-box; }
@@ -32,9 +44,21 @@ html, body {
   width: 100vw;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(169, 121, 63, 0.07) 0%, rgba(169, 121, 63, 0) 40%),
+    radial-gradient(circle at 92% 88%, rgba(91, 107, 120, 0.07) 0%, rgba(91, 107, 120, 0) 45%),
+    var(--bg);
   padding: 30px;
 }
+
+/* ---------- Panel-Akzentfarben ---------- */
+#panel-departures { --accent: var(--brass); }
+#panel-commute { --accent: var(--steel); }
+#panel-weather { --accent: #3c7ea8; }
+#panel-news { --accent: #b1622f; }
+#panel-music { --accent: #7d5ba6; }
+#panel-sport { --accent: var(--ok); }
+#panel-quote { --accent: var(--brass); }
 
 /* ---------- Topbar ---------- */
 .topbar {
@@ -175,12 +199,24 @@ html, body {
 }
 
 .view-label {
+  display: flex;
+  align-items: center;
   color: var(--ink-dim);
   font-size: 14px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
   font-weight: 600;
   padding: 0 4px 14px;
+}
+
+.view-label::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 10px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 .view-placeholder {
@@ -224,12 +260,14 @@ html, body {
   display: grid;
   grid-template-columns: 100px 1fr 130px;
   align-items: center;
-  background: var(--panel);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
   border: 1px solid var(--panel-edge);
   border-left: 6px solid transparent;
   border-radius: 14px;
   padding: 18px 20px;
-  box-shadow: 0 1px 2px rgba(28, 29, 31, 0.04);
+  box-shadow: var(--glass-shadow);
 }
 
 .row.placeholder {
@@ -323,6 +361,8 @@ html, body {
 }
 
 .weather-big {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   padding: 26px 30px;
@@ -332,10 +372,79 @@ html, body {
   background-size: 300% 100%;
   animation: weatherDrift 18s ease-in-out infinite alternate;
   border: 1px solid var(--panel-edge);
+  box-shadow: var(--glass-shadow);
 }
 
 .weather-big > * + * {
   margin-left: 26px;
+}
+
+/* Dezente Wetter-Effekte: liegen per z-index:-1 hinter Icon/Temperatur/
+   Text (siehe Stacking-Reihenfolge negativer z-index innerhalb eines
+   position:relative-Containers), werden nur per Klasse ein-/ausgeblendet. */
+.weather-fx-layer {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+
+.weather-big.fx-rain .weather-fx-rain,
+.weather-big.fx-cloud .weather-fx-cloud,
+.weather-big.fx-snow .weather-fx-snow {
+  opacity: 1;
+}
+
+@keyframes fxRainFall {
+  0% { transform: translateY(-20%); opacity: 0; }
+  12% { opacity: 0.55; }
+  85% { opacity: 0.55; }
+  100% { transform: translateY(320%); opacity: 0; }
+}
+
+.fx-drop {
+  position: absolute;
+  top: -10%;
+  width: 2px;
+  height: 22px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(60, 126, 168, 0), rgba(60, 126, 168, 0.55));
+  animation: fxRainFall 1.6s linear infinite;
+}
+
+@keyframes fxCloudDrift {
+  0% { transform: translateX(-20%); }
+  100% { transform: translateX(340%); }
+}
+
+.fx-cloud-shape {
+  position: absolute;
+  border-radius: 50px;
+  background: rgba(255, 255, 255, 0.6);
+  filter: blur(1px);
+  animation-name: fxCloudDrift;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes fxSnowFall {
+  0% { transform: translateY(-20%) translateX(0); opacity: 0; }
+  12% { opacity: 0.8; }
+  85% { opacity: 0.8; }
+  100% { transform: translateY(320%) translateX(12px); opacity: 0; }
+}
+
+.fx-flake {
+  position: absolute;
+  top: -10%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  animation: fxSnowFall 4.5s linear infinite;
 }
 
 .weather-big-icon {
@@ -369,7 +478,9 @@ html, body {
 
 .weather-hour {
   flex: 1;
-  background: var(--panel);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
   border: 1px solid var(--panel-edge);
   border-radius: 14px;
   display: flex;
@@ -377,7 +488,7 @@ html, body {
   align-items: center;
   justify-content: center;
   padding: 18px 8px;
-  box-shadow: 0 1px 2px rgba(28, 29, 31, 0.04);
+  box-shadow: var(--glass-shadow);
 }
 
 .weather-hour > * + * {
@@ -403,62 +514,97 @@ html, body {
   color: var(--ink);
 }
 
-/* ---------- News-Panel ---------- */
-.news-list {
+/* ---------- News-Panel: Bild-Diashow ---------- */
+.news-slideshow {
   flex: 1;
+  position: relative;
+  min-height: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--glass-shadow);
+}
+
+.news-slide {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.9s ease;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--panel-edge);
+}
+
+.news-slide.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.news-slide-media {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.news-slide-scrim {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(0deg, rgba(20, 18, 12, 0.82) 0%, rgba(20, 18, 12, 0.35) 45%, rgba(20, 18, 12, 0.05) 75%);
+}
+
+.news-slide-content {
+  position: relative;
+  padding: 28px 32px 32px;
+  max-height: 70%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-.news-list > * + * {
-  margin-top: 12px;
-}
-
-.news-item {
-  background: var(--panel);
-  border: 1px solid var(--panel-edge);
-  border-radius: 14px;
-  padding: 18px 22px;
-  flex-shrink: 0;
-}
-
-.news-item-title {
-  font-size: 23px;
-  font-weight: 600;
+.news-slide.no-media .news-slide-content {
+  max-height: none;
   color: var(--ink);
-  line-height: 1.3;
 }
 
-.news-item-topline {
+.news-slide:not(.no-media) .news-slide-content {
+  color: #ffffff;
+}
+
+.news-slide-topline {
   font-size: 14px;
-  color: var(--brass-ink);
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 4px;
+  letter-spacing: 0.07em;
+  color: var(--accent);
+  margin-bottom: 6px;
 }
 
-.news-item.full .news-item-title {
-  margin-bottom: 12px;
+.news-slide.no-media .news-slide-topline {
+  color: var(--accent);
 }
 
-.news-item-body {
-  font-size: 18px;
-  line-height: 1.6;
-  color: var(--ink);
+.news-slide-title {
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 10px;
 }
 
-.news-item-body p {
-  margin: 0 0 12px;
+.news-slide-body {
+  font-size: 17px;
+  line-height: 1.55;
 }
 
-.news-item-hint {
-  margin-top: 10px;
-  font-size: 13px;
+.news-slide.no-media .news-slide-body {
   color: var(--ink-dim);
-  font-style: italic;
+}
+
+.news-slide-body p {
+  margin: 0 0 10px;
 }
 
 /* ---------- Musik-Panel ---------- */
@@ -475,7 +621,9 @@ html, body {
 }
 
 .music-item {
-  background: var(--panel);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
   border: 1px solid var(--panel-edge);
   border-radius: 14px;
   padding: 12px 20px;
@@ -540,11 +688,13 @@ html, body {
 .commute-chip {
   display: flex;
   align-items: center;
-  background: var(--panel);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
   border: 1px solid var(--panel-edge);
   border-radius: 999px;
   padding: 12px 22px 12px 16px;
-  box-shadow: 0 1px 2px rgba(28, 29, 31, 0.04);
+  box-shadow: var(--glass-shadow);
   transition: transform 0.4s ease, opacity 0.4s ease;
 }
 
@@ -599,6 +749,7 @@ html, body {
   overflow: hidden;
   border: 1px solid var(--panel-edge);
   background: #e9e6df;
+  box-shadow: var(--glass-shadow);
 }
 
 .commute-map {
@@ -652,6 +803,15 @@ html, body {
   padding: 10px 20px;
 }
 
+.quote-mark {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 90px;
+  line-height: 1;
+  color: var(--accent);
+  opacity: 0.32;
+  margin-bottom: -8px;
+}
+
 .quote-text {
   font-size: 34px;
   font-weight: 600;
@@ -665,6 +825,25 @@ html, body {
   font-size: 18px;
   color: var(--brass-ink);
   font-weight: 600;
+}
+
+/* Typewriter-Effekt: Zeichen für Zeichen eingetippt, mit blinkendem
+   Cursor am Ende, solange noch getippt wird. */
+@keyframes cursorBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  width: 3px;
+  margin-left: 3px;
+  color: var(--accent);
+  animation: cursorBlink 0.9s steps(1) infinite;
+}
+
+.typewriter-cursor.done {
+  display: none;
 }
 
 /* ---------- Sport-Ticker (Lieblingsvereine) ---------- */
@@ -685,11 +864,36 @@ html, body {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  background: var(--panel);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
   border: 1px solid var(--panel-edge);
   border-radius: 16px;
   padding: 18px 24px;
-  box-shadow: 0 1px 2px rgba(28, 29, 31, 0.04);
+  box-shadow: var(--glass-shadow);
+}
+
+.sport-crests {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-right: 20px;
+}
+
+.sport-crests > * + * {
+  margin-left: 8px;
+}
+
+.sport-crest {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.sport-crests-vs {
+  font-size: 13px;
+  color: var(--ink-dim);
+  font-weight: 600;
 }
 
 .sport-text {

@@ -55,7 +55,7 @@ const CONFIG = {
     departures: 30 * 1000,
     commute: 16 * 1000,
     weather: 15 * 1000,
-    news: 20 * 1000,
+    news: 28 * 1000,
     music: 15 * 1000,
     sport: 20 * 1000,
     quote: 12 * 1000,
@@ -91,6 +91,9 @@ const CONFIG = {
   // (zum Scrollen), der Rest bleibt kurze Headline.
   newsFullCount: 2,
   refreshNewsMs: 15 * 60 * 1000,
+  // Wie lange jeder Artikel in der News-Diashow einzeln zu sehen ist,
+  // bevor automatisch zum nächsten gewechselt wird.
+  newsSlideIntervalMs: 6 * 1000,
 
   // Musik-Panel: Apple-Music-Charts Deutschland
   musicCount: 5,

@@ -18,6 +18,7 @@ const els = {
   weatherIcon: document.getElementById("weatherIcon"),
   weatherTemp: document.getElementById("weatherTemp"),
   weatherMinMax: document.getElementById("weatherMinMax"),
+  weatherBig: document.getElementById("weatherBig"),
   weatherBigIcon: document.getElementById("weatherBigIcon"),
   weatherBigTemp: document.getElementById("weatherBigTemp"),
   weatherBigDesc: document.getElementById("weatherBigDesc"),
@@ -365,6 +366,66 @@ const WEATHER_CODES = {
   99: ["⛈️", "Gewitter mit Hagel"],
 };
 
+// Dezente Wetter-Animation: ein paar Regentropfen/Wolkenformen als reine
+// CSS-Transform/Opacity-Animationen (keine Partikel-Flut, GPU-billig) —
+// bewusst zurückhaltend gehalten für sichere Performance auf dem alten
+// iPad Air 1. Werden einmalig gebaut und danach nur per Klasse auf
+// .weather-big ein-/ausgeblendet (kein DOM-Neubau bei jedem Update).
+let weatherFxBuilt = false;
+
+function weatherFxCategory(code) {
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].indexOf(code) !== -1) return "rain";
+  if ([71, 73, 75].indexOf(code) !== -1) return "snow";
+  if ([2, 3, 45, 48].indexOf(code) !== -1) return "cloud";
+  return null;
+}
+
+function ensureWeatherFxLayers() {
+  if (weatherFxBuilt || !els.weatherBig) return;
+  weatherFxBuilt = true;
+
+  const rainLayer = document.createElement("div");
+  rainLayer.className = "weather-fx-layer weather-fx-rain";
+  [8, 22, 38, 54, 70, 86].forEach(function (left, i) {
+    const drop = document.createElement("span");
+    drop.className = "fx-drop";
+    drop.style.left = left + "%";
+    drop.style.animationDelay = (i * 0.25) + "s";
+    rainLayer.appendChild(drop);
+  });
+
+  const cloudLayer = document.createElement("div");
+  cloudLayer.className = "weather-fx-layer weather-fx-cloud";
+  [
+    { top: 12, size: 100, duration: 26, delay: 0 },
+    { top: 40, size: 70, duration: 20, delay: 6 },
+    { top: 62, size: 85, duration: 30, delay: 12 },
+  ].forEach(function (spec) {
+    const shape = document.createElement("span");
+    shape.className = "fx-cloud-shape";
+    shape.style.top = spec.top + "%";
+    shape.style.width = spec.size + "px";
+    shape.style.height = Math.round(spec.size * 0.36) + "px";
+    shape.style.animationDuration = spec.duration + "s";
+    shape.style.animationDelay = spec.delay + "s";
+    cloudLayer.appendChild(shape);
+  });
+
+  const snowLayer = document.createElement("div");
+  snowLayer.className = "weather-fx-layer weather-fx-snow";
+  [10, 25, 40, 55, 70, 85].forEach(function (left, i) {
+    const flake = document.createElement("span");
+    flake.className = "fx-flake";
+    flake.style.left = left + "%";
+    flake.style.animationDelay = (i * 0.6) + "s";
+    snowLayer.appendChild(flake);
+  });
+
+  els.weatherBig.insertBefore(snowLayer, els.weatherBig.firstChild);
+  els.weatherBig.insertBefore(cloudLayer, els.weatherBig.firstChild);
+  els.weatherBig.insertBefore(rainLayer, els.weatherBig.firstChild);
+}
+
 function updateWeather() {
   const url = "https://api.open-meteo.com/v1/forecast?latitude=" + CONFIG.weatherLat +
     "&longitude=" + CONFIG.weatherLon +
@@ -394,6 +455,12 @@ function updateWeather() {
       els.weatherBigIcon.textContent = entry[0];
       els.weatherBigTemp.textContent = temp + "°";
       els.weatherBigDesc.textContent = entry[1] || "";
+    }
+
+    if (els.weatherBig) {
+      ensureWeatherFxLayers();
+      const fxCategory = weatherFxCategory(code);
+      els.weatherBig.className = "weather-big" + (fxCategory ? " fx-" + fxCategory : "");
     }
 
     if (els.weatherHours && data.hourly && data.hourly.time) {
@@ -437,11 +504,45 @@ function updateWeather() {
   });
 }
 
-// ---------- Nachrichten (Tagesschau) ----------
+// ---------- Nachrichten (Tagesschau) — Bild-Diashow ----------
 // Für die ersten CONFIG.newsFullCount Meldungen wird zusätzlich der volle
 // Artikeltext nachgeladen (zum Scrollen), der Rest bleibt Kurz-Headline.
 // Klappt der Detail-Abruf mal nicht, fällt die Karte automatisch auf den
 // kurzen Teaser (firstSentence/topline) zurück statt kaputt zu gehen.
+//
+// Statt einer scrollbaren Liste läuft das jetzt als eigene Mini-Diashow:
+// ein Artikel füllt den Screen groß mit Teaserbild, wechselt selbstständig
+// alle paar Sekunden, solange das News-Panel sichtbar ist (siehe
+// startNewsSlideshow()/stopNewsSlideshow(), angestoßen von showPanel()).
+// Das Bild-Feld der Tagesschau-API ist von hier aus nicht testbar (Domain
+// gesperrt für meine eigenen Tools) — deshalb wird die Bildsuche bewusst
+// defensiv gebaut: mehrere bekannte Feldpfade probieren, sonst bleibt die
+// Karte einfach ein Text-Slide statt kaputt zu gehen.
+let newsItems = [];
+let newsSlideIndex = 0;
+let newsSlideTimer = null;
+
+function extractNewsImageUrl(item) {
+  try {
+    const variants = item && item.teaserImage && item.teaserImage.imageVariants;
+    if (variants && typeof variants === "object") {
+      const preferredKeys = ["16x9-1920", "16x9-1280", "16x9-840", "16x9-640"];
+      for (let i = 0; i < preferredKeys.length; i++) {
+        if (variants[preferredKeys[i]]) return variants[preferredKeys[i]];
+      }
+      for (const key in variants) {
+        if (Object.prototype.hasOwnProperty.call(variants, key) && variants[key]) {
+          return variants[key];
+        }
+      }
+    }
+    if (item && item.image && item.image.url) return item.image.url;
+  } catch (e) {
+    console.error(e);
+  }
+  return null;
+}
+
 function fetchArticleBody(item) {
   const detailUrl = item.details || item.detailsweb;
   if (!detailUrl) return Promise.resolve(null);
@@ -462,6 +563,81 @@ function fetchArticleBody(item) {
     console.error(err);
     return null;
   });
+}
+
+function buildNewsSlide(entry, index) {
+  const item = entry.item;
+  const body = entry.body;
+  const imageUrl = extractNewsImageUrl(item);
+
+  const slide = document.createElement("div");
+  slide.className = "news-slide" + (index === 0 ? " active" : "") + (imageUrl ? "" : " no-media");
+  slide.id = "newsSlide" + index;
+
+  if (imageUrl) {
+    const media = document.createElement("div");
+    media.className = "news-slide-media";
+    media.style.backgroundImage = 'url("' + imageUrl + '")';
+    slide.appendChild(media);
+
+    const scrim = document.createElement("div");
+    scrim.className = "news-slide-scrim";
+    slide.appendChild(scrim);
+  }
+
+  const content = document.createElement("div");
+  content.className = "news-slide-content";
+
+  if (item.topline) {
+    const top = document.createElement("div");
+    top.className = "news-slide-topline";
+    top.textContent = item.topline;
+    content.appendChild(top);
+  }
+
+  const title = document.createElement("div");
+  title.className = "news-slide-title";
+  title.textContent = item.title || "";
+  content.appendChild(title);
+
+  const bodyText = body || (item.firstSentence ? "<p>" + item.firstSentence + "</p>" : "");
+  if (bodyText) {
+    const bodyEl = document.createElement("div");
+    bodyEl.className = "news-slide-body";
+    bodyEl.innerHTML = bodyText;
+    content.appendChild(bodyEl);
+  }
+
+  slide.appendChild(content);
+  return slide;
+}
+
+function showNewsSlide(index) {
+  const slides = els.newsList ? els.newsList.querySelectorAll(".news-slide") : [];
+  for (let i = 0; i < slides.length; i++) {
+    slides[i].className = slides[i].className.replace(" active", "");
+    if (i === index) slides[i].className += " active";
+  }
+  newsSlideIndex = index;
+}
+
+function startNewsSlideshow() {
+  stopNewsSlideshow();
+  if (!newsItems.length) return;
+
+  showNewsSlide(0);
+  if (newsItems.length < 2) return;
+
+  newsSlideTimer = setInterval(function () {
+    showNewsSlide((newsSlideIndex + 1) % newsItems.length);
+  }, CONFIG.newsSlideIntervalMs || 6000);
+}
+
+function stopNewsSlideshow() {
+  if (newsSlideTimer) {
+    clearInterval(newsSlideTimer);
+    newsSlideTimer = null;
+  }
 }
 
 function updateNews() {
@@ -486,40 +662,17 @@ function updateNews() {
     }));
   }).then(function (entries) {
     els.newsList.innerHTML = "";
+    newsItems = entries;
 
-    entries.forEach(function (entry) {
-      const item = entry.item;
-      const body = entry.body;
-
-      const card = document.createElement("div");
-      card.className = "news-item" + (body ? " full" : "");
-
-      if (item.topline) {
-        const top = document.createElement("div");
-        top.className = "news-item-topline";
-        top.textContent = item.topline;
-        card.appendChild(top);
-      }
-
-      const title = document.createElement("div");
-      title.className = "news-item-title";
-      title.textContent = item.title || "";
-      card.appendChild(title);
-
-      if (body) {
-        const bodyEl = document.createElement("div");
-        bodyEl.className = "news-item-body";
-        bodyEl.innerHTML = body;
-        card.appendChild(bodyEl);
-      } else if (item.firstSentence) {
-        const teaser = document.createElement("div");
-        teaser.className = "news-item-body";
-        teaser.textContent = item.firstSentence;
-        card.appendChild(teaser);
-      }
-
-      els.newsList.appendChild(card);
+    entries.forEach(function (entry, index) {
+      els.newsList.appendChild(buildNewsSlide(entry, index));
     });
+
+    // Panel könnte gerade schon aktiv sein (z.B. nach einem manuellen
+    // Reload mitten im News-Slide) — dann die Diashow direkt starten.
+    const panelEl = document.getElementById("panel-news");
+    const isActive = panelEl && panelEl.className.indexOf("active") !== -1;
+    if (isActive) startNewsSlideshow();
 
     newsAvailable = true;
   }).catch(function (err) {
@@ -584,6 +737,59 @@ function updateMusic() {
 }
 
 // ---------- Spruch des Tages (Advice Slip — bestätigt CORS-freundlich) ----------
+// Wird zeichenweise "eingetippt", sobald das Panel sichtbar wird (siehe
+// startQuoteTypewriter() und der Hook in showPanel()). Lädt die Daten
+// schon vorher neu, tippt aber erst los, wenn der Text auch zu sehen ist.
+let quoteFullText = null;
+let quoteTypeTimer = null;
+
+function renderQuoteShell() {
+  if (!els.quoteBlock) return;
+  els.quoteBlock.innerHTML = "";
+
+  const mark = document.createElement("div");
+  mark.className = "quote-mark";
+  mark.textContent = "“";
+  els.quoteBlock.appendChild(mark);
+
+  const text = document.createElement("div");
+  text.className = "quote-text";
+
+  const typed = document.createElement("span");
+  typed.id = "quoteTypedText";
+  text.appendChild(typed);
+
+  const cursor = document.createElement("span");
+  cursor.id = "quoteCursor";
+  cursor.className = "typewriter-cursor";
+  text.appendChild(cursor);
+
+  els.quoteBlock.appendChild(text);
+}
+
+function startQuoteTypewriter() {
+  if (!quoteFullText) return;
+  const typedEl = document.getElementById("quoteTypedText");
+  const cursorEl = document.getElementById("quoteCursor");
+  if (!typedEl) return;
+
+  if (quoteTypeTimer) clearInterval(quoteTypeTimer);
+  typedEl.textContent = "";
+  if (cursorEl) cursorEl.className = "typewriter-cursor";
+
+  const full = quoteFullText;
+  let i = 0;
+  quoteTypeTimer = setInterval(function () {
+    i++;
+    typedEl.textContent = full.slice(0, i);
+    if (i >= full.length) {
+      clearInterval(quoteTypeTimer);
+      quoteTypeTimer = null;
+      if (cursorEl) cursorEl.className = "typewriter-cursor done";
+    }
+  }, 35);
+}
+
 function updateQuote() {
   if (!els.quoteBlock) return;
 
@@ -596,13 +802,12 @@ function updateQuote() {
     const advice = data && data.slip && data.slip.advice;
     if (!advice) throw new Error("Kein Spruch erhalten");
 
-    els.quoteBlock.innerHTML = "";
+    quoteFullText = advice;
+    renderQuoteShell();
 
-    const text = document.createElement("div");
-    text.className = "quote-text";
-    text.textContent = "“" + advice + "”";
-
-    els.quoteBlock.appendChild(text);
+    const panelEl = document.getElementById("panel-quote");
+    const isActive = panelEl && panelEl.className.indexOf("active") !== -1;
+    if (isActive) startQuoteTypewriter();
 
     quoteAvailable = true;
   }).catch(function (err) {
@@ -1145,12 +1350,33 @@ function fetchTeamMatches(teamName) {
   });
 }
 
+function buildCrestImg(team) {
+  const img = document.createElement("img");
+  img.className = "sport-crest";
+  img.src = (team && team.teamIconUrl) || "";
+  img.alt = "";
+  // Manche Wappen-URLs sind mal nicht erreichbar/gesperrt — dann das
+  // Bild einfach ausblenden statt ein kaputtes Icon anzuzeigen.
+  img.onerror = function () { img.style.display = "none"; };
+  return img;
+}
+
 function buildSportRow(entry) {
   const useNext = !!entry.next;
   const match = useNext ? entry.next : entry.last;
 
   const row = document.createElement("div");
   row.className = "sport-card";
+
+  const crests = document.createElement("span");
+  crests.className = "sport-crests";
+  crests.appendChild(buildCrestImg(match.team1));
+  const vs = document.createElement("span");
+  vs.className = "sport-crests-vs";
+  vs.textContent = "–";
+  crests.appendChild(vs);
+  crests.appendChild(buildCrestImg(match.team2));
+  row.appendChild(crests);
 
   const text = document.createElement("span");
   text.className = "sport-text";
@@ -1254,6 +1480,16 @@ function showPanel(name) {
     setTimeout(function () {
       commuteMap.invalidateSize();
     }, 80);
+  }
+
+  if (name === "quote") {
+    startQuoteTypewriter();
+  }
+
+  if (name === "news") {
+    startNewsSlideshow();
+  } else {
+    stopNewsSlideshow();
   }
 }
 
