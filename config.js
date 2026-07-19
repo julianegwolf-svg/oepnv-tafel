@@ -94,4 +94,26 @@ const CONFIG = {
 
   // Zitat-Panel
   refreshQuoteMs: 60 * 60 * 1000,
+
+  // ---------------------------------------------------------------
+  // Müllabfuhr — Bremer Abfallkalender für Alter Postweg 110.
+  // Bremen hat keine öffentliche API/iCal dafür (nur eine sessionbasierte
+  // Drittanbieter-Weboberfläche ohne CORS-Unterstützung), deshalb reine
+  // Datumsrechnung statt Live-Abruf — laut offiziellem PDF-Kalender fester
+  // Rhythmus: jeden Mittwoch abwechselnd Restmüll/Bioabfall und Papier/
+  // Gelber Sack, gültig bis Juni 2027. referenceDate ist ein Mittwoch mit
+  // bekanntem Typ, ab dem hochgezählt/durchgezählt wird.
+  //
+  // Wenn Bremen im Sommer 2027 den nächsten Kalender veröffentlicht: neuen
+  // PDF-Kalender unter die-bremer-stadtreinigung.de/abfallkalender ziehen
+  // und referenceDate/referenceType (und exceptions) hier aktualisieren.
+  // ---------------------------------------------------------------
+  wasteCollection: {
+    referenceDate: "2026-07-22",
+    referenceType: "restbio", // "restbio" = Restmüll/Bioabfall, "papier" = Papier/Gelber Sack
+    exceptions: [
+      { date: "2027-01-26", label: "Tannenbaumabfuhr" },
+    ],
+    refreshMs: 30 * 60 * 1000,
+  },
 };

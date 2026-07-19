@@ -26,6 +26,7 @@ const els = {
   musicList: document.getElementById("musicList"),
   quoteBlock: document.getElementById("quoteBlock"),
   commuteChips: document.getElementById("commuteChips"),
+  wasteLine: document.getElementById("wasteLine"),
 };
 
 let resolvedStopIds = (CONFIG.stopIds && CONFIG.stopIds.length)
@@ -859,6 +860,89 @@ function updateCommute() {
   });
 }
 
+// ---------- Müllabfuhr (Bremer Abfallkalender) ----------
+// Bremen bietet keine öffentliche API/kein iCal dafür — nur eine session-
+// basierte Weboberfläche eines Drittanbieters ohne CORS-Unterstützung für
+// fremde Seiten. Statt das (unzuverlässig) nachzubauen: reine Datums-
+// rechnung anhand des echten, offiziellen PDF-Kalenders für die Adresse
+// (siehe CONFIG.wasteCollection) — kein Netzwerkaufruf, kann nie durch
+// eine kaputte externe API ausfallen. Muss nur einmal im Jahr aktualisiert
+// werden, wenn Bremen den nächsten Kalender veröffentlicht.
+const WASTE_LABELS = {
+  restbio: { icon: "🗑️", text: "Restmüll & Bioabfall" },
+  papier: { icon: "♻️", text: "Papier & Gelber Sack" },
+};
+
+function nextWasteCollections(count) {
+  const cfg = CONFIG.wasteCollection;
+  if (!cfg) return [];
+
+  const refDate = new Date(cfg.referenceDate + "T00:00:00");
+  const refType = cfg.referenceType;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const items = [];
+
+  // Reguläre, alternierende Mittwochstermine ab dem nächsten Termin.
+  let d = new Date(refDate.getTime());
+  while (d < today) {
+    d = new Date(d.getTime() + 7 * 86400000);
+  }
+  for (let i = 0; i < count + 6; i++) {
+    const weeksSinceRef = Math.round((d.getTime() - refDate.getTime()) / (7 * 86400000));
+    const isRefType = ((weeksSinceRef % 2) + 2) % 2 === 0;
+    const type = isRefType ? refType : (refType === "restbio" ? "papier" : "restbio");
+    items.push({ date: new Date(d.getTime()), type: type });
+    d = new Date(d.getTime() + 7 * 86400000);
+  }
+
+  // Einmalige Sondertermine (z.B. Tannenbaumabfuhr), die nicht dem
+  // regulären Mittwochsrhythmus folgen.
+  (cfg.exceptions || []).forEach(function (ex) {
+    const exDate = new Date(ex.date + "T00:00:00");
+    if (exDate >= today) {
+      items.push({ date: exDate, type: "exception", label: ex.label });
+    }
+  });
+
+  items.sort(function (a, b) { return a.date.getTime() - b.date.getTime(); });
+
+  return items.slice(0, count);
+}
+
+function formatWasteEntry(entry) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.round((entry.date.getTime() - today.getTime()) / 86400000);
+
+  let when;
+  if (days === 0) when = "heute";
+  else if (days === 1) when = "morgen";
+  else {
+    when = entry.date.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
+  }
+
+  const info = entry.type === "exception"
+    ? { icon: "🎄", text: entry.label }
+    : WASTE_LABELS[entry.type];
+
+  if (!info) return null;
+  return info.icon + " " + when + ": " + info.text;
+}
+
+function updateWasteLine() {
+  if (!els.wasteLine || !CONFIG.wasteCollection) return;
+
+  const upcoming = nextWasteCollections(1);
+  if (!upcoming.length) {
+    els.wasteLine.textContent = "";
+    return;
+  }
+
+  els.wasteLine.textContent = formatWasteEntry(upcoming[0]) || "";
+}
+
 // ---------- Karussell ----------
 let newsAvailable = false;
 let musicAvailable = false;
@@ -967,6 +1051,11 @@ function init() {
 
   updateQuote();
   setInterval(updateQuote, CONFIG.refreshQuoteMs);
+
+  updateWasteLine();
+  if (CONFIG.wasteCollection && CONFIG.wasteCollection.refreshMs) {
+    setInterval(updateWasteLine, CONFIG.wasteCollection.refreshMs);
+  }
 
   scheduleCarousel();
 

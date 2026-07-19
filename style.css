@@ -661,3 +661,8 @@ html, body {
   font-size: 13px;
   letter-spacing: 0.02em;
 }
+
+.waste-line {
+  font-weight: 600;
+  color: var(--steel-ink);
+}
