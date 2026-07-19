@@ -25,6 +25,7 @@ const els = {
   newsList: document.getElementById("newsList"),
   musicList: document.getElementById("musicList"),
   quoteBlock: document.getElementById("quoteBlock"),
+  commuteList: document.getElementById("commuteList"),
 };
 
 let resolvedStopIds = (CONFIG.stopIds && CONFIG.stopIds.length)
@@ -487,6 +488,194 @@ function updateQuote() {
   });
 }
 
+// ---------- Pendel-Panel (Arbeitsweg zu Max Müller GmbH) ----------
+// Rad- und Auto-Zeit kommen als Direktverbindung (directModes, ohne
+// Transit) von Transitous, die Bus/ÖPNV-Zeit als normale Routenplanung.
+// Ist eine Adresse mal nicht auflösbar oder eine Route nicht berechenbar,
+// wird die jeweilige Zeile einfach als "nicht verfügbar" markiert statt
+// das ganze Panel kaputt zu machen — das Panel selbst wird übersprungen,
+// wenn gar keine der drei Routen klappt.
+let commuteAvailable = false;
+let commuteCoords = null;
+
+function geocodeOne(query) {
+  const url = API_BASE + "/v1/geocode?text=" + encodeURIComponent(query) + "&numResults=1";
+
+  return fetch(url).then(function (res) {
+    if (!res.ok) throw new Error("Geokodierung fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const match = Array.isArray(data) ? data[0] : null;
+    if (!match || typeof match.lat !== "number" || typeof match.lon !== "number") {
+      throw new Error('Adresse nicht gefunden: "' + query + '"');
+    }
+    return { lat: match.lat, lon: match.lon };
+  });
+}
+
+function resolveCommuteCoords() {
+  if (commuteCoords) return Promise.resolve(commuteCoords);
+
+  return Promise.all([
+    geocodeOne(CONFIG.homeAddress),
+    geocodeOne(CONFIG.workAddress),
+  ]).then(function (results) {
+    commuteCoords = { home: results[0], work: results[1] };
+    return commuteCoords;
+  });
+}
+
+function fetchDirectItinerary(from, to, mode) {
+  const url = API_BASE + "/v6/plan?fromPlace=" + from.lat + "," + from.lon +
+    "&toPlace=" + to.lat + "," + to.lon +
+    "&directModes=" + mode + "&transitModes=";
+
+  return fetch(url).then(function (res) {
+    if (!res.ok) throw new Error("Routenabruf (" + mode + ") fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const items = (data && Array.isArray(data.direct)) ? data.direct : [];
+    if (!items.length) throw new Error("Keine " + mode + "-Route gefunden");
+    return items[0];
+  });
+}
+
+function fetchTransitItinerary(from, to) {
+  const url = API_BASE + "/v6/plan?fromPlace=" + from.lat + "," + from.lon +
+    "&toPlace=" + to.lat + "," + to.lon +
+    "&directModes=&transitModes=TRANSIT";
+
+  return fetch(url).then(function (res) {
+    if (!res.ok) throw new Error("Routenabruf (ÖPNV) fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const items = (data && Array.isArray(data.itineraries)) ? data.itineraries : [];
+    if (!items.length) throw new Error("Keine ÖPNV-Route gefunden");
+    return items[0];
+  });
+}
+
+function itineraryDurationMin(itinerary) {
+  try {
+    if (typeof itinerary.duration === "number") {
+      return Math.round(itinerary.duration / 60);
+    }
+    if (itinerary.startTime && itinerary.endTime) {
+      const ms = new Date(itinerary.endTime).getTime() - new Date(itinerary.startTime).getTime();
+      return Math.round(ms / 60000);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+  return null;
+}
+
+// Liest, falls vorhanden, echte Live-/Verspätungsdaten aus den Legs der
+// ÖPNV-Route (dieselbe Idee wie die Verspätungsanzeige im Abfahrten-Panel).
+// Sind keine Live-Daten in der Antwort enthalten, wird nichts behauptet
+// (kein erfundener "pünktlich"-Status) — die Zeile bleibt dann einfach ohne
+// Zusatztext.
+function itineraryRealtimeNote(itinerary) {
+  try {
+    const legs = itinerary.legs || [];
+    let hasRealTime = false;
+    let maxDelayMin = 0;
+
+    legs.forEach(function (leg) {
+      if (leg.realTime) hasRealTime = true;
+      const sched = leg.scheduledStartTime || leg.scheduledDeparture;
+      const real = leg.startTime || leg.departure;
+      if (sched && real) {
+        const d = Math.round((new Date(real).getTime() - new Date(sched).getTime()) / 60000);
+        if (d > maxDelayMin) maxDelayMin = d;
+      }
+    });
+
+    if (!hasRealTime) return null;
+    return maxDelayMin >= 1
+      ? ("+" + maxDelayMin + " Min. Verspätung · Live-Daten")
+      : "pünktlich · Live-Daten";
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+}
+
+const COMMUTE_MODES = [
+  { key: "bike", icon: "🚲", label: "Fahrrad" },
+  { key: "bus", icon: "🚌", label: "Bus / ÖPNV" },
+  { key: "car", icon: "🚗", label: "Auto" },
+];
+
+function renderCommute(results) {
+  if (!els.commuteList) return;
+  els.commuteList.innerHTML = "";
+
+  let anyOk = false;
+
+  COMMUTE_MODES.forEach(function (m) {
+    const res = results[m.key];
+
+    const item = document.createElement("div");
+    item.className = "commute-item" + (res ? "" : " unavailable");
+
+    const icon = document.createElement("span");
+    icon.className = "commute-icon";
+    icon.textContent = m.icon;
+
+    const text = document.createElement("span");
+    text.className = "commute-text";
+
+    const modeEl = document.createElement("span");
+    modeEl.className = "commute-mode";
+    modeEl.textContent = m.label;
+    text.appendChild(modeEl);
+
+    const noteEl = document.createElement("span");
+    noteEl.className = "commute-note";
+    noteEl.textContent = res ? (res.note || "") : "Route gerade nicht verfügbar";
+    if (noteEl.textContent) text.appendChild(noteEl);
+
+    const dur = document.createElement("span");
+    dur.className = "commute-duration";
+    dur.textContent = res && res.minutes != null ? (res.minutes + " min") : "–";
+
+    item.appendChild(icon);
+    item.appendChild(text);
+    item.appendChild(dur);
+    els.commuteList.appendChild(item);
+
+    if (res && res.minutes != null) anyOk = true;
+  });
+
+  commuteAvailable = anyOk;
+}
+
+function updateCommute() {
+  if (!els.commuteList) return;
+
+  resolveCommuteCoords().then(function (coords) {
+    return Promise.all([
+      fetchDirectItinerary(coords.home, coords.work, "BIKE")
+        .then(function (it) { return { minutes: itineraryDurationMin(it) }; })
+        .catch(function (err) { console.error(err); return null; }),
+      fetchTransitItinerary(coords.home, coords.work)
+        .then(function (it) {
+          return { minutes: itineraryDurationMin(it), note: itineraryRealtimeNote(it) };
+        })
+        .catch(function (err) { console.error(err); return null; }),
+      fetchDirectItinerary(coords.home, coords.work, "CAR")
+        .then(function (it) { return { minutes: itineraryDurationMin(it) }; })
+        .catch(function (err) { console.error(err); return null; }),
+    ]);
+  }).then(function (all) {
+    renderCommute({ bike: all[0], bus: all[1], car: all[2] });
+  }).catch(function (err) {
+    console.error(err);
+    commuteAvailable = false;
+  });
+}
+
 // ---------- Karussell ----------
 let newsAvailable = false;
 let musicAvailable = false;
@@ -495,6 +684,7 @@ let panelIndex = 0;
 
 const PANEL_AVAILABILITY = {
   departures: function () { return true; },
+  commute: function () { return commuteAvailable; },
   weather: function () { return true; },
   news: function () { return newsAvailable; },
   music: function () { return musicAvailable; },
@@ -502,7 +692,7 @@ const PANEL_AVAILABILITY = {
 };
 
 function showPanel(name) {
-  const ids = ["departures", "weather", "news", "music", "quote"];
+  const ids = ["departures", "commute", "weather", "news", "music", "quote"];
   for (let i = 0; i < ids.length; i++) {
     const el = document.getElementById("panel-" + ids[i]);
     if (!el) continue;
@@ -577,6 +767,9 @@ function init() {
 
   updateNews();
   setInterval(updateNews, CONFIG.refreshNewsMs);
+
+  updateCommute();
+  setInterval(updateCommute, CONFIG.refreshCommuteMs);
 
   updateMusic();
   setInterval(updateMusic, CONFIG.refreshMusicMs);

@@ -488,6 +488,68 @@ html, body {
   text-overflow: ellipsis;
 }
 
+/* ---------- Pendel-Panel (Arbeitsweg) ---------- */
+.commute-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.commute-list > * + * {
+  margin-top: 14px;
+}
+
+.commute-item {
+  display: flex;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 14px;
+  padding: 22px 26px;
+  box-shadow: 0 1px 2px rgba(28, 29, 31, 0.04);
+}
+
+.commute-item > * + * {
+  margin-left: 22px;
+}
+
+.commute-item.unavailable {
+  opacity: 0.45;
+}
+
+.commute-icon {
+  font-size: 42px;
+  line-height: 1;
+}
+
+.commute-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.commute-mode {
+  font-size: 23px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.commute-note {
+  font-size: 14px;
+  color: var(--ink-dim);
+  margin-top: 4px;
+}
+
+.commute-duration {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
 /* ---------- Zitat-Panel ---------- */
 .quote-block {
   flex: 1;

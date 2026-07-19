@@ -44,18 +44,29 @@ const CONFIG = {
   // Panels, deren Datenquelle gerade nicht klappt, werden automatisch
   // übersprungen.
   // ---------------------------------------------------------------
-  panelSequence: ["departures", "weather", "news", "music", "quote"],
+  panelSequence: ["departures", "commute", "weather", "news", "music", "quote"],
 
   // Anzeigedauer je Panel in Millisekunden. Fehlt ein Eintrag, gilt
   // panelDurationMs als Standard.
   panelDurations: {
     departures: 30 * 1000,
+    commute: 16 * 1000,
     weather: 15 * 1000,
     news: 20 * 1000,
     music: 15 * 1000,
     quote: 12 * 1000,
   },
   panelDurationMs: 18 * 1000,
+
+  // ---------------------------------------------------------------
+  // Pendel-Panel: Arbeitsweg mit Rad/Bus/Auto zu Max Müller GmbH.
+  // Adressen werden beim Laden einmalig über Transitous geokodiert
+  // (wie schon bei der Haltestellensuche), danach gecacht.
+  // ---------------------------------------------------------------
+  homeAddress: "Alter Postweg 110, 28237 Bremen",
+  workAddress: "Fritz-Thiele-Straße 7, 28279 Bremen",
+  workLabel: "Max Müller GmbH",
+  refreshCommuteMs: 10 * 60 * 1000,
 
   // Wetter-Panel: wie viele Stunden-Kacheln
   weatherHourCount: 5,
