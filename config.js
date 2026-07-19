@@ -37,18 +37,24 @@ const CONFIG = {
   fullReloadMs: 3 * 60 * 60 * 1000,
 
   // ---------------------------------------------------------------
-  // Karussell: welche Ansichten in welcher Reihenfolge, wie lange
-  // jede zu sehen ist. "departures" taucht bewusst öfter auf, damit
-  // die Abfahrten der wichtigste/am längsten sichtbare Inhalt bleiben.
+  // Karussell: welche Ansichten in welcher Reihenfolge. Läuft einmal
+  // komplett durch und fängt dann wieder von vorne an — kein Zurück-
+  // springen zu Abfahrten nach jedem einzelnen Panel mehr. Abfahrten
+  // bleiben trotzdem am längsten sichtbar, über panelDurations unten.
   // Panels, deren Datenquelle gerade nicht klappt, werden automatisch
   // übersprungen.
   // ---------------------------------------------------------------
-  panelSequence: [
-    "departures", "weather",
-    "departures", "news",
-    "departures", "music",
-    "departures", "quote",
-  ],
+  panelSequence: ["departures", "weather", "news", "music", "quote"],
+
+  // Anzeigedauer je Panel in Millisekunden. Fehlt ein Eintrag, gilt
+  // panelDurationMs als Standard.
+  panelDurations: {
+    departures: 30 * 1000,
+    weather: 15 * 1000,
+    news: 20 * 1000,
+    music: 15 * 1000,
+    quote: 12 * 1000,
+  },
   panelDurationMs: 18 * 1000,
 
   // Wetter-Panel: wie viele Stunden-Kacheln

@@ -515,32 +515,53 @@ function showPanel(name) {
 }
 
 const progressFillEl = document.getElementById("progressFill");
+let carouselTimer = null;
 
-function resetProgressBar() {
+function durationForPanel(name) {
+  if (CONFIG.panelDurations && CONFIG.panelDurations[name]) {
+    return CONFIG.panelDurations[name];
+  }
+  return CONFIG.panelDurationMs;
+}
+
+function resetProgressBar(durationMs) {
   if (!progressFillEl) return;
   progressFillEl.style.transition = "none";
   progressFillEl.style.width = "0%";
   // Reflow erzwingen, damit der Browser die Reset-Breite wirklich anwendet,
   // bevor die neue Transition startet.
   void progressFillEl.offsetWidth;
-  progressFillEl.style.transition = "width " + CONFIG.panelDurationMs + "ms linear";
+  progressFillEl.style.transition = "width " + durationMs + "ms linear";
   progressFillEl.style.width = "100%";
 }
 
-function advancePanel() {
+function pickNextAvailablePanel() {
   const seq = CONFIG.panelSequence;
   let tries = 0;
   while (tries < seq.length) {
     panelIndex = (panelIndex + 1) % seq.length;
     const name = seq[panelIndex];
     const check = PANEL_AVAILABILITY[name];
-    if (!check || check()) {
-      showPanel(name);
-      resetProgressBar();
-      return;
-    }
+    if (!check || check()) return name;
     tries++;
   }
+  return seq[panelIndex];
+}
+
+function scheduleCarousel() {
+  const seq = CONFIG.panelSequence;
+  if (!seq || seq.length < 2) return;
+
+  const currentName = seq[panelIndex];
+  const duration = durationForPanel(currentName);
+  resetProgressBar(duration);
+
+  if (carouselTimer) clearTimeout(carouselTimer);
+  carouselTimer = setTimeout(function () {
+    const nextName = pickNextAvailablePanel();
+    showPanel(nextName);
+    scheduleCarousel();
+  }, duration);
 }
 
 // ---------- Start ----------
@@ -563,10 +584,7 @@ function init() {
   updateQuote();
   setInterval(updateQuote, CONFIG.refreshQuoteMs);
 
-  if (CONFIG.panelSequence && CONFIG.panelSequence.length > 1) {
-    resetProgressBar();
-    setInterval(advancePanel, CONFIG.panelDurationMs);
-  }
+  scheduleCarousel();
 
   if (CONFIG.fullReloadMs) {
     setTimeout(function () {
