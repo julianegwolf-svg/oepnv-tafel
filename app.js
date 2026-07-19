@@ -127,23 +127,67 @@ function productClass(mode) {
 // und danach für die ganze Laufzeit gecacht. Daraus ergibt sich pro
 // Abfahrt, bis wann man spätestens los muss — als farbige Kante an der
 // Zeile (grün = entspannt, gelb = bald los, rot = eigentlich zu spät).
+//
+// Nutzt die präzise geokodierte homeAddress (dieselbe wie beim Pendel-
+// Panel) statt der groben weatherLat/weatherLon — die waren nur für die
+// Wetteranzeige gedacht und ungenau genug, um bei einer eigentlich sehr
+// kurzen Strecke völlig falsche Gehzeiten zu erzeugen. Zusätzlich wird
+// das Ergebnis der Routing-API gegen eine Luftlinien-Schätzung geprüft:
+// liefert die API (wie beim 97-Minuten-Bus-Bug schon einmal beobachtet)
+// einen unplausiblen Umweg für eine kurze Strecke, wird die Schätzung
+// verwendet statt der kaputten API-Antwort.
 let walkMinutesToStop = null;
 let walkTimeRequested = false;
+
+function haversineMeters(a, b) {
+  const R = 6371000;
+  const toRad = function (deg) { return deg * Math.PI / 180; };
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLon = Math.sin(dLon / 2);
+  const h = sinDLat * sinDLat + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * sinDLon * sinDLon;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function estimateWalkMinutes(distanceMeters) {
+  // ca. 4,5 km/h (75 m/min) zu Fuß, plus 30% Aufschlag für reale Straßen/
+  // Kreuzungen statt Luftlinie.
+  return Math.max(1, Math.round((distanceMeters / 75) * 1.3));
+}
 
 function resolveWalkTime() {
   if (walkMinutesToStop !== null) return Promise.resolve(walkMinutesToStop);
   if (walkTimeRequested) return Promise.resolve(null);
-  if (typeof CONFIG.weatherLat !== "number" || typeof CONFIG.weatherLon !== "number") {
-    return Promise.resolve(null);
-  }
 
   walkTimeRequested = true;
 
-  return resolveStopIds().then(function () {
-    if (!resolvedStopCoord) return null;
-    const home = { lat: CONFIG.weatherLat, lon: CONFIG.weatherLon };
+  return Promise.all([resolveCommuteCoords(), resolveStopIds()]).then(function (results) {
+    const coords = results[0];
+    if (!coords || !coords.home || !resolvedStopCoord) return null;
+
+    const home = coords.home;
+    const distanceMeters = haversineMeters(home, resolvedStopCoord);
+    const fallbackMinutes = estimateWalkMinutes(distanceMeters);
+
     return fetchDirectItinerary(home, resolvedStopCoord, "WALK").then(function (it) {
-      walkMinutesToStop = itineraryDurationMin(it);
+      const apiMinutes = itineraryDurationMin(it);
+      const plausibleMax = Math.max(fallbackMinutes * 2.5, fallbackMinutes + 8);
+
+      if (apiMinutes != null && apiMinutes <= plausibleMax) {
+        walkMinutesToStop = apiMinutes;
+      } else {
+        console.warn(
+          "Gehzeit-API wirkt unplausibel (" + apiMinutes + " min bei ~" +
+          Math.round(distanceMeters) + "m Luftlinie zur Haltestelle) — nutze Schätzung."
+        );
+        walkMinutesToStop = fallbackMinutes;
+      }
+      return walkMinutesToStop;
+    }).catch(function (err) {
+      console.error(err);
+      // Lieber eine grobe Schätzung als gar keine Gehzeit-Anzeige.
+      walkMinutesToStop = fallbackMinutes;
       return walkMinutesToStop;
     });
   }).catch(function (err) {
@@ -1016,12 +1060,16 @@ function updateWasteLine() {
   els.wasteLine.textContent = formatWasteEntry(upcoming[0]) || "";
 }
 
-// ---------- Sport-Ticker (Werder Bremen, openligadb.de) ----------
+// ---------- Sport-Ticker (Lieblingsvereine, openligadb.de) ----------
 // openligadb ist kostenlos, ohne API-Key, offene REST-API für Fußball-
-// daten. Enthält aber auch Test-/Fantasieligen fremder Nutzer (z.B. eine
-// Liga namens "BLClaude" mit erfundenen Ergebnissen) — deshalb wird strikt
-// auf CONFIG.sportLeagueWhitelist gefiltert (echte Bundesliga/2. Liga/
-// DFB-Pokal-Daten), alles andere wird ignoriert.
+// daten. Abfrage per Vereinsname (getmatchesbyteam) statt fester Team-ID —
+// robuster, kein Pflegeaufwand bei falschen/veralteten IDs. Enthält aber
+// auch Test-/Fantasieligen fremder Nutzer (z.B. eine Liga namens
+// "BLClaude" mit erfundenen Ergebnissen) — deshalb wird strikt auf
+// CONFIG.sportLeagueWhitelist gefiltert (echte Bundesliga/2./3. Liga/
+// DFB-Pokal-Daten), alles andere wird ignoriert. Pro Verein wird das
+// nächste anstehende Spiel gezeigt, oder — falls gerade keins bekannt
+// ist — das letzte Ergebnis.
 let sportAvailable = false;
 
 function finalScore(match) {
@@ -1036,17 +1084,19 @@ function finalScore(match) {
   return best.pointsTeam1 + ":" + best.pointsTeam2;
 }
 
-function werderOutcome(match, score) {
+function matchOutcome(match, score, teamName) {
   if (!score) return "";
   const parts = score.split(":");
   const p1 = parseInt(parts[0], 10);
   const p2 = parseInt(parts[1], 10);
-  const isTeam1 = match.team1 && match.team1.teamId === CONFIG.sportTeamId;
-  const werderGoals = isTeam1 ? p1 : p2;
+
+  const t1Name = (match.team1 && match.team1.teamName) || "";
+  const isTeam1 = t1Name.toLowerCase().indexOf(teamName.toLowerCase()) !== -1;
+  const ownGoals = isTeam1 ? p1 : p2;
   const opponentGoals = isTeam1 ? p2 : p1;
 
-  if (werderGoals > opponentGoals) return "win";
-  if (werderGoals < opponentGoals) return "loss";
+  if (ownGoals > opponentGoals) return "win";
+  if (ownGoals < opponentGoals) return "loss";
   return "draw";
 }
 
@@ -1056,80 +1106,17 @@ function formatMatchDate(iso) {
     ", " + d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr";
 }
 
-function buildSportCard(match, label, score, outcome) {
-  const card = document.createElement("div");
-  card.className = "sport-card";
+function fetchTeamMatches(teamName) {
+  const url = "https://api.openligadb.de/getmatchesbyteam/" + encodeURIComponent(teamName) + "/6/20";
 
-  const text = document.createElement("span");
-  text.className = "sport-text";
-
-  const labelEl = document.createElement("span");
-  labelEl.className = "sport-label";
-  labelEl.textContent = label;
-  text.appendChild(labelEl);
-
-  const teams = document.createElement("span");
-  teams.className = "sport-teams";
-  const t1 = (match.team1 && (match.team1.shortName || match.team1.teamName)) || "?";
-  const t2 = (match.team2 && (match.team2.shortName || match.team2.teamName)) || "?";
-  teams.textContent = t1 + " – " + t2;
-  text.appendChild(teams);
-
-  const meta = document.createElement("span");
-  meta.className = "sport-meta";
-  const groupName = match.group && match.group.groupName;
-  meta.textContent = formatMatchDate(match.matchDateTime) + (groupName ? " · " + groupName : "");
-  text.appendChild(meta);
-
-  card.appendChild(text);
-
-  if (score) {
-    const scoreEl = document.createElement("span");
-    scoreEl.className = "sport-score" + (outcome ? " sport-result-" + outcome : "");
-    scoreEl.textContent = score;
-    card.appendChild(scoreEl);
-  }
-
-  return card;
-}
-
-function renderSport(next, last) {
-  if (!els.sportBlock) return;
-  els.sportBlock.innerHTML = "";
-
-  if (!next && !last) {
-    els.sportBlock.innerHTML = '<div class="view-placeholder">Keine Werder-Spiele gefunden</div>';
-    sportAvailable = false;
-    return;
-  }
-
-  if (next) {
-    els.sportBlock.appendChild(buildSportCard(next, "Nächstes Spiel", null, null));
-  }
-  if (last) {
-    const score = finalScore(last);
-    const outcome = werderOutcome(last, score);
-    els.sportBlock.appendChild(buildSportCard(last, "Letztes Spiel", score, outcome));
-  }
-
-  sportAvailable = true;
-}
-
-function updateSport() {
-  if (!els.sportBlock || !CONFIG.sportTeamId) return;
-
-  const url = "https://api.openligadb.de/getmatchesbyteamid/" + CONFIG.sportTeamId + "/6/20";
-
-  fetch(url).then(function (res) {
-    if (!res.ok) throw new Error("Werder-Abruf fehlgeschlagen (" + res.status + ")");
+  return fetch(url).then(function (res) {
+    if (!res.ok) throw new Error("Sport-Abruf (" + teamName + ") fehlgeschlagen (" + res.status + ")");
     return res.json();
   }).then(function (data) {
     const whitelist = CONFIG.sportLeagueWhitelist || [];
     const matches = (Array.isArray(data) ? data : []).filter(function (m) {
       return m && m.leagueShortcut && whitelist.indexOf(m.leagueShortcut) !== -1;
     });
-
-    if (!matches.length) throw new Error("Keine Werder-Spiele gefunden");
 
     matches.sort(function (a, b) {
       return new Date(a.matchDateTime).getTime() - new Date(b.matchDateTime).getTime();
@@ -1145,7 +1132,83 @@ function updateSport() {
       if (matches[i].matchIsFinished) { last = matches[i]; break; }
     }
 
-    renderSport(next, last);
+    if (!next && !last) return null;
+    return { teamName: teamName, next: next, last: last };
+  }).catch(function (err) {
+    console.error(err);
+    return null;
+  });
+}
+
+function buildSportRow(entry) {
+  const useNext = !!entry.next;
+  const match = useNext ? entry.next : entry.last;
+
+  const row = document.createElement("div");
+  row.className = "sport-card";
+
+  const text = document.createElement("span");
+  text.className = "sport-text";
+
+  const labelEl = document.createElement("span");
+  labelEl.className = "sport-label";
+  labelEl.textContent = useNext ? "Nächstes Spiel" : "Letztes Spiel";
+  text.appendChild(labelEl);
+
+  const teams = document.createElement("span");
+  teams.className = "sport-teams";
+  const t1 = (match.team1 && (match.team1.shortName || match.team1.teamName)) || "?";
+  const t2 = (match.team2 && (match.team2.shortName || match.team2.teamName)) || "?";
+  teams.textContent = t1 + " – " + t2;
+  text.appendChild(teams);
+
+  const meta = document.createElement("span");
+  meta.className = "sport-meta";
+  const groupName = match.group && match.group.groupName;
+  meta.textContent = formatMatchDate(match.matchDateTime) + (groupName ? " · " + groupName : "");
+  text.appendChild(meta);
+
+  row.appendChild(text);
+
+  if (!useNext) {
+    const score = finalScore(match);
+    if (score) {
+      const outcome = matchOutcome(match, score, entry.teamName);
+      const scoreEl = document.createElement("span");
+      scoreEl.className = "sport-score" + (outcome ? " sport-result-" + outcome : "");
+      scoreEl.textContent = score;
+      row.appendChild(scoreEl);
+    }
+  }
+
+  return row;
+}
+
+function renderSport(entries) {
+  if (!els.sportBlock) return;
+  els.sportBlock.innerHTML = "";
+
+  if (!entries.length) {
+    els.sportBlock.innerHTML = '<div class="view-placeholder">Keine Spiele gefunden</div>';
+    sportAvailable = false;
+    return;
+  }
+
+  entries.forEach(function (entry) {
+    els.sportBlock.appendChild(buildSportRow(entry));
+  });
+
+  sportAvailable = true;
+}
+
+function updateSport() {
+  if (!els.sportBlock) return;
+  const teams = CONFIG.sportTeams || [];
+  if (!teams.length) return;
+
+  Promise.all(teams.map(fetchTeamMatches)).then(function (results) {
+    const entries = results.filter(function (r) { return !!r; });
+    renderSport(entries);
   }).catch(function (err) {
     console.error(err);
     sportAvailable = false;

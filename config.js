@@ -12,10 +12,13 @@ const CONFIG = {
   // Transitous-Stop-ID eintragen, dann wird nicht gesucht.
   stopIds: [],
 
-  // Fahrtziele, die NICHT angezeigt werden sollen (z.B. weil sie aus
-  // der Stadt raus fahren). Bekannte Linien an der Föhrenstraße:
-  // Bus 38, 39, 40, 41, 42, 730, 740, 745.
-  excludeDestinations: [],
+  // Fahrtziele, die NICHT angezeigt werden sollen (weil sie aus der Stadt
+  // raus fahren). Föhrenstraße liegt auf der Straßenbahnstrecke Sebald-
+  // sbrück/Mahndorf <-> Innenstadt (Linien 1, 2, 10 + Ersatzverkehr),
+  // Sebaldsbrück/Mahndorf ist die von der Stadt wegführende Richtung.
+  // Erste Einschätzung aus Recherche, noch nicht gegen die echten
+  // Fahrtziel-Texte auf der Tafel geprüft — bitte kurz gegenchecken.
+  excludeDestinations: ["Sebaldsbrück", "Mahndorf"],
 
   // Falls stattdessen nur bestimmte Ziele erlaubt sein sollen, hier
   // eintragen (z.B. ["Hauptbahnhof", "Domsheide", "Am Brill"]).
@@ -54,7 +57,7 @@ const CONFIG = {
     weather: 15 * 1000,
     news: 20 * 1000,
     music: 15 * 1000,
-    sport: 14 * 1000,
+    sport: 20 * 1000,
     quote: 12 * 1000,
   },
   panelDurationMs: 18 * 1000,
@@ -118,11 +121,20 @@ const CONFIG = {
     refreshMs: 30 * 60 * 1000,
   },
 
-  // Sport-Ticker: Werder Bremen über openligadb.de (kostenlos, kein Key).
-  // teamId 134 = SV Werder Bremen. Es werden nur echte Wettbewerbe
-  // angezeigt (Bundesliga/2. Liga/DFB-Pokal) — openligadb enthält auch
+  // Sport-Ticker über openligadb.de (kostenlos, kein Key, per Vereins-
+  // namen abgefragt statt fester Team-IDs — robuster, kein Pflegeaufwand
+  // bei falschen/veralteten IDs). Werder zuerst (Hauptverein, bleibt oben),
+  // danach die weiteren Lieblingsvereine. Es werden nur echte Wettbewerbe
+  // angezeigt (Bundesliga/2./3. Liga/DFB-Pokal) — openligadb enthält auch
   // Test-/Fantasieligen fremder Nutzer, die hier bewusst ignoriert werden.
-  sportTeamId: 134,
-  sportLeagueWhitelist: ["bl1", "bl2", "dfb"],
+  sportTeams: [
+    "Werder Bremen",
+    "St. Pauli",
+    "Borussia Dortmund",
+    "Rot-Weiss Essen",
+    "Schalke",
+    "Mönchengladbach",
+  ],
+  sportLeagueWhitelist: ["bl1", "bl2", "bl3", "dfb"],
   refreshSportMs: 30 * 60 * 1000,
 };
