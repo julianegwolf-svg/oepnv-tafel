@@ -274,14 +274,19 @@ function renderDepartures(departures) {
 
     timeCell.appendChild(timeMin);
 
-    if (when && scheduled && when !== scheduled) {
-      const delaySec = Math.round((new Date(when).getTime() - new Date(scheduled).getTime()) / 1000);
-      if (delaySec >= 60) {
-        const d = document.createElement("span");
-        d.className = "time-delay";
-        d.textContent = "+" + Math.round(delaySec / 60);
-        timeCell.appendChild(d);
-      }
+    // Kleine, genaue Uhrzeit unter der Minutenangabe — grün wenn
+    // pünktlich, rot wenn verspätet (>= 60 Sekunden Abweichung vom
+    // Fahrplan).
+    if (whenDate) {
+      const delaySec = (when && scheduled && when !== scheduled)
+        ? Math.round((new Date(when).getTime() - new Date(scheduled).getTime()) / 1000)
+        : 0;
+      const isLate = delaySec >= 60;
+
+      const clockEl = document.createElement("span");
+      clockEl.className = "time-clock " + (isLate ? "late" : "ontime");
+      clockEl.textContent = whenDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+      timeCell.appendChild(clockEl);
     }
 
     row.appendChild(lineBadge);
