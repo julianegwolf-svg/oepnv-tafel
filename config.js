@@ -57,6 +57,9 @@ const CONFIG = {
   // News-Panel: Tagesschau-Region (5 = Bremen), wie viele Meldungen
   newsRegion: 5,
   newsCount: 4,
+  // Für die ersten X Meldungen wird der volle Artikeltext geladen
+  // (zum Scrollen), der Rest bleibt kurze Headline.
+  newsFullCount: 2,
   refreshNewsMs: 15 * 60 * 1000,
 
   // Musik-Panel: Apple-Music-Charts Deutschland

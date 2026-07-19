@@ -314,6 +314,32 @@ function updateWeather() {
 }
 
 // ---------- Nachrichten (Tagesschau) ----------
+// Für die ersten CONFIG.newsFullCount Meldungen wird zusätzlich der volle
+// Artikeltext nachgeladen (zum Scrollen), der Rest bleibt Kurz-Headline.
+// Klappt der Detail-Abruf mal nicht, fällt die Karte automatisch auf den
+// kurzen Teaser (firstSentence/topline) zurück statt kaputt zu gehen.
+function fetchArticleBody(item) {
+  const detailUrl = item.details || item.detailsweb;
+  if (!detailUrl) return Promise.resolve(null);
+
+  return fetch(detailUrl).then(function (res) {
+    if (!res.ok) throw new Error("Artikel-Abruf fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const content = data && Array.isArray(data.content) ? data.content : null;
+    if (!content) return null;
+
+    const paragraphs = content
+      .filter(function (block) { return block && block.type === "text" && block.value; })
+      .map(function (block) { return "<p>" + block.value + "</p>"; });
+
+    return paragraphs.length ? paragraphs.join("") : null;
+  }).catch(function (err) {
+    console.error(err);
+    return null;
+  });
+}
+
 function updateNews() {
   if (!els.newsList) return;
 
@@ -324,13 +350,25 @@ function updateNews() {
     if (!res.ok) throw new Error("News-Abruf fehlgeschlagen (" + res.status + ")");
     return res.json();
   }).then(function (data) {
-    const items = (data && Array.isArray(data.news)) ? data.news : [];
+    const items = (data && Array.isArray(data.news)) ? data.news.slice(0, CONFIG.newsCount) : [];
     if (!items.length) throw new Error("Keine News erhalten");
 
+    return Promise.all(items.map(function (item, i) {
+      const wantsFullText = i < CONFIG.newsFullCount;
+      const bodyPromise = wantsFullText ? fetchArticleBody(item) : Promise.resolve(null);
+      return bodyPromise.then(function (body) {
+        return { item: item, body: body };
+      });
+    }));
+  }).then(function (entries) {
     els.newsList.innerHTML = "";
-    items.slice(0, CONFIG.newsCount).forEach(function (item) {
+
+    entries.forEach(function (entry) {
+      const item = entry.item;
+      const body = entry.body;
+
       const card = document.createElement("div");
-      card.className = "news-item";
+      card.className = "news-item" + (body ? " full" : "");
 
       if (item.topline) {
         const top = document.createElement("div");
@@ -343,6 +381,18 @@ function updateNews() {
       title.className = "news-item-title";
       title.textContent = item.title || "";
       card.appendChild(title);
+
+      if (body) {
+        const bodyEl = document.createElement("div");
+        bodyEl.className = "news-item-body";
+        bodyEl.innerHTML = body;
+        card.appendChild(bodyEl);
+      } else if (item.firstSentence) {
+        const teaser = document.createElement("div");
+        teaser.className = "news-item-body";
+        teaser.textContent = item.firstSentence;
+        card.appendChild(teaser);
+      }
 
       els.newsList.appendChild(card);
     });
@@ -464,6 +514,19 @@ function showPanel(name) {
   }
 }
 
+const progressFillEl = document.getElementById("progressFill");
+
+function resetProgressBar() {
+  if (!progressFillEl) return;
+  progressFillEl.style.transition = "none";
+  progressFillEl.style.width = "0%";
+  // Reflow erzwingen, damit der Browser die Reset-Breite wirklich anwendet,
+  // bevor die neue Transition startet.
+  void progressFillEl.offsetWidth;
+  progressFillEl.style.transition = "width " + CONFIG.panelDurationMs + "ms linear";
+  progressFillEl.style.width = "100%";
+}
+
 function advancePanel() {
   const seq = CONFIG.panelSequence;
   let tries = 0;
@@ -473,6 +536,7 @@ function advancePanel() {
     const check = PANEL_AVAILABILITY[name];
     if (!check || check()) {
       showPanel(name);
+      resetProgressBar();
       return;
     }
     tries++;
@@ -500,6 +564,7 @@ function init() {
   setInterval(updateQuote, CONFIG.refreshQuoteMs);
 
   if (CONFIG.panelSequence && CONFIG.panelSequence.length > 1) {
+    resetProgressBar();
     setInterval(advancePanel, CONFIG.panelDurationMs);
   }
 
