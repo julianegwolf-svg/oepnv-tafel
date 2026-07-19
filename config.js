@@ -5,11 +5,10 @@ const CONFIG = {
   stopQuery: "Föhrenstraße, Bremen",
   stopLimit: 2,
 
-  // Bekannte Haltestellen-ID aus dem VBN-Widget-Generator (Bremen
-  // Föhrenstraße). Wird zuerst probiert, damit keine Haltestellensuche
-  // nötig ist. Falls sie in v6.db.transport.rest nicht funktioniert,
-  // einfach auf [] setzen — dann sucht die Seite selbst über stopQuery.
-  stopIds: ["9013884"],
+  // Leer lassen: die Seite sucht die Haltestelle selbst über stopQuery.
+  // (Die ID 9013884 aus dem VBN-Widget gehört zu einem anderen System
+  // und funktioniert hier nicht — daher kam vorhin "Load failed".)
+  stopIds: [],
 
   // API-Profil für v6.db.transport.rest. Leer lassen = Standard (dbnav).
   // Falls die Föhrenstraße damit nicht gefunden wird, mal "db" oder
