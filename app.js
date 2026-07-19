@@ -17,6 +17,7 @@ const els = {
   clockDate: document.getElementById("clockDate"),
   weatherIcon: document.getElementById("weatherIcon"),
   weatherTemp: document.getElementById("weatherTemp"),
+  weatherMinMax: document.getElementById("weatherMinMax"),
 };
 
 let resolvedStopIds = (CONFIG.stopIds && CONFIG.stopIds.length)
@@ -235,7 +236,10 @@ const WEATHER_CODES = {
 
 function updateWeather() {
   const url = "https://api.open-meteo.com/v1/forecast?latitude=" + CONFIG.weatherLat +
-    "&longitude=" + CONFIG.weatherLon + "&current=temperature_2m,weather_code&timezone=Europe%2FBerlin";
+    "&longitude=" + CONFIG.weatherLon +
+    "&current=temperature_2m,weather_code" +
+    "&daily=temperature_2m_max,temperature_2m_min" +
+    "&timezone=Europe%2FBerlin";
 
   fetch(url).then(function (res) {
     if (!res.ok) throw new Error("Wetter-Abruf fehlgeschlagen (" + res.status + ")");
@@ -247,6 +251,12 @@ function updateWeather() {
 
     els.weatherIcon.textContent = entry[0];
     els.weatherTemp.textContent = temp + "°";
+
+    if (els.weatherMinMax && data.daily && data.daily.temperature_2m_max) {
+      const max = Math.round(data.daily.temperature_2m_max[0]);
+      const min = Math.round(data.daily.temperature_2m_min[0]);
+      els.weatherMinMax.textContent = min + "° / " + max + "°";
+    }
   }).catch(function (err) {
     console.error(err);
   });
