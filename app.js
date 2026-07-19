@@ -2,6 +2,8 @@
 // Föhrenstraße Abfahrtstafel — app.js
 // Datenquelle ÖPNV: v6.db.transport.rest (kostenlos, kein API-Key, CORS-frei)
 // Datenquelle Wetter: Open-Meteo (kostenlos, kein API-Key)
+// Hinweis: bewusst ohne Optional Chaining (?.), Array.flat() etc. geschrieben,
+// damit das auch auf Safari 12 (iPad Air 1 / iOS 12.5.x) läuft.
 // ---------------------------------------------------------------
 
 const API_BASE = "https://v6.db.transport.rest";
@@ -16,7 +18,7 @@ const els = {
   weatherTemp: document.getElementById("weatherTemp"),
 };
 
-let resolvedStopIds = Array.isArray(CONFIG.stopIds) && CONFIG.stopIds.length
+let resolvedStopIds = (CONFIG.stopIds && CONFIG.stopIds.length)
   ? CONFIG.stopIds.slice()
   : null;
 
@@ -35,54 +37,61 @@ function tickClock() {
 }
 
 // ---------- Haltestellen auflösen ----------
-async function resolveStopIds() {
-  if (resolvedStopIds) return resolvedStopIds;
+function resolveStopIds() {
+  if (resolvedStopIds) return Promise.resolve(resolvedStopIds);
 
-  const url = `${API_BASE}/locations?query=${encodeURIComponent(
+  const url = API_BASE + "/locations?query=" + encodeURIComponent(
     CONFIG.stopQuery
-  )}&fuzzy=true&results=10&poi=false&addresses=false`;
+  ) + "&fuzzy=true&results=10&poi=false&addresses=false";
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Haltestellensuche fehlgeschlagen (${res.status})`);
-  const data = await res.json();
+  return fetch(url).then(function (res) {
+    if (!res.ok) throw new Error("Haltestellensuche fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const stops = (Array.isArray(data) ? data : []).filter(function (loc) {
+      return loc && (loc.type === "stop" || loc.type === "station") && loc.id;
+    });
 
-  const stops = (Array.isArray(data) ? data : []).filter(
-    (loc) => loc && (loc.type === "stop" || loc.type === "station") && loc.id
-  );
+    if (!stops.length) {
+      throw new Error('Keine Haltestelle für "' + CONFIG.stopQuery + '" gefunden');
+    }
 
-  if (!stops.length) {
-    throw new Error(`Keine Haltestelle für "${CONFIG.stopQuery}" gefunden`);
-  }
-
-  resolvedStopIds = stops.slice(0, CONFIG.stopLimit).map((s) => s.id);
-  return resolvedStopIds;
+    resolvedStopIds = stops.slice(0, CONFIG.stopLimit).map(function (s) {
+      return s.id;
+    });
+    return resolvedStopIds;
+  });
 }
 
 // ---------- Abfahrten laden ----------
-async function fetchDeparturesForStop(stopId) {
-  const profileParam = CONFIG.apiProfile ? `&profile=${CONFIG.apiProfile}` : "";
-  const url = `${API_BASE}/stops/${encodeURIComponent(stopId)}/departures?duration=60&results=${
-    CONFIG.maxRows * 3
-  }${profileParam}`;
+function fetchDeparturesForStop(stopId) {
+  const profileParam = CONFIG.apiProfile ? "&profile=" + CONFIG.apiProfile : "";
+  const url = API_BASE + "/stops/" + encodeURIComponent(stopId) + "/departures?duration=60&results=" +
+    (CONFIG.maxRows * 3) + profileParam;
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Abfahrten-Abruf fehlgeschlagen (${res.status})`);
-  const data = await res.json();
-
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data.departures)) return data.departures;
-  return [];
+  return fetch(url).then(function (res) {
+    if (!res.ok) throw new Error("Abfahrten-Abruf fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.departures)) return data.departures;
+    return [];
+  });
 }
 
 function passesDirectionFilter(direction) {
   const dir = (direction || "").toLowerCase();
 
   if (CONFIG.onlyDestinations && CONFIG.onlyDestinations.length) {
-    return CONFIG.onlyDestinations.some((d) => dir.includes(d.toLowerCase()));
+    return CONFIG.onlyDestinations.some(function (d) {
+      return dir.indexOf(d.toLowerCase()) !== -1;
+    });
   }
 
   if (CONFIG.excludeDestinations && CONFIG.excludeDestinations.length) {
-    return !CONFIG.excludeDestinations.some((d) => dir.includes(d.toLowerCase()));
+    return !CONFIG.excludeDestinations.some(function (d) {
+      return dir.indexOf(d.toLowerCase()) !== -1;
+    });
   }
 
   return true;
@@ -107,7 +116,7 @@ function renderDepartures(departures) {
 
   const now = Date.now();
 
-  departures.slice(0, CONFIG.maxRows).forEach((dep) => {
+  departures.slice(0, CONFIG.maxRows).forEach(function (dep) {
     const when = dep.when || dep.plannedWhen;
     const whenDate = when ? new Date(when) : null;
     const minutes = whenDate ? Math.round((whenDate.getTime() - now) / 60000) : null;
@@ -116,15 +125,18 @@ function renderDepartures(departures) {
     row.className = "row";
     if (dep.cancelled) row.style.opacity = "0.45";
 
+    const lineName = (dep.line && dep.line.name) || "?";
+    const lineProduct = dep.line && dep.line.product;
+
     const lineBadge = document.createElement("span");
-    lineBadge.className = `line-badge ${productClass(dep.line && dep.line.product)}`;
-    lineBadge.textContent = (dep.line && dep.line.name) || "?";
+    lineBadge.className = "line-badge " + productClass(lineProduct);
+    lineBadge.textContent = lineName;
 
     const dest = document.createElement("span");
     dest.className = "dest";
     dest.textContent = dep.cancelled
-      ? `${dep.direction || ""} (fällt aus)`
-      : dep.direction || "—";
+      ? (dep.direction || "") + " (fällt aus)"
+      : (dep.direction || "—");
 
     const timeCell = document.createElement("span");
     timeCell.className = "time-cell";
@@ -132,7 +144,7 @@ function renderDepartures(departures) {
     const timeMin = document.createElement("span");
     timeMin.className = "time-min" + (minutes !== null && minutes <= 0 ? " now" : "");
     timeMin.textContent =
-      minutes === null ? "–" : minutes <= 0 ? "jetzt" : `${minutes} min`;
+      minutes === null ? "–" : (minutes <= 0 ? "jetzt" : minutes + " min");
 
     timeCell.appendChild(timeMin);
 
@@ -140,7 +152,7 @@ function renderDepartures(departures) {
     if (typeof delaySec === "number" && delaySec >= 60) {
       const d = document.createElement("span");
       d.className = "time-delay";
-      d.textContent = `+${Math.round(delaySec / 60)}`;
+      d.textContent = "+" + Math.round(delaySec / 60);
       timeCell.appendChild(d);
     }
 
@@ -151,25 +163,26 @@ function renderDepartures(departures) {
   });
 }
 
-async function updateDepartures() {
-  try {
-    const stopIds = await resolveStopIds();
+function updateDepartures() {
+  resolveStopIds().then(function (stopIds) {
+    return Promise.all(stopIds.map(fetchDeparturesForStop));
+  }).then(function (results) {
+    let all = [].concat.apply([], results);
 
-    const results = await Promise.all(stopIds.map(fetchDeparturesForStop));
-    let all = results.flat();
+    all = all.filter(function (dep) {
+      return passesDirectionFilter(dep.direction);
+    });
 
-    all = all.filter((dep) => passesDirectionFilter(dep.direction));
-
-    // Duplikate (gleiche Fahrt, an beiden Haltestellen erfasst) entfernen
-    const seen = new Set();
-    all = all.filter((dep) => {
-      const key = `${dep.tripId || dep.line?.name}-${dep.when || dep.plannedWhen}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
+    const seen = {};
+    all = all.filter(function (dep) {
+      const lineName = dep.line && dep.line.name;
+      const key = (dep.tripId || lineName) + "-" + (dep.when || dep.plannedWhen);
+      if (seen[key]) return false;
+      seen[key] = true;
       return true;
     });
 
-    all.sort((a, b) => {
+    all.sort(function (a, b) {
       const ta = new Date(a.when || a.plannedWhen).getTime();
       const tb = new Date(b.when || b.plannedWhen).getTime();
       return ta - tb;
@@ -177,11 +190,11 @@ async function updateDepartures() {
 
     renderDepartures(all);
     els.status.textContent = "Live";
-    els.lastUpdate.textContent = `Aktualisiert ${new Date().toLocaleTimeString("de-DE")}`;
-  } catch (err) {
+    els.lastUpdate.textContent = "Aktualisiert " + new Date().toLocaleTimeString("de-DE");
+  }).catch(function (err) {
     console.error(err);
-    els.status.textContent = `Fehler: ${err.message}`;
-  }
+    els.status.textContent = "Fehler: " + err.message;
+  });
 }
 
 // ---------- Wetter ----------
@@ -209,21 +222,23 @@ const WEATHER_CODES = {
   99: ["⛈️", "Gewitter mit Hagel"],
 };
 
-async function updateWeather() {
-  try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.weatherLat}&longitude=${CONFIG.weatherLon}&current=temperature_2m,weather_code&timezone=Europe%2FBerlin`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Wetter-Abruf fehlgeschlagen (${res.status})`);
-    const data = await res.json();
+function updateWeather() {
+  const url = "https://api.open-meteo.com/v1/forecast?latitude=" + CONFIG.weatherLat +
+    "&longitude=" + CONFIG.weatherLon + "&current=temperature_2m,weather_code&timezone=Europe%2FBerlin";
+
+  fetch(url).then(function (res) {
+    if (!res.ok) throw new Error("Wetter-Abruf fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
     const temp = Math.round(data.current.temperature_2m);
     const code = data.current.weather_code;
-    const [icon] = WEATHER_CODES[code] || ["🌡️"];
+    const entry = WEATHER_CODES[code] || ["🌡️"];
 
-    els.weatherIcon.textContent = icon;
-    els.weatherTemp.textContent = `${temp}°`;
-  } catch (err) {
+    els.weatherIcon.textContent = entry[0];
+    els.weatherTemp.textContent = temp + "°";
+  }).catch(function (err) {
     console.error(err);
-  }
+  });
 }
 
 // ---------- Start ----------
@@ -238,7 +253,9 @@ function init() {
   setInterval(updateWeather, CONFIG.refreshWeatherMs);
 
   if (CONFIG.fullReloadMs) {
-    setTimeout(() => window.location.reload(), CONFIG.fullReloadMs);
+    setTimeout(function () {
+      window.location.reload();
+    }, CONFIG.fullReloadMs);
   }
 }
 
