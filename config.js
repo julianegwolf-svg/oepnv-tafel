@@ -35,4 +35,34 @@ const CONFIG = {
   // Sicherheitsnetz: kompletter Seiten-Reload alle paar Stunden,
   // falls Safari nach Tagen im Dauerbetrieb mal zickt.
   fullReloadMs: 3 * 60 * 60 * 1000,
+
+  // ---------------------------------------------------------------
+  // Karussell: welche Ansichten in welcher Reihenfolge, wie lange
+  // jede zu sehen ist. "departures" taucht bewusst öfter auf, damit
+  // die Abfahrten der wichtigste/am längsten sichtbare Inhalt bleiben.
+  // Panels, deren Datenquelle gerade nicht klappt, werden automatisch
+  // übersprungen.
+  // ---------------------------------------------------------------
+  panelSequence: [
+    "departures", "weather",
+    "departures", "news",
+    "departures", "music",
+    "departures", "quote",
+  ],
+  panelDurationMs: 18 * 1000,
+
+  // Wetter-Panel: wie viele Stunden-Kacheln
+  weatherHourCount: 5,
+
+  // News-Panel: Tagesschau-Region (5 = Bremen), wie viele Meldungen
+  newsRegion: 5,
+  newsCount: 4,
+  refreshNewsMs: 15 * 60 * 1000,
+
+  // Musik-Panel: Apple-Music-Charts Deutschland
+  musicCount: 5,
+  refreshMusicMs: 60 * 60 * 1000,
+
+  // Zitat-Panel
+  refreshQuoteMs: 60 * 60 * 1000,
 };

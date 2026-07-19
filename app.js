@@ -18,6 +18,13 @@ const els = {
   weatherIcon: document.getElementById("weatherIcon"),
   weatherTemp: document.getElementById("weatherTemp"),
   weatherMinMax: document.getElementById("weatherMinMax"),
+  weatherBigIcon: document.getElementById("weatherBigIcon"),
+  weatherBigTemp: document.getElementById("weatherBigTemp"),
+  weatherBigDesc: document.getElementById("weatherBigDesc"),
+  weatherHours: document.getElementById("weatherHours"),
+  newsList: document.getElementById("newsList"),
+  musicList: document.getElementById("musicList"),
+  quoteBlock: document.getElementById("quoteBlock"),
 };
 
 let resolvedStopIds = (CONFIG.stopIds && CONFIG.stopIds.length)
@@ -238,6 +245,7 @@ function updateWeather() {
   const url = "https://api.open-meteo.com/v1/forecast?latitude=" + CONFIG.weatherLat +
     "&longitude=" + CONFIG.weatherLon +
     "&current=temperature_2m,weather_code" +
+    "&hourly=temperature_2m,weather_code" +
     "&daily=temperature_2m_max,temperature_2m_min" +
     "&timezone=Europe%2FBerlin";
 
@@ -247,7 +255,7 @@ function updateWeather() {
   }).then(function (data) {
     const temp = Math.round(data.current.temperature_2m);
     const code = data.current.weather_code;
-    const entry = WEATHER_CODES[code] || ["🌡️"];
+    const entry = WEATHER_CODES[code] || ["🌡️", ""];
 
     els.weatherIcon.textContent = entry[0];
     els.weatherTemp.textContent = temp + "°";
@@ -257,9 +265,221 @@ function updateWeather() {
       const min = Math.round(data.daily.temperature_2m_min[0]);
       els.weatherMinMax.textContent = min + "° / " + max + "°";
     }
+
+    if (els.weatherBigIcon) {
+      els.weatherBigIcon.textContent = entry[0];
+      els.weatherBigTemp.textContent = temp + "°";
+      els.weatherBigDesc.textContent = entry[1] || "";
+    }
+
+    if (els.weatherHours && data.hourly && data.hourly.time) {
+      const nowIso = data.current.time;
+      let startIdx = data.hourly.time.indexOf(nowIso);
+      if (startIdx === -1) startIdx = 0;
+
+      els.weatherHours.innerHTML = "";
+      for (let i = 1; i <= CONFIG.weatherHourCount; i++) {
+        const idx = startIdx + i;
+        if (idx >= data.hourly.time.length) break;
+
+        const hTime = new Date(data.hourly.time[idx]);
+        const hTemp = Math.round(data.hourly.temperature_2m[idx]);
+        const hCode = data.hourly.weather_code[idx];
+        const hEntry = WEATHER_CODES[hCode] || ["🌡️"];
+
+        const cell = document.createElement("div");
+        cell.className = "weather-hour";
+
+        const timeEl = document.createElement("span");
+        timeEl.className = "weather-hour-time";
+        timeEl.textContent = hTime.toLocaleTimeString("de-DE", { hour: "2-digit" });
+
+        const iconEl = document.createElement("span");
+        iconEl.className = "weather-hour-icon";
+        iconEl.textContent = hEntry[0];
+
+        const tempEl = document.createElement("span");
+        tempEl.className = "weather-hour-temp";
+        tempEl.textContent = hTemp + "°";
+
+        cell.appendChild(timeEl);
+        cell.appendChild(iconEl);
+        cell.appendChild(tempEl);
+        els.weatherHours.appendChild(cell);
+      }
+    }
   }).catch(function (err) {
     console.error(err);
   });
+}
+
+// ---------- Nachrichten (Tagesschau) ----------
+function updateNews() {
+  if (!els.newsList) return;
+
+  const url = "https://www.tagesschau.de/api2u/news/?regions=" + CONFIG.newsRegion +
+    "&pageSize=" + CONFIG.newsCount;
+
+  fetch(url).then(function (res) {
+    if (!res.ok) throw new Error("News-Abruf fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const items = (data && Array.isArray(data.news)) ? data.news : [];
+    if (!items.length) throw new Error("Keine News erhalten");
+
+    els.newsList.innerHTML = "";
+    items.slice(0, CONFIG.newsCount).forEach(function (item) {
+      const card = document.createElement("div");
+      card.className = "news-item";
+
+      if (item.topline) {
+        const top = document.createElement("div");
+        top.className = "news-item-topline";
+        top.textContent = item.topline;
+        card.appendChild(top);
+      }
+
+      const title = document.createElement("div");
+      title.className = "news-item-title";
+      title.textContent = item.title || "";
+      card.appendChild(title);
+
+      els.newsList.appendChild(card);
+    });
+
+    newsAvailable = true;
+  }).catch(function (err) {
+    console.error(err);
+    newsAvailable = false;
+  });
+}
+
+// ---------- Musik-Charts (Apple) ----------
+function updateMusic() {
+  if (!els.musicList) return;
+
+  const url = "https://rss.applemarketingtools.com/api/v2/de/music/most-played/" +
+    CONFIG.musicCount + "/songs.json";
+
+  fetch(url).then(function (res) {
+    if (!res.ok) throw new Error("Musik-Abruf fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const results = (data && data.feed && Array.isArray(data.feed.results)) ? data.feed.results : [];
+    if (!results.length) throw new Error("Keine Musikdaten erhalten");
+
+    els.musicList.innerHTML = "";
+    results.slice(0, CONFIG.musicCount).forEach(function (song, i) {
+      const row = document.createElement("div");
+      row.className = "music-item";
+
+      const rank = document.createElement("span");
+      rank.className = "music-rank";
+      rank.textContent = (i + 1) + ".";
+
+      const art = document.createElement("img");
+      art.className = "music-art";
+      art.src = song.artworkUrl100 || "";
+      art.alt = "";
+
+      const text = document.createElement("span");
+      text.className = "music-text";
+
+      const title = document.createElement("span");
+      title.className = "music-title";
+      title.textContent = song.name || "";
+
+      const artist = document.createElement("span");
+      artist.className = "music-artist";
+      artist.textContent = song.artistName || "";
+
+      text.appendChild(title);
+      text.appendChild(artist);
+
+      row.appendChild(rank);
+      row.appendChild(art);
+      row.appendChild(text);
+      els.musicList.appendChild(row);
+    });
+
+    musicAvailable = true;
+  }).catch(function (err) {
+    console.error(err);
+    musicAvailable = false;
+  });
+}
+
+// ---------- Zitat des Tages ----------
+function updateQuote() {
+  if (!els.quoteBlock) return;
+
+  fetch("https://zenquotes.io/api/today").then(function (res) {
+    if (!res.ok) throw new Error("Zitat-Abruf fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const item = (Array.isArray(data) && data[0]) ? data[0] : null;
+    if (!item) throw new Error("Kein Zitat erhalten");
+
+    els.quoteBlock.innerHTML = "";
+
+    const text = document.createElement("div");
+    text.className = "quote-text";
+    text.textContent = "“" + item.q + "”";
+
+    const author = document.createElement("div");
+    author.className = "quote-author";
+    author.textContent = "— " + item.a;
+
+    els.quoteBlock.appendChild(text);
+    els.quoteBlock.appendChild(author);
+
+    quoteAvailable = true;
+  }).catch(function (err) {
+    console.error(err);
+    quoteAvailable = false;
+  });
+}
+
+// ---------- Karussell ----------
+let newsAvailable = false;
+let musicAvailable = false;
+let quoteAvailable = false;
+let panelIndex = 0;
+
+const PANEL_AVAILABILITY = {
+  departures: function () { return true; },
+  weather: function () { return true; },
+  news: function () { return newsAvailable; },
+  music: function () { return musicAvailable; },
+  quote: function () { return quoteAvailable; },
+};
+
+function showPanel(name) {
+  const ids = ["departures", "weather", "news", "music", "quote"];
+  for (let i = 0; i < ids.length; i++) {
+    const el = document.getElementById("panel-" + ids[i]);
+    if (!el) continue;
+    if (ids[i] === name) {
+      el.className = "panel-view active";
+    } else {
+      el.className = "panel-view";
+    }
+  }
+}
+
+function advancePanel() {
+  const seq = CONFIG.panelSequence;
+  let tries = 0;
+  while (tries < seq.length) {
+    panelIndex = (panelIndex + 1) % seq.length;
+    const name = seq[panelIndex];
+    const check = PANEL_AVAILABILITY[name];
+    if (!check || check()) {
+      showPanel(name);
+      return;
+    }
+    tries++;
+  }
 }
 
 // ---------- Start ----------
@@ -272,6 +492,19 @@ function init() {
 
   updateWeather();
   setInterval(updateWeather, CONFIG.refreshWeatherMs);
+
+  updateNews();
+  setInterval(updateNews, CONFIG.refreshNewsMs);
+
+  updateMusic();
+  setInterval(updateMusic, CONFIG.refreshMusicMs);
+
+  updateQuote();
+  setInterval(updateQuote, CONFIG.refreshQuoteMs);
+
+  if (CONFIG.panelSequence && CONFIG.panelSequence.length > 1) {
+    setInterval(advancePanel, CONFIG.panelDurationMs);
+  }
 
   if (CONFIG.fullReloadMs) {
     setTimeout(function () {

@@ -35,25 +35,62 @@
       </div>
     </header>
 
-    <main class="board">
-      <div class="board-head">
-        <span class="col-line">Linie</span>
-        <span class="col-dest">Ziel</span>
-        <span class="col-time">Abfahrt</span>
-      </div>
-      <div class="board-rows" id="departureRows">
-        <div class="row placeholder">Lade Abfahrten…</div>
-      </div>
+    <main class="stage" id="stage">
+
+      <section class="panel-view active" id="panel-departures">
+        <div class="board">
+          <div class="board-head">
+            <span class="col-line">Linie</span>
+            <span class="col-dest">Ziel</span>
+            <span class="col-time">Abfahrt</span>
+          </div>
+          <div class="board-rows" id="departureRows">
+            <div class="row placeholder">Lade Abfahrten…</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-view" id="panel-weather">
+        <div class="view-label">Wetter heute</div>
+        <div class="weather-big" id="weatherBig">
+          <span class="weather-big-icon" id="weatherBigIcon">—</span>
+          <span class="weather-big-temp" id="weatherBigTemp">–°</span>
+          <span class="weather-big-desc" id="weatherBigDesc">Lädt…</span>
+        </div>
+        <div class="weather-hours" id="weatherHours"></div>
+      </section>
+
+      <section class="panel-view" id="panel-news">
+        <div class="view-label">Nachrichten — Bremen</div>
+        <div class="news-list" id="newsList">
+          <div class="view-placeholder">Lädt…</div>
+        </div>
+      </section>
+
+      <section class="panel-view" id="panel-music">
+        <div class="view-label">Musik-Charts Deutschland</div>
+        <div class="music-list" id="musicList">
+          <div class="view-placeholder">Lädt…</div>
+        </div>
+      </section>
+
+      <section class="panel-view" id="panel-quote">
+        <div class="view-label">Zitat des Tages</div>
+        <div class="quote-block" id="quoteBlock">
+          <div class="view-placeholder">Lädt…</div>
+        </div>
+      </section>
+
     </main>
 
     <footer class="statusbar">
       <span id="statusText">Verbinde…</span>
       <span id="lastUpdate"></span>
-      <a href="https://transitous.org/sources/" style="color: inherit; text-decoration: none;">Daten: Transitous</a>
+      <span>Daten: Transitous, Apple, ZenQuotes, Tagesschau</span>
     </footer>
   </div>
 
-  <script src="config.js?v=7"></script>
-  <script src="app.js?v=7"></script>
+  <script src="config.js?v=8"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

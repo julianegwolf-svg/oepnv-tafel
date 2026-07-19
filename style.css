@@ -49,7 +49,10 @@ html, body {
 .brand {
   display: flex;
   align-items: baseline;
-  gap: 14px;
+}
+
+.brand > * + * {
+  margin-left: 14px;
 }
 
 .brand-dot {
@@ -78,8 +81,11 @@ html, body {
 .weather {
   display: flex;
   align-items: center;
-  gap: 14px;
   color: var(--steel-ink);
+}
+
+.weather > * + * {
+  margin-left: 14px;
 }
 
 .weather-icon {
@@ -127,7 +133,48 @@ html, body {
   letter-spacing: 0.02em;
 }
 
-/* ---------- Board ---------- */
+/* ---------- Stage / Karussell ---------- */
+.stage {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.panel-view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.7s ease;
+}
+
+.panel-view.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.view-label {
+  color: var(--ink-dim);
+  font-size: 14px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 0 4px 14px;
+}
+
+.view-placeholder {
+  color: var(--ink-dim);
+  font-size: 20px;
+  text-align: center;
+  padding: 60px;
+}
+
+/* ---------- Board (Abfahrten-Panel) ---------- */
 .board {
   flex: 1;
   display: flex;
@@ -151,7 +198,10 @@ html, body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+}
+
+.board-rows > * + * {
+  margin-top: 10px;
 }
 
 .row {
@@ -203,8 +253,11 @@ html, body {
   display: flex;
   align-items: baseline;
   justify-content: flex-end;
-  gap: 10px;
   font-family: 'IBM Plex Mono', monospace;
+}
+
+.time-cell > * + * {
+  margin-left: 10px;
 }
 
 .time-min {
@@ -223,6 +276,201 @@ html, body {
 .time-ontime {
   font-size: 15px;
   color: var(--ok);
+}
+
+/* ---------- Wetter-Panel ---------- */
+.weather-big {
+  display: flex;
+  align-items: baseline;
+  padding: 10px 4px 28px;
+}
+
+.weather-big > * + * {
+  margin-left: 24px;
+}
+
+.weather-big-icon {
+  font-size: 90px;
+  line-height: 1;
+}
+
+.weather-big-temp {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 76px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.weather-big-desc {
+  font-size: 24px;
+  color: var(--ink-dim);
+  font-weight: 500;
+}
+
+.weather-hours {
+  display: flex;
+  flex: 1;
+}
+
+.weather-hours > * + * {
+  margin-left: 14px;
+}
+
+.weather-hour {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+}
+
+.weather-hour > * + * {
+  margin-top: 8px;
+}
+
+.weather-hour-time {
+  font-size: 14px;
+  color: var(--ink-dim);
+  font-weight: 600;
+}
+
+.weather-hour-icon {
+  font-size: 30px;
+}
+
+.weather-hour-temp {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ---------- News-Panel ---------- */
+.news-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.news-list > * + * {
+  margin-top: 12px;
+}
+
+.news-item {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 14px;
+  padding: 18px 22px;
+}
+
+.news-item-title {
+  font-size: 23px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.3;
+}
+
+.news-item-topline {
+  font-size: 14px;
+  color: var(--brass-ink);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+/* ---------- Musik-Panel ---------- */
+.music-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.music-list > * + * {
+  margin-top: 10px;
+}
+
+.music-item {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 14px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+}
+
+.music-item > * + * {
+  margin-left: 16px;
+}
+
+.music-rank {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink-dim);
+  width: 34px;
+}
+
+.music-art {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--panel-edge);
+}
+
+.music-text {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.music-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.music-artist {
+  font-size: 15px;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Zitat-Panel ---------- */
+.quote-block {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 10px 20px;
+}
+
+.quote-text {
+  font-size: 34px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.4;
+  max-width: 900px;
+}
+
+.quote-author {
+  margin-top: 20px;
+  font-size: 18px;
+  color: var(--brass-ink);
+  font-weight: 600;
 }
 
 /* ---------- Statusbar ---------- */
