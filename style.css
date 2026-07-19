@@ -295,24 +295,42 @@ html, body {
 }
 
 /* ---------- Wetter-Panel ---------- */
+@keyframes weatherFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+
+@keyframes weatherDrift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
 .weather-big {
   display: flex;
-  align-items: baseline;
-  padding: 10px 4px 28px;
+  align-items: center;
+  padding: 26px 30px;
+  margin-bottom: 22px;
+  border-radius: 20px;
+  background: linear-gradient(120deg, #eaf1f6, #f7f9fb, #eef3ee, #f7f9fb);
+  background-size: 300% 100%;
+  animation: weatherDrift 18s ease-in-out infinite alternate;
+  border: 1px solid var(--panel-edge);
 }
 
 .weather-big > * + * {
-  margin-left: 24px;
+  margin-left: 26px;
 }
 
 .weather-big-icon {
-  font-size: 90px;
+  font-size: 92px;
   line-height: 1;
+  display: inline-block;
+  animation: weatherFloat 4.5s ease-in-out infinite;
 }
 
 .weather-big-temp {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 76px;
+  font-size: 78px;
   font-weight: 700;
   color: var(--ink);
 }
@@ -341,7 +359,8 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px 8px;
+  padding: 18px 8px;
+  box-shadow: 0 1px 2px rgba(28, 29, 31, 0.04);
 }
 
 .weather-hour > * + * {
@@ -356,6 +375,8 @@ html, body {
 
 .weather-hour-icon {
   font-size: 30px;
+  display: inline-block;
+  animation: weatherFloat 4.5s ease-in-out infinite;
 }
 
 .weather-hour-temp {
@@ -489,65 +510,119 @@ html, body {
 }
 
 /* ---------- Pendel-Panel (Arbeitsweg) ---------- */
-.commute-list {
-  flex: 1;
+.commute-chips {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  flex-shrink: 0;
+  padding-bottom: 16px;
 }
 
-.commute-list > * + * {
-  margin-top: 14px;
+.commute-chips > * + * {
+  margin-left: 12px;
 }
 
-.commute-item {
+.commute-chip {
   display: flex;
   align-items: center;
   background: var(--panel);
   border: 1px solid var(--panel-edge);
-  border-radius: 14px;
-  padding: 22px 26px;
+  border-radius: 999px;
+  padding: 12px 22px 12px 16px;
   box-shadow: 0 1px 2px rgba(28, 29, 31, 0.04);
+  transition: transform 0.4s ease, opacity 0.4s ease;
 }
 
-.commute-item > * + * {
-  margin-left: 22px;
+.commute-chip > * + * {
+  margin-left: 12px;
 }
 
-.commute-item.unavailable {
-  opacity: 0.45;
+.commute-chip.unavailable {
+  opacity: 0.4;
 }
 
-.commute-icon {
-  font-size: 42px;
+.commute-chip-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.commute-chip-icon {
+  font-size: 24px;
   line-height: 1;
 }
 
-.commute-text {
+.commute-chip-text {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  overflow: hidden;
+  line-height: 1.2;
 }
 
-.commute-mode {
-  font-size: 23px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.commute-note {
-  font-size: 14px;
-  color: var(--ink-dim);
-  margin-top: 4px;
-}
-
-.commute-duration {
+.commute-chip-time {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 34px;
+  font-size: 21px;
   font-weight: 700;
   color: var(--ink);
-  white-space: nowrap;
+}
+
+.commute-chip-note {
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin-top: 2px;
+}
+
+.panel-view:not(.active) .commute-chip {
+  transform: translateY(6px);
+  opacity: 0;
+}
+
+.commute-map-wrap {
+  flex: 1;
+  min-height: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--panel-edge);
+  background: #e9e6df;
+}
+
+.commute-map {
+  width: 100%;
+  height: 100%;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px !important;
+  opacity: 0.55;
+}
+
+.leaflet-control-zoom { display: none; }
+
+.commute-pin-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.commute-pin {
+  font-size: 24px;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
+}
+
+@keyframes commutePulse {
+  0% { transform: scale(1); opacity: 0.55; }
+  70% { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.commute-pin-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--brass);
+  animation: commutePulse 2.2s ease-out infinite;
 }
 
 /* ---------- Zitat-Panel ---------- */

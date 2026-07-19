@@ -25,7 +25,7 @@ const els = {
   newsList: document.getElementById("newsList"),
   musicList: document.getElementById("musicList"),
   quoteBlock: document.getElementById("quoteBlock"),
-  commuteList: document.getElementById("commuteList"),
+  commuteChips: document.getElementById("commuteChips"),
 };
 
 let resolvedStopIds = (CONFIG.stopIds && CONFIG.stopIds.length)
@@ -525,6 +525,27 @@ function resolveCommuteCoords() {
   });
 }
 
+// Aus einer Liste von Itinerary-Objekten die mit der kürzesten Dauer
+// herauspicken (statt einfach das erste zu nehmen — die Antwortreihen-
+// folge von Transitous ist nicht zwingend nach Dauer sortiert, das hat
+// vorher gelegentlich absurd lange "schnellste" ÖPNV-Zeiten ausgespuckt).
+function pickFastestItinerary(items) {
+  if (!items || !items.length) return null;
+  let best = items[0];
+  let bestDur = itineraryDurationMin(best);
+  if (bestDur === null) bestDur = Infinity;
+
+  items.forEach(function (it) {
+    const d = itineraryDurationMin(it);
+    if (d !== null && d < bestDur) {
+      bestDur = d;
+      best = it;
+    }
+  });
+
+  return best;
+}
+
 function fetchDirectItinerary(from, to, mode) {
   const url = API_BASE + "/v6/plan?fromPlace=" + from.lat + "," + from.lon +
     "&toPlace=" + to.lat + "," + to.lon +
@@ -535,8 +556,9 @@ function fetchDirectItinerary(from, to, mode) {
     return res.json();
   }).then(function (data) {
     const items = (data && Array.isArray(data.direct)) ? data.direct : [];
-    if (!items.length) throw new Error("Keine " + mode + "-Route gefunden");
-    return items[0];
+    const best = pickFastestItinerary(items);
+    if (!best) throw new Error("Keine " + mode + "-Route gefunden");
+    return best;
   });
 }
 
@@ -550,8 +572,9 @@ function fetchTransitItinerary(from, to) {
     return res.json();
   }).then(function (data) {
     const items = (data && Array.isArray(data.itineraries)) ? data.itineraries : [];
-    if (!items.length) throw new Error("Keine ÖPNV-Route gefunden");
-    return items[0];
+    const best = pickFastestItinerary(items);
+    if (!best) throw new Error("Keine ÖPNV-Route gefunden");
+    return best;
   });
 }
 
@@ -607,43 +630,201 @@ const COMMUTE_MODES = [
   { key: "car", icon: "🚗", label: "Auto" },
 ];
 
-function renderCommute(results) {
-  if (!els.commuteList) return;
-  els.commuteList.innerHTML = "";
+// ---------- Kartendarstellung (Leaflet + OpenStreetMap-Kacheln, kein
+// API-Key nötig). Die Routenlinien kommen direkt aus der Transitous-Antwort
+// (legGeometry, Google-Polyline-Format mit Präzision 1e6) — dieselbe API,
+// keine zusätzliche Abhängigkeit. Läuft Leaflet auf dem alten Safari aus
+// irgendeinem Grund nicht an, bleibt das Panel bei den Zeit-Chips oben und
+// die Karte bleibt einfach leer, statt das ganze Panel zu zerschießen.
+function decodePolyline(encoded, precisionDivisor) {
+  precisionDivisor = precisionDivisor || 1e6;
+  const points = [];
+  let index = 0, lat = 0, lon = 0;
+  const len = encoded.length;
+
+  while (index < len) {
+    let result = 1, shift = 0, b;
+    do {
+      b = encoded.charCodeAt(index++) - 63 - 1;
+      result += b << shift;
+      shift += 5;
+    } while (b >= 0x1f);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    result = 1;
+    shift = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63 - 1;
+      result += b << shift;
+      shift += 5;
+    } while (b >= 0x1f);
+    lon += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    points.push([lat / precisionDivisor, lon / precisionDivisor]);
+  }
+
+  return points;
+}
+
+function legLatLngs(leg) {
+  try {
+    const geom = leg && leg.legGeometry;
+    if (!geom || !geom.points) return [];
+    return decodePolyline(geom.points, 1e6);
+  } catch (e) {
+    console.error(e);
+    return [];
+  }
+}
+
+let commuteMap = null;
+let commuteMapFailed = false;
+let commuteLayers = [];
+
+function ensureCommuteMap() {
+  if (commuteMap || commuteMapFailed) return commuteMap;
+  if (typeof window.L === "undefined" || !document.getElementById("commuteMap")) {
+    commuteMapFailed = true;
+    return null;
+  }
+
+  try {
+    commuteMap = L.map("commuteMap", {
+      zoomControl: false,
+      attributionControl: true,
+      dragging: false,
+      touchZoom: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      tap: false,
+    });
+
+    L.tileLayer(CONFIG.mapTileUrl, {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap-Mitwirkende",
+    }).addTo(commuteMap);
+  } catch (e) {
+    console.error(e);
+    commuteMapFailed = true;
+    commuteMap = null;
+  }
+
+  return commuteMap;
+}
+
+function pinDivIcon(emoji) {
+  return L.divIcon({
+    className: "commute-pin-wrap",
+    html: '<span class="commute-pin-pulse"></span><span class="commute-pin">' + emoji + "</span>",
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+  });
+}
+
+function renderCommuteMap(coords, results) {
+  const map = ensureCommuteMap();
+  if (!map) return;
+
+  commuteLayers.forEach(function (l) { map.removeLayer(l); });
+  commuteLayers = [];
+
+  const homeMarker = L.marker([coords.home.lat, coords.home.lon], { icon: pinDivIcon("🏠") }).addTo(map);
+  const workMarker = L.marker([coords.work.lat, coords.work.lon], { icon: pinDivIcon("🏢") }).addTo(map);
+  commuteLayers.push(homeMarker, workMarker);
+
+  const allPoints = [[coords.home.lat, coords.home.lon], [coords.work.lat, coords.work.lon]];
+  const drawnLines = [];
+
+  COMMUTE_MODES.forEach(function (m) {
+    const res = results[m.key];
+    if (!res || !res.itinerary) return;
+
+    const color = (CONFIG.commuteMapColors && CONFIG.commuteMapColors[m.key]) || "#5b6b78";
+    const legs = (res.itinerary.legs && res.itinerary.legs.length) ? res.itinerary.legs : [res.itinerary];
+
+    legs.forEach(function (leg) {
+      const latlngs = legLatLngs(leg);
+      if (!latlngs.length) return;
+
+      const line = L.polyline(latlngs, {
+        color: color,
+        weight: 5,
+        opacity: 0.85,
+        lineCap: "round",
+      }).addTo(map);
+
+      commuteLayers.push(line);
+      drawnLines.push(line);
+      latlngs.forEach(function (p) { allPoints.push(p); });
+    });
+  });
+
+  if (allPoints.length > 1) {
+    map.fitBounds(allPoints, { padding: [26, 26] });
+  } else {
+    map.setView([coords.home.lat, coords.home.lon], 13);
+  }
+
+  // Routen "einzeichnen" lassen statt sie einfach hinzuklatschen.
+  setTimeout(function () {
+    drawnLines.forEach(function (line) {
+      try {
+        const el = line.getElement();
+        if (!el || !el.getTotalLength) return;
+        const length = el.getTotalLength();
+        el.style.transition = "none";
+        el.style.strokeDasharray = length + " " + length;
+        el.style.strokeDashoffset = String(length);
+        void el.getBoundingClientRect();
+        el.style.transition = "stroke-dashoffset 1.3s ease";
+        el.style.strokeDashoffset = "0";
+      } catch (e) {
+        console.error(e);
+      }
+    });
+  }, 60);
+}
+
+function renderCommuteChips(results) {
+  if (!els.commuteChips) return;
+  els.commuteChips.innerHTML = "";
 
   let anyOk = false;
 
   COMMUTE_MODES.forEach(function (m) {
     const res = results[m.key];
 
-    const item = document.createElement("div");
-    item.className = "commute-item" + (res ? "" : " unavailable");
+    const chip = document.createElement("div");
+    chip.className = "commute-chip" + (res && res.minutes != null ? "" : " unavailable");
+
+    const dot = document.createElement("span");
+    dot.className = "commute-chip-dot";
+    dot.style.background = (CONFIG.commuteMapColors && CONFIG.commuteMapColors[m.key]) || "#5b6b78";
 
     const icon = document.createElement("span");
-    icon.className = "commute-icon";
+    icon.className = "commute-chip-icon";
     icon.textContent = m.icon;
 
     const text = document.createElement("span");
-    text.className = "commute-text";
+    text.className = "commute-chip-text";
 
-    const modeEl = document.createElement("span");
-    modeEl.className = "commute-mode";
-    modeEl.textContent = m.label;
-    text.appendChild(modeEl);
+    const time = document.createElement("span");
+    time.className = "commute-chip-time";
+    time.textContent = res && res.minutes != null ? (res.minutes + " min") : "–";
+    text.appendChild(time);
 
-    const noteEl = document.createElement("span");
-    noteEl.className = "commute-note";
-    noteEl.textContent = res ? (res.note || "") : "Route gerade nicht verfügbar";
-    if (noteEl.textContent) text.appendChild(noteEl);
+    const noteText = res ? (res.note || m.label) : "nicht verfügbar";
+    const note = document.createElement("span");
+    note.className = "commute-chip-note";
+    note.textContent = noteText;
+    text.appendChild(note);
 
-    const dur = document.createElement("span");
-    dur.className = "commute-duration";
-    dur.textContent = res && res.minutes != null ? (res.minutes + " min") : "–";
-
-    item.appendChild(icon);
-    item.appendChild(text);
-    item.appendChild(dur);
-    els.commuteList.appendChild(item);
+    chip.appendChild(dot);
+    chip.appendChild(icon);
+    chip.appendChild(text);
+    els.commuteChips.appendChild(chip);
 
     if (res && res.minutes != null) anyOk = true;
   });
@@ -652,24 +833,26 @@ function renderCommute(results) {
 }
 
 function updateCommute() {
-  if (!els.commuteList) return;
+  if (!els.commuteChips) return;
 
   resolveCommuteCoords().then(function (coords) {
     return Promise.all([
       fetchDirectItinerary(coords.home, coords.work, "BIKE")
-        .then(function (it) { return { minutes: itineraryDurationMin(it) }; })
+        .then(function (it) { return { itinerary: it, minutes: itineraryDurationMin(it) }; })
         .catch(function (err) { console.error(err); return null; }),
       fetchTransitItinerary(coords.home, coords.work)
         .then(function (it) {
-          return { minutes: itineraryDurationMin(it), note: itineraryRealtimeNote(it) };
+          return { itinerary: it, minutes: itineraryDurationMin(it), note: itineraryRealtimeNote(it) };
         })
         .catch(function (err) { console.error(err); return null; }),
       fetchDirectItinerary(coords.home, coords.work, "CAR")
-        .then(function (it) { return { minutes: itineraryDurationMin(it) }; })
+        .then(function (it) { return { itinerary: it, minutes: itineraryDurationMin(it) }; })
         .catch(function (err) { console.error(err); return null; }),
-    ]);
-  }).then(function (all) {
-    renderCommute({ bike: all[0], bus: all[1], car: all[2] });
+    ]).then(function (all) {
+      const results = { bike: all[0], bus: all[1], car: all[2] };
+      renderCommuteChips(results);
+      renderCommuteMap(coords, results);
+    });
   }).catch(function (err) {
     console.error(err);
     commuteAvailable = false;
@@ -701,6 +884,14 @@ function showPanel(name) {
     } else {
       el.className = "panel-view";
     }
+  }
+
+  if (name === "commute" && commuteMap) {
+    // Karte war ggf. unsichtbar (opacity:0), Leaflet braucht nach dem
+    // Sichtbarwerden einen Anstoß, um die Kachelgröße neu zu berechnen.
+    setTimeout(function () {
+      commuteMap.invalidateSize();
+    }, 80);
   }
 }
 

@@ -68,6 +68,15 @@ const CONFIG = {
   workLabel: "Max Müller GmbH",
   refreshCommuteMs: 10 * 60 * 1000,
 
+  // Karten-Kacheln (OpenStreetMap, kostenlos, kein API-Key) + Routenfarben
+  // je Verkehrsmittel für das Pendel-Panel.
+  mapTileUrl: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  commuteMapColors: {
+    bike: "#3f7d52",
+    bus: "#5b6b78",
+    car: "#a9793f",
+  },
+
   // Wetter-Panel: wie viele Stunden-Kacheln
   weatherHourCount: 5,
 
