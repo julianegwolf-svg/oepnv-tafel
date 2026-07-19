@@ -21,7 +21,7 @@ const CONFIG = {
   // eintragen (z.B. ["Hauptbahnhof", "Domsheide", "Am Brill"]).
   onlyDestinations: [],
 
-  maxRows: 8,
+  maxRows: 6,
 
   // Koordinaten für die Wetteranzeige (Alter Postweg, Bremen-Hemelingen)
   weatherLat: 53.073,
