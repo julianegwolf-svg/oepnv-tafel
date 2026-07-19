@@ -226,6 +226,7 @@ html, body {
   align-items: center;
   background: var(--panel);
   border: 1px solid var(--panel-edge);
+  border-left: 6px solid transparent;
   border-radius: 14px;
   padding: 18px 20px;
   box-shadow: 0 1px 2px rgba(28, 29, 31, 0.04);
@@ -238,6 +239,12 @@ html, body {
   padding: 36px;
   font-size: 20px;
 }
+
+/* Gehzeit-Indikator: signalisiert, wie dringend man los muss, um den
+   jeweiligen Bus noch zu Fuß zu erreichen. */
+.row.walk-ok { border-left-color: var(--ok); }
+.row.walk-soon { border-left-color: var(--brass); }
+.row.walk-late { border-left-color: var(--danger); }
 
 .line-badge {
   display: inline-flex;
@@ -255,14 +262,26 @@ html, body {
 .line-badge.tram { background: #ede1cd; color: var(--brass-ink); }
 .line-badge.bus { background: #dfe7ec; color: var(--steel-ink); }
 
+.dest-wrap {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-right: 12px;
+}
+
 .dest {
   font-size: 26px;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding-right: 12px;
   color: var(--ink);
+}
+
+.walk-hint {
+  font-size: 13px;
+  color: var(--ink-dim);
+  margin-top: 2px;
 }
 
 .time-cell {
@@ -649,6 +668,72 @@ html, body {
   color: var(--brass-ink);
   font-weight: 600;
 }
+
+/* ---------- Sport-Ticker (Werder Bremen) ---------- */
+.sport-block {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.sport-block > * + * {
+  margin-top: 16px;
+}
+
+.sport-card {
+  display: flex;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 16px;
+  padding: 22px 26px;
+  box-shadow: 0 1px 2px rgba(28, 29, 31, 0.04);
+}
+
+.sport-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sport-label {
+  font-size: 13px;
+  color: var(--ink-dim);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.sport-teams {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-top: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sport-meta {
+  font-size: 14px;
+  color: var(--ink-dim);
+  margin-top: 4px;
+}
+
+.sport-score {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-left: 20px;
+  white-space: nowrap;
+}
+
+.sport-score.sport-result-win { color: var(--ok); }
+.sport-score.sport-result-loss { color: var(--danger); }
+.sport-score.sport-result-draw { color: var(--ink-dim); }
 
 /* ---------- Statusbar ---------- */
 .statusbar {

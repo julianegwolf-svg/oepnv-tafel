@@ -44,7 +44,7 @@ const CONFIG = {
   // Panels, deren Datenquelle gerade nicht klappt, werden automatisch
   // übersprungen.
   // ---------------------------------------------------------------
-  panelSequence: ["departures", "commute", "weather", "news", "music", "quote"],
+  panelSequence: ["departures", "commute", "weather", "news", "music", "sport", "quote"],
 
   // Anzeigedauer je Panel in Millisekunden. Fehlt ein Eintrag, gilt
   // panelDurationMs als Standard.
@@ -54,6 +54,7 @@ const CONFIG = {
     weather: 15 * 1000,
     news: 20 * 1000,
     music: 15 * 1000,
+    sport: 14 * 1000,
     quote: 12 * 1000,
   },
   panelDurationMs: 18 * 1000,
@@ -116,4 +117,12 @@ const CONFIG = {
     ],
     refreshMs: 30 * 60 * 1000,
   },
+
+  // Sport-Ticker: Werder Bremen über openligadb.de (kostenlos, kein Key).
+  // teamId 134 = SV Werder Bremen. Es werden nur echte Wettbewerbe
+  // angezeigt (Bundesliga/2. Liga/DFB-Pokal) — openligadb enthält auch
+  // Test-/Fantasieligen fremder Nutzer, die hier bewusst ignoriert werden.
+  sportTeamId: 134,
+  sportLeagueWhitelist: ["bl1", "bl2", "dfb"],
+  refreshSportMs: 30 * 60 * 1000,
 };

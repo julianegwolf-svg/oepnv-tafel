@@ -27,11 +27,13 @@ const els = {
   quoteBlock: document.getElementById("quoteBlock"),
   commuteChips: document.getElementById("commuteChips"),
   wasteLine: document.getElementById("wasteLine"),
+  sportBlock: document.getElementById("sportBlock"),
 };
 
 let resolvedStopIds = (CONFIG.stopIds && CONFIG.stopIds.length)
   ? CONFIG.stopIds.slice()
   : null;
+let resolvedStopCoord = null;
 
 // ---------- Uhrzeit ----------
 function tickClock() {
@@ -69,6 +71,15 @@ function resolveStopIds() {
     resolvedStopIds = stops.slice(0, CONFIG.stopLimit).map(function (s) {
       return s.id;
     });
+
+    // Koordinaten der ersten gefundenen Haltestelle merken (für die
+    // Gehzeit-Berechnung — beide Föhrenstraße-Halte liegen direkt
+    // gegenüber, die kleine Differenz spielt für die Gehzeit keine Rolle).
+    const first = stops[0];
+    if (typeof first.lat === "number" && typeof first.lon === "number") {
+      resolvedStopCoord = { lat: first.lat, lon: first.lon };
+    }
+
     return resolvedStopIds;
   });
 }
@@ -110,6 +121,45 @@ function productClass(mode) {
   return "bus";
 }
 
+// ---------- Gehzeit zur Haltestelle ----------
+// Einmalig berechnet (WALK-Direktroute von zuhause zur Föhrenstraße über
+// Transitous — dieselbe API, dieselbe Fetch-Logik wie beim Pendel-Panel)
+// und danach für die ganze Laufzeit gecacht. Daraus ergibt sich pro
+// Abfahrt, bis wann man spätestens los muss — als farbige Kante an der
+// Zeile (grün = entspannt, gelb = bald los, rot = eigentlich zu spät).
+let walkMinutesToStop = null;
+let walkTimeRequested = false;
+
+function resolveWalkTime() {
+  if (walkMinutesToStop !== null) return Promise.resolve(walkMinutesToStop);
+  if (walkTimeRequested) return Promise.resolve(null);
+  if (typeof CONFIG.weatherLat !== "number" || typeof CONFIG.weatherLon !== "number") {
+    return Promise.resolve(null);
+  }
+
+  walkTimeRequested = true;
+
+  return resolveStopIds().then(function () {
+    if (!resolvedStopCoord) return null;
+    const home = { lat: CONFIG.weatherLat, lon: CONFIG.weatherLon };
+    return fetchDirectItinerary(home, resolvedStopCoord, "WALK").then(function (it) {
+      walkMinutesToStop = itineraryDurationMin(it);
+      return walkMinutesToStop;
+    });
+  }).catch(function (err) {
+    console.error(err);
+    walkTimeRequested = false; // späterer Retry erlaubt, keine Dauer-Sperre
+    return null;
+  });
+}
+
+function walkUrgencyClass(minutesUntilLeave) {
+  if (minutesUntilLeave === null) return "";
+  if (minutesUntilLeave <= 0) return " walk-late";
+  if (minutesUntilLeave <= 4) return " walk-soon";
+  return " walk-ok";
+}
+
 function renderDepartures(departures) {
   els.rows.innerHTML = "";
 
@@ -131,8 +181,20 @@ function renderDepartures(departures) {
     const minutes = whenDate ? Math.round((whenDate.getTime() - now) / 60000) : null;
     const cancelled = !!(dep.cancelled || dep.tripCancelled);
 
+    // Gehzeit-Hinweis: bis wann muss man spätestens los, um diesen Bus
+    // noch zu bekommen.
+    let walkHint = null;
+    let urgencyClass = "";
+    if (walkMinutesToStop != null && whenDate) {
+      const leaveByMs = whenDate.getTime() - walkMinutesToStop * 60000;
+      const minutesUntilLeave = Math.round((leaveByMs - now) / 60000);
+      urgencyClass = walkUrgencyClass(minutesUntilLeave);
+      const leaveByDate = new Date(leaveByMs);
+      walkHint = "Los bis " + leaveByDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    }
+
     const row = document.createElement("div");
-    row.className = "row";
+    row.className = "row" + urgencyClass;
     if (cancelled) row.style.opacity = "0.45";
 
     const lineName = dep.routeShortName || dep.tripShortName || dep.displayName || "?";
@@ -141,11 +203,22 @@ function renderDepartures(departures) {
     lineBadge.className = "line-badge " + productClass(dep.mode);
     lineBadge.textContent = lineName;
 
+    const destWrap = document.createElement("span");
+    destWrap.className = "dest-wrap";
+
     const dest = document.createElement("span");
     dest.className = "dest";
     dest.textContent = cancelled
       ? (dep.headsign || "") + " (fällt aus)"
       : (dep.headsign || "—");
+    destWrap.appendChild(dest);
+
+    if (walkHint && !cancelled) {
+      const hint = document.createElement("span");
+      hint.className = "walk-hint";
+      hint.textContent = walkHint;
+      destWrap.appendChild(hint);
+    }
 
     const timeCell = document.createElement("span");
     timeCell.className = "time-cell";
@@ -168,7 +241,7 @@ function renderDepartures(departures) {
     }
 
     row.appendChild(lineBadge);
-    row.appendChild(dest);
+    row.appendChild(destWrap);
     row.appendChild(timeCell);
     els.rows.appendChild(row);
   });
@@ -943,6 +1016,142 @@ function updateWasteLine() {
   els.wasteLine.textContent = formatWasteEntry(upcoming[0]) || "";
 }
 
+// ---------- Sport-Ticker (Werder Bremen, openligadb.de) ----------
+// openligadb ist kostenlos, ohne API-Key, offene REST-API für Fußball-
+// daten. Enthält aber auch Test-/Fantasieligen fremder Nutzer (z.B. eine
+// Liga namens "BLClaude" mit erfundenen Ergebnissen) — deshalb wird strikt
+// auf CONFIG.sportLeagueWhitelist gefiltert (echte Bundesliga/2. Liga/
+// DFB-Pokal-Daten), alles andere wird ignoriert.
+let sportAvailable = false;
+
+function finalScore(match) {
+  if (!match.matchResults || !match.matchResults.length) return null;
+
+  let best = match.matchResults[0];
+  match.matchResults.forEach(function (r) {
+    if (r.resultOrderID > best.resultOrderID) best = r;
+  });
+
+  if (best.pointsTeam1 == null || best.pointsTeam2 == null) return null;
+  return best.pointsTeam1 + ":" + best.pointsTeam2;
+}
+
+function werderOutcome(match, score) {
+  if (!score) return "";
+  const parts = score.split(":");
+  const p1 = parseInt(parts[0], 10);
+  const p2 = parseInt(parts[1], 10);
+  const isTeam1 = match.team1 && match.team1.teamId === CONFIG.sportTeamId;
+  const werderGoals = isTeam1 ? p1 : p2;
+  const opponentGoals = isTeam1 ? p2 : p1;
+
+  if (werderGoals > opponentGoals) return "win";
+  if (werderGoals < opponentGoals) return "loss";
+  return "draw";
+}
+
+function formatMatchDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" }) +
+    ", " + d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr";
+}
+
+function buildSportCard(match, label, score, outcome) {
+  const card = document.createElement("div");
+  card.className = "sport-card";
+
+  const text = document.createElement("span");
+  text.className = "sport-text";
+
+  const labelEl = document.createElement("span");
+  labelEl.className = "sport-label";
+  labelEl.textContent = label;
+  text.appendChild(labelEl);
+
+  const teams = document.createElement("span");
+  teams.className = "sport-teams";
+  const t1 = (match.team1 && (match.team1.shortName || match.team1.teamName)) || "?";
+  const t2 = (match.team2 && (match.team2.shortName || match.team2.teamName)) || "?";
+  teams.textContent = t1 + " – " + t2;
+  text.appendChild(teams);
+
+  const meta = document.createElement("span");
+  meta.className = "sport-meta";
+  const groupName = match.group && match.group.groupName;
+  meta.textContent = formatMatchDate(match.matchDateTime) + (groupName ? " · " + groupName : "");
+  text.appendChild(meta);
+
+  card.appendChild(text);
+
+  if (score) {
+    const scoreEl = document.createElement("span");
+    scoreEl.className = "sport-score" + (outcome ? " sport-result-" + outcome : "");
+    scoreEl.textContent = score;
+    card.appendChild(scoreEl);
+  }
+
+  return card;
+}
+
+function renderSport(next, last) {
+  if (!els.sportBlock) return;
+  els.sportBlock.innerHTML = "";
+
+  if (!next && !last) {
+    els.sportBlock.innerHTML = '<div class="view-placeholder">Keine Werder-Spiele gefunden</div>';
+    sportAvailable = false;
+    return;
+  }
+
+  if (next) {
+    els.sportBlock.appendChild(buildSportCard(next, "Nächstes Spiel", null, null));
+  }
+  if (last) {
+    const score = finalScore(last);
+    const outcome = werderOutcome(last, score);
+    els.sportBlock.appendChild(buildSportCard(last, "Letztes Spiel", score, outcome));
+  }
+
+  sportAvailable = true;
+}
+
+function updateSport() {
+  if (!els.sportBlock || !CONFIG.sportTeamId) return;
+
+  const url = "https://api.openligadb.de/getmatchesbyteamid/" + CONFIG.sportTeamId + "/6/20";
+
+  fetch(url).then(function (res) {
+    if (!res.ok) throw new Error("Werder-Abruf fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const whitelist = CONFIG.sportLeagueWhitelist || [];
+    const matches = (Array.isArray(data) ? data : []).filter(function (m) {
+      return m && m.leagueShortcut && whitelist.indexOf(m.leagueShortcut) !== -1;
+    });
+
+    if (!matches.length) throw new Error("Keine Werder-Spiele gefunden");
+
+    matches.sort(function (a, b) {
+      return new Date(a.matchDateTime).getTime() - new Date(b.matchDateTime).getTime();
+    });
+
+    let next = null;
+    for (let i = 0; i < matches.length; i++) {
+      if (!matches[i].matchIsFinished) { next = matches[i]; break; }
+    }
+
+    let last = null;
+    for (let i = matches.length - 1; i >= 0; i--) {
+      if (matches[i].matchIsFinished) { last = matches[i]; break; }
+    }
+
+    renderSport(next, last);
+  }).catch(function (err) {
+    console.error(err);
+    sportAvailable = false;
+  });
+}
+
 // ---------- Karussell ----------
 let newsAvailable = false;
 let musicAvailable = false;
@@ -955,11 +1164,12 @@ const PANEL_AVAILABILITY = {
   weather: function () { return true; },
   news: function () { return newsAvailable; },
   music: function () { return musicAvailable; },
+  sport: function () { return sportAvailable; },
   quote: function () { return quoteAvailable; },
 };
 
 function showPanel(name) {
-  const ids = ["departures", "commute", "weather", "news", "music", "quote"];
+  const ids = ["departures", "commute", "weather", "news", "music", "sport", "quote"];
   for (let i = 0; i < ids.length; i++) {
     const el = document.getElementById("panel-" + ids[i]);
     if (!el) continue;
@@ -1037,6 +1247,13 @@ function init() {
   updateDepartures();
   setInterval(updateDepartures, CONFIG.refreshDeparturesMs);
 
+  // Gehzeit einmalig berechnen und danach die Abfahrten einmal neu
+  // rendern, damit die Farbkanten/„Los bis"-Hinweise ohne 30s Wartezeit
+  // erscheinen.
+  resolveWalkTime().then(function (mins) {
+    if (mins != null) updateDepartures();
+  });
+
   updateWeather();
   setInterval(updateWeather, CONFIG.refreshWeatherMs);
 
@@ -1056,6 +1273,9 @@ function init() {
   if (CONFIG.wasteCollection && CONFIG.wasteCollection.refreshMs) {
     setInterval(updateWasteLine, CONFIG.wasteCollection.refreshMs);
   }
+
+  updateSport();
+  setInterval(updateSport, CONFIG.refreshSportMs);
 
   scheduleCarousel();
 
