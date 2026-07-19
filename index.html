@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-touch-fullscreen" content="yes">
+<title>Föhrenstraße — Abfahrten</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="panel">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span class="brand-text">FÖHRENSTRASSE</span>
+        <span class="brand-sub">Richtung Stadt</span>
+      </div>
+
+      <div class="weather" id="weather">
+        <span class="weather-icon" id="weatherIcon">—</span>
+        <span class="weather-temp" id="weatherTemp">–°</span>
+      </div>
+
+      <div class="clock">
+        <span class="clock-time" id="clockTime">--:--</span>
+        <span class="clock-date" id="clockDate">--</span>
+      </div>
+    </header>
+
+    <main class="board">
+      <div class="board-head">
+        <span class="col-line">Linie</span>
+        <span class="col-dest">Ziel</span>
+        <span class="col-time">Abfahrt</span>
+      </div>
+      <div class="board-rows" id="departureRows">
+        <div class="row placeholder">Lade Abfahrten…</div>
+      </div>
+    </main>
+
+    <footer class="statusbar">
+      <span id="statusText">Verbinde…</span>
+      <span id="lastUpdate"></span>
+    </footer>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

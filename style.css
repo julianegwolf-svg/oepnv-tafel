@@ -1,0 +1,221 @@
+:root {
+  --bg: #14171c;
+  --panel: #1b1f26;
+  --panel-edge: #2a2f38;
+  --gold: #d9b26a;
+  --gold-dim: #8a744c;
+  --text: #eef0f3;
+  --text-dim: #8b93a1;
+  --tram: #d9b26a;
+  --bus: #7fa8c9;
+  --danger: #d9776a;
+  --ok: #7ec98f;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.panel {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at 15% 0%, #20242c 0%, transparent 45%),
+    linear-gradient(180deg, var(--bg) 0%, #101318 100%);
+  padding: clamp(16px, 3vw, 36px);
+}
+
+/* ---------- Topbar ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: clamp(14px, 2vw, 24px);
+  border-bottom: 1px solid var(--panel-edge);
+  margin-bottom: clamp(14px, 2vw, 24px);
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.brand-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 10px var(--gold);
+  display: inline-block;
+  margin-bottom: 2px;
+}
+
+.brand-text {
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  font-size: clamp(18px, 2.6vw, 28px);
+}
+
+.brand-sub {
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: clamp(12px, 1.4vw, 16px);
+  letter-spacing: 0.04em;
+}
+
+.weather {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-dim);
+}
+
+.weather-icon {
+  font-size: clamp(20px, 2.6vw, 30px);
+}
+
+.weather-temp {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: clamp(16px, 2vw, 22px);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.clock {
+  text-align: right;
+}
+
+.clock-time {
+  display: block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: clamp(22px, 3vw, 34px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.clock-date {
+  display: block;
+  color: var(--text-dim);
+  font-size: clamp(11px, 1.3vw, 14px);
+  letter-spacing: 0.03em;
+}
+
+/* ---------- Board ---------- */
+.board {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.board-head {
+  display: grid;
+  grid-template-columns: 1fr 3fr 1.4fr;
+  padding: 0 clamp(10px, 1.4vw, 18px) clamp(8px, 1.2vw, 14px);
+  color: var(--text-dim);
+  font-size: clamp(11px, 1.2vw, 14px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.board-rows {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1vw, 10px);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 3fr 1.4fr;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 14px;
+  padding: clamp(12px, 1.8vw, 20px) clamp(14px, 1.8vw, 22px);
+}
+
+.row.placeholder {
+  display: block;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 40px;
+}
+
+.line-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: clamp(44px, 5vw, 60px);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 700;
+  font-size: clamp(15px, 1.8vw, 20px);
+  color: #14171c;
+}
+
+.line-badge.tram { background: var(--tram); }
+.line-badge.bus { background: var(--bus); }
+
+.dest {
+  font-size: clamp(16px, 2vw, 22px);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 10px;
+}
+
+.time-cell {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.time-min {
+  font-size: clamp(18px, 2.4vw, 26px);
+  font-weight: 700;
+}
+
+.time-min.now { color: var(--gold); }
+
+.time-delay {
+  font-size: clamp(11px, 1.3vw, 14px);
+  color: var(--danger);
+}
+
+.time-ontime {
+  font-size: clamp(11px, 1.3vw, 14px);
+  color: var(--ok);
+}
+
+/* ---------- Statusbar ---------- */
+.statusbar {
+  display: flex;
+  justify-content: space-between;
+  padding-top: clamp(10px, 1.6vw, 16px);
+  margin-top: clamp(10px, 1.6vw, 16px);
+  border-top: 1px solid var(--panel-edge);
+  color: var(--text-dim);
+  font-size: clamp(10px, 1.1vw, 13px);
+  letter-spacing: 0.03em;
+}
