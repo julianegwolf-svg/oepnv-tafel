@@ -358,7 +358,7 @@ function updateNews() {
 function updateMusic() {
   if (!els.musicList) return;
 
-  const url = "https://rss.applemarketingtools.com/api/v2/de/music/most-played/" +
+  const url = "https://rss.marketingtools.apple.com/api/v2/de/music/most-played/" +
     CONFIG.musicCount + "/songs.json";
 
   fetch(url).then(function (res) {
@@ -409,29 +409,26 @@ function updateMusic() {
   });
 }
 
-// ---------- Zitat des Tages ----------
+// ---------- Spruch des Tages (Advice Slip — bestätigt CORS-freundlich) ----------
 function updateQuote() {
   if (!els.quoteBlock) return;
 
-  fetch("https://zenquotes.io/api/today").then(function (res) {
-    if (!res.ok) throw new Error("Zitat-Abruf fehlgeschlagen (" + res.status + ")");
+  // Cache-Buster, weil manche CORS-Proxies/CDNs vor dieser API sonst
+  // immer denselben Spruch ausliefern.
+  fetch("https://api.adviceslip.com/advice?_=" + Date.now()).then(function (res) {
+    if (!res.ok) throw new Error("Spruch-Abruf fehlgeschlagen (" + res.status + ")");
     return res.json();
   }).then(function (data) {
-    const item = (Array.isArray(data) && data[0]) ? data[0] : null;
-    if (!item) throw new Error("Kein Zitat erhalten");
+    const advice = data && data.slip && data.slip.advice;
+    if (!advice) throw new Error("Kein Spruch erhalten");
 
     els.quoteBlock.innerHTML = "";
 
     const text = document.createElement("div");
     text.className = "quote-text";
-    text.textContent = "“" + item.q + "”";
-
-    const author = document.createElement("div");
-    author.className = "quote-author";
-    author.textContent = "— " + item.a;
+    text.textContent = "“" + advice + "”";
 
     els.quoteBlock.appendChild(text);
-    els.quoteBlock.appendChild(author);
 
     quoteAvailable = true;
   }).catch(function (err) {
