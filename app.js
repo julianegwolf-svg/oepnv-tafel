@@ -1,13 +1,13 @@
 // ---------------------------------------------------------------
 // Föhrenstraße Abfahrtstafel — app.js
-// Datenquelle ÖPNV: v6.db.transport.rest (kostenlos, kein API-Key, CORS-frei)
+// Datenquelle ÖPNV: Transitous (api.transitous.org) — kostenlos, kein
+// API-Key, für Dauerbetrieb gedacht (MOTIS-Backend, GTFS/GTFS-RT-basiert).
 // Datenquelle Wetter: Open-Meteo (kostenlos, kein API-Key)
 // Bewusst ohne Optional Chaining (?.), Array.flat() etc. geschrieben,
 // damit das auch auf Safari 12 (iPad Air 1 / iOS 12.5.x) läuft.
-// Aktualisiert Abfahrten automatisch alle CONFIG.refreshDeparturesMs.
 // ---------------------------------------------------------------
 
-const API_BASE = "https://v6.db.transport.rest";
+const API_BASE = "https://api.transitous.org/api";
 
 const els = {
   rows: document.getElementById("departureRows"),
@@ -41,16 +41,15 @@ function tickClock() {
 function resolveStopIds() {
   if (resolvedStopIds) return Promise.resolve(resolvedStopIds);
 
-  const url = API_BASE + "/locations?query=" + encodeURIComponent(
-    CONFIG.stopQuery
-  ) + "&fuzzy=true&results=10&poi=false&addresses=false";
+  const url = API_BASE + "/v1/geocode?text=" + encodeURIComponent(CONFIG.stopQuery) +
+    "&type=STOP&numResults=10";
 
   return fetch(url).then(function (res) {
     if (!res.ok) throw new Error("Haltestellensuche fehlgeschlagen (" + res.status + ")");
     return res.json();
   }).then(function (data) {
     const stops = (Array.isArray(data) ? data : []).filter(function (loc) {
-      return loc && (loc.type === "stop" || loc.type === "station") && loc.id;
+      return loc && loc.id;
     });
 
     if (!stops.length) {
@@ -66,16 +65,14 @@ function resolveStopIds() {
 
 // ---------- Abfahrten laden ----------
 function fetchDeparturesForStop(stopId) {
-  const profileParam = CONFIG.apiProfile ? "&profile=" + CONFIG.apiProfile : "";
-  const url = API_BASE + "/stops/" + encodeURIComponent(stopId) + "/departures?duration=60&results=" +
-    (CONFIG.maxRows * 3) + profileParam;
+  const url = API_BASE + "/v6/stoptimes?stopId=" + encodeURIComponent(stopId) +
+    "&n=" + (CONFIG.maxRows * 3) + "&arriveBy=false";
 
   return fetch(url).then(function (res) {
     if (!res.ok) throw new Error("Abfahrten-Abruf fehlgeschlagen (" + res.status + ")");
     return res.json();
   }).then(function (data) {
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.departures)) return data.departures;
+    if (data && Array.isArray(data.stopTimes)) return data.stopTimes;
     return [];
   });
 }
@@ -98,9 +95,8 @@ function passesDirectionFilter(direction) {
   return true;
 }
 
-function productClass(product) {
-  if (product === "tram") return "tram";
-  if (product === "bus") return "bus";
+function productClass(mode) {
+  if (mode === "TRAM" || mode === "SUBWAY" || mode === "RAIL") return "tram";
   return "bus";
 }
 
@@ -118,26 +114,28 @@ function renderDepartures(departures) {
   const now = Date.now();
 
   departures.slice(0, CONFIG.maxRows).forEach(function (dep) {
-    const when = dep.when || dep.plannedWhen;
+    const place = dep.place || {};
+    const when = place.departure || place.scheduledDeparture;
+    const scheduled = place.scheduledDeparture;
     const whenDate = when ? new Date(when) : null;
     const minutes = whenDate ? Math.round((whenDate.getTime() - now) / 60000) : null;
+    const cancelled = !!(dep.cancelled || dep.tripCancelled);
 
     const row = document.createElement("div");
     row.className = "row";
-    if (dep.cancelled) row.style.opacity = "0.45";
+    if (cancelled) row.style.opacity = "0.45";
 
-    const lineName = (dep.line && dep.line.name) || "?";
-    const lineProduct = dep.line && dep.line.product;
+    const lineName = dep.routeShortName || dep.tripShortName || dep.displayName || "?";
 
     const lineBadge = document.createElement("span");
-    lineBadge.className = "line-badge " + productClass(lineProduct);
+    lineBadge.className = "line-badge " + productClass(dep.mode);
     lineBadge.textContent = lineName;
 
     const dest = document.createElement("span");
     dest.className = "dest";
-    dest.textContent = dep.cancelled
-      ? (dep.direction || "") + " (fällt aus)"
-      : (dep.direction || "—");
+    dest.textContent = cancelled
+      ? (dep.headsign || "") + " (fällt aus)"
+      : (dep.headsign || "—");
 
     const timeCell = document.createElement("span");
     timeCell.className = "time-cell";
@@ -149,12 +147,14 @@ function renderDepartures(departures) {
 
     timeCell.appendChild(timeMin);
 
-    const delaySec = dep.delay;
-    if (typeof delaySec === "number" && delaySec >= 60) {
-      const d = document.createElement("span");
-      d.className = "time-delay";
-      d.textContent = "+" + Math.round(delaySec / 60);
-      timeCell.appendChild(d);
+    if (when && scheduled && when !== scheduled) {
+      const delaySec = Math.round((new Date(when).getTime() - new Date(scheduled).getTime()) / 1000);
+      if (delaySec >= 60) {
+        const d = document.createElement("span");
+        d.className = "time-delay";
+        d.textContent = "+" + Math.round(delaySec / 60);
+        timeCell.appendChild(d);
+      }
     }
 
     row.appendChild(lineBadge);
@@ -164,6 +164,8 @@ function renderDepartures(departures) {
   });
 }
 
+let consecutiveFailures = 0;
+
 function updateDepartures() {
   resolveStopIds().then(function (stopIds) {
     return Promise.all(stopIds.map(fetchDeparturesForStop));
@@ -171,30 +173,38 @@ function updateDepartures() {
     let all = [].concat.apply([], results);
 
     all = all.filter(function (dep) {
-      return passesDirectionFilter(dep.direction);
+      return passesDirectionFilter(dep.headsign);
     });
 
     const seen = {};
     all = all.filter(function (dep) {
-      const lineName = dep.line && dep.line.name;
-      const key = (dep.tripId || lineName) + "-" + (dep.when || dep.plannedWhen);
+      const place = dep.place || {};
+      const key = (dep.tripId || dep.routeShortName) + "-" + (place.departure || place.scheduledDeparture);
       if (seen[key]) return false;
       seen[key] = true;
       return true;
     });
 
     all.sort(function (a, b) {
-      const ta = new Date(a.when || a.plannedWhen).getTime();
-      const tb = new Date(b.when || b.plannedWhen).getTime();
+      const pa = a.place || {};
+      const pb = b.place || {};
+      const ta = new Date(pa.departure || pa.scheduledDeparture).getTime();
+      const tb = new Date(pb.departure || pb.scheduledDeparture).getTime();
       return ta - tb;
     });
 
+    consecutiveFailures = 0;
     renderDepartures(all);
-    els.status.textContent = "Live";
+    els.status.textContent = "Live · Daten von Transitous";
     els.lastUpdate.textContent = "Aktualisiert " + new Date().toLocaleTimeString("de-DE");
   }).catch(function (err) {
     console.error(err);
-    els.status.textContent = "Fehler: " + err.message;
+    consecutiveFailures += 1;
+    els.status.textContent = "Datenquelle gerade nicht erreichbar — versuche automatisch weiter (" +
+      consecutiveFailures + ". Versuch, " + new Date().toLocaleTimeString("de-DE") + ")";
+    if (consecutiveFailures <= 20) {
+      setTimeout(updateDepartures, 10000);
+    }
   });
 }
 

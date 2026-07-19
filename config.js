@@ -1,19 +1,16 @@
 // ---------------------------------------------------------------
 // KONFIGURATION – hier anpassen, ohne app.js anzufassen
+// Datenquelle: Transitous (api.transitous.org) — kostenlose,
+// spendenfinanzierte Open-Source-API, extra für Dauerabfragen wie
+// diese gedacht (im Gegensatz zu v6.db.transport.rest).
 // ---------------------------------------------------------------
 const CONFIG = {
   stopQuery: "Föhrenstraße, Bremen",
   stopLimit: 2,
 
-  // Leer lassen: die Seite sucht die Haltestelle selbst über stopQuery.
-  // (Die ID 9013884 aus dem VBN-Widget gehört zu einem anderen System
-  // und funktioniert hier nicht — daher kam vorhin "Load failed".)
+  // Falls die automatische Suche mal daneben liegt, hier die exakte
+  // Transitous-Stop-ID eintragen, dann wird nicht gesucht.
   stopIds: [],
-
-  // API-Profil für v6.db.transport.rest. Leer lassen = Standard (dbnav).
-  // Falls die Föhrenstraße damit nicht gefunden wird, mal "db" oder
-  // "dbweb" probieren.
-  apiProfile: "",
 
   // Fahrtziele, die NICHT angezeigt werden sollen (z.B. weil sie aus
   // der Stadt raus fahren). Bekannte Linien an der Föhrenstraße:
