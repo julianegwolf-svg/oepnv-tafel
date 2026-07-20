@@ -31,6 +31,7 @@ const els = {
   musicList: document.getElementById("musicList"),
   quoteBlock: document.getElementById("quoteBlock"),
   triviaBlock: document.getElementById("triviaBlock"),
+  quizBlock: document.getElementById("quizBlock"),
   eventsList: document.getElementById("eventsList"),
   commuteHero: document.getElementById("commuteHero"),
   commuteRace: document.getElementById("commuteRace"),
@@ -1657,6 +1658,132 @@ function updateTrivia() {
   });
 }
 
+// ---------- Allgemeinwissen-Panel (Open Trivia Database) ----------
+// Bewusst getrennt vom "Auf den Tag genau"-Panel oben: dort geht es um
+// Fakten, die HEUTE vor X Jahren passiert sind (ans Datum gebunden),
+// hier um zufälliges Allgemeinwissen aus jeder Rubrik, ohne Datumsbezug.
+// Gleicher Tipp-dann-Multiple-Choice-Mechanismus, nur mit vier Antworten
+// statt drei Jahreszahlen.
+let quizQuestion = null;
+let quizChoices = null;
+let quizTypeTimer = null;
+let quizRevealTimer = null;
+
+// Open Trivia DB liefert HTML-Entities (&quot;, &#039; …) statt Klartext.
+// Ein unsichtbares <textarea> lässt den Browser die Entities zuverlässig
+// dekodieren, ohne ein eigenes Entity-Mapping pflegen zu müssen.
+function decodeHtmlEntities(str) {
+  const ta = document.createElement("textarea");
+  ta.innerHTML = str;
+  return ta.value;
+}
+
+function renderQuizShell() {
+  if (!els.quizBlock) return;
+  els.quizBlock.innerHTML = "";
+
+  const category = document.createElement("div");
+  category.className = "trivia-date";
+  category.id = "quizCategory";
+  els.quizBlock.appendChild(category);
+
+  const text = document.createElement("div");
+  text.className = "trivia-text";
+
+  const typed = document.createElement("span");
+  typed.id = "quizTypedText";
+  text.appendChild(typed);
+
+  const cursor = document.createElement("span");
+  cursor.id = "quizCursor";
+  cursor.className = "typewriter-cursor";
+  text.appendChild(cursor);
+
+  els.quizBlock.appendChild(text);
+
+  const choices = document.createElement("div");
+  choices.className = "trivia-choices";
+  choices.id = "quizChoices";
+  els.quizBlock.appendChild(choices);
+}
+
+function startQuizReveal() {
+  if (!quizQuestion || !quizChoices) return;
+  const typedEl = document.getElementById("quizTypedText");
+  const cursorEl = document.getElementById("quizCursor");
+  const choicesEl = document.getElementById("quizChoices");
+  const categoryEl = document.getElementById("quizCategory");
+  if (!typedEl || !choicesEl) return;
+
+  if (quizTypeTimer) clearInterval(quizTypeTimer);
+  if (quizRevealTimer) clearTimeout(quizRevealTimer);
+  typedEl.textContent = "";
+  if (cursorEl) cursorEl.className = "typewriter-cursor";
+  if (categoryEl) categoryEl.textContent = quizQuestion.category;
+  choicesEl.className = "trivia-choices";
+  choicesEl.innerHTML = "";
+
+  quizChoices.options.forEach(function (opt) {
+    const chip = document.createElement("span");
+    chip.className = "trivia-choice text-choice" + (opt === quizChoices.correct ? " correct" : "");
+    chip.textContent = opt;
+    choicesEl.appendChild(chip);
+  });
+
+  const full = quizQuestion.text;
+  let i = 0;
+  quizTypeTimer = setInterval(function () {
+    i++;
+    typedEl.textContent = full.slice(0, i);
+    if (i >= full.length) {
+      clearInterval(quizTypeTimer);
+      quizTypeTimer = null;
+      if (cursorEl) cursorEl.className = "typewriter-cursor done";
+      choicesEl.classList.add("is-shown");
+      quizRevealTimer = setTimeout(function () {
+        choicesEl.classList.add("is-revealed");
+      }, 3000);
+    }
+  }, 35);
+}
+
+function updateQuiz() {
+  if (!els.quizBlock) return;
+
+  // Cache-Buster wie bei allen anderen Feeds hier — sonst liefert ein
+  // zwischengeschalteter Cache stur dieselbe Frage über Stunden hinweg.
+  fetch("https://opentdb.com/api.php?amount=1&type=multiple&_=" + Date.now(), { cache: "no-store" }).then(function (res) {
+    if (!res.ok) throw new Error("Quiz-Abruf fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const item = data && Array.isArray(data.results) && data.results[0];
+    if (!item) throw new Error("Keine Quiz-Frage erhalten");
+
+    quizQuestion = {
+      text: decodeHtmlEntities(item.question),
+      category: decodeHtmlEntities(item.category),
+    };
+    const correct = decodeHtmlEntities(item.correct_answer);
+    const options = item.incorrect_answers.map(decodeHtmlEntities).concat([correct]);
+    for (let i = options.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = options[i]; options[i] = options[j]; options[j] = tmp;
+    }
+    quizChoices = { options: options, correct: correct };
+
+    renderQuizShell();
+
+    const panelEl = document.getElementById("panel-quiz");
+    const isActive = panelEl && panelEl.className.indexOf("active") !== -1;
+    if (isActive) startQuizReveal();
+
+    quizAvailable = true;
+  }).catch(function (err) {
+    console.error(err);
+    quizAvailable = false;
+  });
+}
+
 // ---------- Pendel-Panel (Arbeitsweg zu Max Müller GmbH) ----------
 // Rad- und Auto-Zeit kommen als Direktverbindung (directModes, ohne
 // Transit) von Transitous, die Bus/ÖPNV-Zeit als normale Routenplanung.
@@ -2287,16 +2414,25 @@ function renderCommuteMap(coords, results) {
   if (!els.commuteMapImg || !els.commuteMapRoute) return;
 
   const winner = fastestCommuteMode(results);
-  if (!winner || !coords) {
+  const winnerRes = winner && results[winner.key];
+  const hasRealRoute = !!(winnerRes && Array.isArray(winnerRes.points) && winnerRes.points.length >= 2);
+
+  // ECHTER BUG gefunden: ohne echte Routen-Punkte (z.B. wenn TomTom für
+  // den Sieger mal keine Route liefert und der Motis-Schätz-Fallback ohne
+  // Punkte einspringt) hat die Karte bisher stur eine gerade Luftlinie
+  // Start→Ziel quer über Fluss/Häuser gezeichnet — sieht kaputt aus, weil
+  // es aussieht wie eine (falsche) echte Route statt einer Schätzung.
+  // Jetzt: ohne echte Punkte lieber ganz auf die Balken-Ansicht zurück-
+  // fallen (die zeigt nur Minutenzahlen, keine falsche Streckenführung).
+  if (!winner || !coords || !hasRealRoute) {
     els.commuteMapImg.removeAttribute("src");
     els.commuteMapRoute.innerHTML = "";
+    if (els.commuteMapWrap) els.commuteMapWrap.style.display = "none";
+    if (els.commuteRace) els.commuteRace.style.display = "";
     return;
   }
 
-  const winnerRes = results[winner.key];
-  const points = (winnerRes && Array.isArray(winnerRes.points) && winnerRes.points.length >= 2)
-    ? winnerRes.points
-    : [[coords.home.lon, coords.home.lat], [coords.work.lon, coords.work.lat]];
+  const points = winnerRes.points;
 
   let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
   points.forEach(function (p) {
@@ -2882,6 +3018,7 @@ let newsAvailable = false;
 let musicAvailable = false;
 let quoteAvailable = false;
 let triviaAvailable = false;
+let quizAvailable = false;
 let eventsAvailable = false;
 let panelIndex = 0;
 
@@ -2894,11 +3031,12 @@ const PANEL_AVAILABILITY = {
   sport: function () { return sportAvailable; },
   quote: function () { return quoteAvailable; },
   trivia: function () { return triviaAvailable; },
+  quiz: function () { return quizAvailable; },
   events: function () { return eventsAvailable; },
 };
 
 function showPanel(name) {
-  const ids = ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "events"];
+  const ids = ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "events"];
   for (let i = 0; i < ids.length; i++) {
     const el = document.getElementById("panel-" + ids[i]);
     if (!el) continue;
@@ -2915,6 +3053,10 @@ function showPanel(name) {
 
   if (name === "trivia") {
     startTriviaReveal();
+  }
+
+  if (name === "quiz") {
+    startQuizReveal();
   }
 
   if (name === "news") {
@@ -3018,6 +3160,9 @@ function init() {
 
   updateTrivia();
   setInterval(updateTrivia, CONFIG.refreshTriviaMs);
+
+  updateQuiz();
+  setInterval(updateQuiz, CONFIG.refreshQuizMs);
 
   updateEvents();
   setInterval(updateEvents, CONFIG.refreshEventsMs);

@@ -102,6 +102,7 @@ html, body {
 #panel-sport { --accent: var(--ok); }
 #panel-quote { --accent: var(--brass); }
 #panel-trivia { --accent: #a34a6b; }
+#panel-quiz { --accent: #3c7ea8; }
 #panel-events { --accent: #b1622f; }
 
 /* ---------- Topbar ---------- */
@@ -1649,6 +1650,7 @@ html, body {
 
 .trivia-choices {
   display: flex;
+  flex-wrap: wrap;
   gap: 14px;
   margin-top: 26px;
   opacity: 0;
@@ -1682,6 +1684,15 @@ html, body {
   color: #ffffff;
   background: var(--ok);
   border-color: var(--ok);
+}
+
+/* Allgemeinwissen-Antworten sind ganze Phrasen statt vierstelliger
+   Jahreszahlen — eigene, etwas kompaktere Textdarstellung statt der
+   großen Monospace-Ziffern-Optik. */
+.trivia-choice.text-choice {
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  font-size: 17px;
+  padding: 12px 18px;
 }
 
 /* ---------- Sport-Ticker (Lieblingsvereine) ---------- */

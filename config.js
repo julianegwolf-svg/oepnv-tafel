@@ -62,7 +62,7 @@ const CONFIG = {
   // Panels, deren Datenquelle gerade nicht klappt, werden automatisch
   // übersprungen.
   // ---------------------------------------------------------------
-  panelSequence: ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "events"],
+  panelSequence: ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "events"],
 
   // Anzeigedauer je Panel in Millisekunden. Fehlt ein Eintrag, gilt
   // panelDurationMs als Standard.
@@ -75,6 +75,7 @@ const CONFIG = {
     sport: 50 * 1000, // bis zu 6 Vereine + 4 News à 5s Diashow
     quote: 12 * 1000,
     trivia: 22 * 1000, // Tippdauer variiert mit Satzlänge + 3s Denkpause vor der Multiple-Choice-Auflösung
+    quiz: 22 * 1000,
     events: 16 * 1000,
   },
   panelDurationMs: 18 * 1000,
@@ -150,6 +151,15 @@ const CONFIG = {
   // den Tag verteilt abwechselt statt immer dasselbe erste Ereignis zu
   // zeigen.
   refreshTriviaMs: 60 * 60 * 1000,
+
+  // Allgemeinwissen-Panel — Open Trivia Database (opentdb.com), kostenlos,
+  // kein Key, CORS offen. Bewusst eigenständig neben "Auf den Tag genau":
+  // dort geht es um Fakten, die HEUTE vor X Jahren passiert sind, hier um
+  // zufälliges Allgemeinwissen aus jeder Rubrik (Wissenschaft, Geografie,
+  // Film, Sport …), nicht ans Datum gebunden. Fragen kommen auf Englisch
+  // (die API bietet kein Deutsch an) — gleiches Prinzip wie beim
+  // Spruch-des-Tages-Panel, das ebenfalls englische Inhalte zeigt.
+  refreshQuizMs: 60 * 60 * 1000,
 
   // Veranstaltungen-Panel (Bremen) — InfraNode (infranode.dev), kostenlos,
   // kein Key, CORS offen (access-control-allow-origin: *), Daten stammen
