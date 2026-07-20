@@ -328,6 +328,85 @@ html, body {
   animation: dotPulse 2.6s ease-in-out infinite;
 }
 
+/* ---------- Panel-Übersicht (Direktsprung) ---------- */
+/* Gleicher runder Glas-Knopf wie .radio-toggle, damit sich die beiden
+   Header-Buttons als Set lesen. Tippen öffnet ein Vollbild-Raster mit
+   allen verfügbaren Panels als Kacheln — bei elf Panels übersichtlicher
+   als eine lange Popover-Liste wie beim Radio. */
+.panel-nav-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  font-size: 30px;
+  background: var(--glass-bg);
+  border: 1px solid var(--panel-edge);
+  border-radius: 50%;
+  box-shadow: var(--glass-shadow);
+  color: var(--ink-dim);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.panel-nav-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: rgba(20, 18, 14, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 900;
+}
+
+.panel-nav-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.panel-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  width: 100%;
+  max-width: 920px;
+}
+
+.panel-nav-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 22px 12px;
+  min-height: 120px;
+  background: var(--glass-bg);
+  border: 2px solid var(--panel-edge);
+  border-radius: var(--radius-m);
+  box-shadow: var(--glass-shadow);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.panel-nav-tile.is-current {
+  border-color: var(--brass);
+  background: rgba(169, 121, 63, 0.14);
+}
+
+.panel-nav-tile-icon {
+  font-size: 32px;
+}
+
+.panel-nav-tile-label {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.25;
+}
+
 /* ---------- Fortschrittsbalken ---------- */
 .progress-bar {
   height: 5px;

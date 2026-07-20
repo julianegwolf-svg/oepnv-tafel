@@ -43,6 +43,9 @@ const els = {
   radioToggle: document.getElementById("radioToggle"),
   radioMenu: document.getElementById("radioMenu"),
   nowPlaying: document.getElementById("nowPlaying"),
+  panelNavToggle: document.getElementById("panelNavToggle"),
+  panelNavOverlay: document.getElementById("panelNavOverlay"),
+  panelNavGrid: document.getElementById("panelNavGrid"),
 };
 
 let resolvedStopIds = (CONFIG.stopIds && CONFIG.stopIds.length)
@@ -3434,9 +3437,182 @@ function scheduleCarousel() {
   }, duration);
 }
 
+// ---------- Panel-Übersicht (Direktsprung) + Touch-Pause ----------
+// Zwei zusammenhängende Wünsche: (1) von überall aus direkt zu einem
+// bestimmten Panel springen können, statt den Durchlauf abzuwarten, und
+// (2) jeder Touch irgendwo auf der Tafel hält den automatischen Wechsel
+// für 10s an (verlängert sich bei weiterem Touch), damit man in Ruhe
+// fertiglesen kann, bevor es weitergeht.
+const PANEL_NAV_META = {
+  departures: { icon: "🚌", label: "Abfahrten" },
+  commute: { icon: "🧭", label: "Arbeitsweg" },
+  weather: { icon: "⛅", label: "Wetter" },
+  news: { icon: "📰", label: "Nachrichten" },
+  music: { icon: "🎵", label: "Musik-Charts" },
+  sport: { icon: "⚽", label: "Fußball" },
+  quote: { icon: "💬", label: "Spruch des Tages" },
+  trivia: { icon: "📅", label: "Auf den Tag genau" },
+  quiz: { icon: "❓", label: "Allgemeinwissen" },
+  riddle: { icon: "🧩", label: "Rätsel des Tages" },
+  events: { icon: "🎉", label: "Veranstaltungen" },
+};
+
+let panelNavOpen = false;
+let carouselIdleTimer = null;
+const CAROUSEL_IDLE_RESUME_MS = 10000;
+
+// Fortschrittsbalken einfrieren statt zurücksetzen: liest die aktuell
+// interpolierte transform-Matrix aus (auch mitten in einer laufenden
+// Transition liefert getComputedStyle den echten Momentanwert) und friert
+// genau dort ein, statt die Animation einfach zu stoppen und später bei
+// 0 neu zu starten.
+function freezeProgressBar() {
+  if (!progressFillEl) return;
+  const computed = getComputedStyle(progressFillEl).transform;
+  progressFillEl.style.transition = "none";
+  progressFillEl.style.transform = computed === "none" ? "scaleX(0)" : computed;
+}
+
+function currentProgressFraction() {
+  if (!progressFillEl) return 0;
+  const computed = getComputedStyle(progressFillEl).transform;
+  if (computed === "none") return 0;
+  // matrix(a, b, c, d, tx, ty) — bei einer reinen scaleX-Transformation
+  // wie hier ist "a" exakt der Skalierungsfaktor, also der Fortschrittsanteil.
+  const match = /matrix\(([^,]+),/.exec(computed);
+  const scale = match ? parseFloat(match[1]) : NaN;
+  return isNaN(scale) ? 0 : Math.min(Math.max(scale, 0), 1);
+}
+
+function pauseCarouselIndefinitely() {
+  if (carouselTimer) { clearTimeout(carouselTimer); carouselTimer = null; }
+  if (carouselIdleTimer) { clearTimeout(carouselIdleTimer); carouselIdleTimer = null; }
+  freezeProgressBar();
+}
+
+function resumeCarouselFromFraction() {
+  if (!activeSequence || activeSequence.length < 2) return;
+  const currentName = activeSequence[panelIndex];
+  const totalDuration = durationForPanel(currentName);
+  const remaining = Math.max(totalDuration * (1 - currentProgressFraction()), 500);
+
+  if (progressFillEl) {
+    void progressFillEl.offsetWidth; // Reflow erzwingen, siehe resetProgressBar oben
+    progressFillEl.style.transition = "transform " + remaining + "ms linear";
+    progressFillEl.style.transform = "scaleX(1)";
+  }
+
+  if (carouselTimer) clearTimeout(carouselTimer);
+  carouselTimer = setTimeout(function () {
+    const nextName = pickNextAvailablePanel();
+    showPanel(nextName);
+    scheduleCarousel();
+  }, remaining);
+}
+
+function deferCarouselAdvance() {
+  if (panelNavOpen) return; // Übersicht offen: pauseCarouselIndefinitely() übernimmt das
+  if (!activeSequence || activeSequence.length < 2) return;
+
+  if (carouselTimer) {
+    clearTimeout(carouselTimer);
+    carouselTimer = null;
+    freezeProgressBar();
+  }
+
+  if (carouselIdleTimer) clearTimeout(carouselIdleTimer);
+  carouselIdleTimer = setTimeout(function () {
+    carouselIdleTimer = null;
+    resumeCarouselFromFraction();
+  }, CAROUSEL_IDLE_RESUME_MS);
+}
+
+function buildPanelNavGrid() {
+  if (!els.panelNavGrid) return;
+  els.panelNavGrid.innerHTML = "";
+  const seq = CONFIG.panelSequence || [];
+  const currentName = activeSequence[panelIndex];
+
+  seq.forEach(function (name) {
+    const check = PANEL_AVAILABILITY[name];
+    if (check && !check()) return;
+    const meta = PANEL_NAV_META[name];
+    if (!meta) return;
+
+    const tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = "panel-nav-tile" + (name === currentName ? " is-current" : "");
+
+    const icon = document.createElement("span");
+    icon.className = "panel-nav-tile-icon";
+    icon.textContent = meta.icon;
+    tile.appendChild(icon);
+
+    const label = document.createElement("span");
+    label.className = "panel-nav-tile-label";
+    label.textContent = meta.label;
+    tile.appendChild(label);
+
+    tile.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      jumpToPanel(name);
+    });
+
+    els.panelNavGrid.appendChild(tile);
+  });
+}
+
+function setPanelNavOpen(open) {
+  panelNavOpen = open;
+  if (els.panelNavOverlay) els.panelNavOverlay.classList.toggle("is-open", open);
+  if (open) {
+    buildPanelNavGrid();
+    pauseCarouselIndefinitely();
+  } else {
+    deferCarouselAdvance();
+  }
+}
+
+function jumpToPanel(name) {
+  panelNavOpen = false;
+  if (els.panelNavOverlay) els.panelNavOverlay.classList.remove("is-open");
+  if (carouselIdleTimer) { clearTimeout(carouselIdleTimer); carouselIdleTimer = null; }
+
+  const idx = activeSequence.indexOf(name);
+  if (idx !== -1) panelIndex = idx;
+  showPanel(name);
+  scheduleCarousel();
+}
+
+function initPanelNav() {
+  if (els.panelNavToggle) {
+    els.panelNavToggle.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      setPanelNavOpen(!panelNavOpen);
+    });
+  }
+
+  if (els.panelNavOverlay) {
+    els.panelNavOverlay.addEventListener("click", function (ev) {
+      if (ev.target === els.panelNavOverlay) setPanelNavOpen(false);
+    });
+  }
+
+  // Capture-Phase statt Bubble-Phase: das Radio-Menü ruft bei eigenen
+  // Klicks ev.stopPropagation() auf (schließt sich sonst sofort wieder
+  // über den "irgendwo hin klicken schließt das Menü"-Handler weiter
+  // unten in initRadioBar). Ein Bubble-Phase-Listener hier würde von
+  // diesem stopPropagation() ebenfalls verschluckt — Touches auf den
+  // Radio-Bereich sollen den Durchlauf aber genauso pausieren wie jeder
+  // andere Touch. In der Capture-Phase feuert dieser Listener, bevor
+  // stopPropagation() überhaupt greifen kann.
+  document.addEventListener("click", deferCarouselAdvance, true);
+}
+
 // ---------- Start ----------
 function init() {
   initRadioBar();
+  initPanelNav();
 
   tickClock();
   setInterval(tickClock, CONFIG.refreshClockMs);

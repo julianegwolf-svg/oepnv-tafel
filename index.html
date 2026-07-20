@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=61">
+<link rel="stylesheet" href="style.css?v=62">
 </head>
 <body>
   <div class="panel">
@@ -23,6 +23,10 @@
       <div class="now-playing" id="nowPlaying"></div>
 
       <div class="topbar-right">
+        <button type="button" class="panel-nav-toggle" id="panelNavToggle" aria-label="Übersicht">
+          <span class="panel-nav-toggle-icon">▦</span>
+        </button>
+
         <div class="radio-widget" id="radioWidget">
           <button type="button" class="radio-toggle" id="radioToggle" aria-label="Radio">
             <span class="radio-toggle-icon">📻</span>
@@ -150,9 +154,13 @@
     </footer>
 
     <div class="night-overlay" id="nightOverlay"></div>
+
+    <div class="panel-nav-overlay" id="panelNavOverlay">
+      <div class="panel-nav-grid" id="panelNavGrid"></div>
+    </div>
   </div>
 
-  <script src="config.js?v=61"></script>
-  <script src="app.js?v=61"></script>
+  <script src="config.js?v=62"></script>
+  <script src="app.js?v=62"></script>
 </body>
 </html>
