@@ -40,7 +40,8 @@ const els = {
   commuteMapRoute: document.getElementById("commuteMapRoute"),
   wasteLine: document.getElementById("wasteLine"),
   sportBlock: document.getElementById("sportBlock"),
-  radioBar: document.getElementById("radioBar"),
+  radioToggle: document.getElementById("radioToggle"),
+  radioMenu: document.getElementById("radioMenu"),
 };
 
 let resolvedStopIds = (CONFIG.stopIds && CONFIG.stopIds.length)
@@ -49,23 +50,38 @@ let resolvedStopIds = (CONFIG.stopIds && CONFIG.stopIds.length)
 let resolvedStopCoord = null;
 
 // ---------- Radio-Schnellzugriff ----------
-// Erste echte Touch-Interaktion der Tafel: ein Tap startet einen der
-// fest hinterlegten Radiosender (siehe CONFIG.radioStations) und öffnet
-// Safaris native AirPlay-Geräteauswahl, damit's auf dem HomePod läuft
-// statt aus dem eingebauten iPad-Lautsprecher. webkitShowPlaybackTargetPicker
-// ist eine alte, WebKit-spezifische Funktion auf <audio>-Elementen — auf
-// anderen Browsern schlicht nicht vorhanden, dann spielt es einfach lokal.
+// Erste echte Touch-Interaktion der Tafel: ein Tap auf den Radio-Knopf im
+// Header klappt ein kleines Menü mit den fest hinterlegten Sendern auf
+// (siehe CONFIG.radioStations); ein Tap auf einen Sender startet die
+// Wiedergabe und öffnet Safaris native AirPlay-Geräteauswahl, damit's auf
+// dem HomePod läuft statt aus dem eingebauten iPad-Lautsprecher.
+// webkitShowPlaybackTargetPicker ist eine alte, WebKit-spezifische
+// Funktion auf <audio>-Elementen — auf anderen Browsern schlicht nicht
+// vorhanden, dann spielt es einfach lokal.
+//
+// Menü als eigenes Popover statt einer festen Button-Zeile im Header:
+// eine feste Zeile hätte allen Panels darunter dauerhaft Höhe weggenommen
+// (.stage bekommt per flex:1 nur den Rest von 100vh) — das Popover kostet
+// nur Platz, während es offen ist.
 let radioAudioEl = null;
 let radioActiveUrl = null;
+let radioMenuOpen = false;
 
 function updateRadioButtonStates() {
-  if (!els.radioBar) return;
-  const buttons = els.radioBar.querySelectorAll(".radio-btn");
-  for (let i = 0; i < buttons.length; i++) {
-    const isActive = !!(radioActiveUrl && buttons[i].dataset.url === radioActiveUrl
-      && radioAudioEl && !radioAudioEl.paused);
-    buttons[i].classList.toggle("is-playing", isActive);
+  const isPlaying = !!(radioActiveUrl && radioAudioEl && !radioAudioEl.paused);
+
+  if (els.radioToggle) els.radioToggle.classList.toggle("is-playing", isPlaying);
+
+  if (!els.radioMenu) return;
+  const items = els.radioMenu.querySelectorAll(".radio-menu-item");
+  for (let i = 0; i < items.length; i++) {
+    items[i].classList.toggle("is-playing", isPlaying && items[i].dataset.url === radioActiveUrl);
   }
+}
+
+function setRadioMenuOpen(open) {
+  radioMenuOpen = open;
+  if (els.radioMenu) els.radioMenu.classList.toggle("is-open", open);
 }
 
 function toggleRadioStation(url) {
@@ -98,10 +114,11 @@ function toggleRadioStation(url) {
   }
 
   updateRadioButtonStates();
+  setRadioMenuOpen(false);
 }
 
 function initRadioBar() {
-  if (!els.radioBar) return;
+  if (!els.radioToggle || !els.radioMenu) return;
   const stations = CONFIG.radioStations || [];
   if (!stations.length) return;
 
@@ -118,24 +135,36 @@ function initRadioBar() {
   document.body.appendChild(radioAudioEl);
 
   stations.forEach(function (station) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "radio-btn";
-    btn.dataset.url = station.url;
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "radio-menu-item";
+    item.dataset.url = station.url;
 
     const dot = document.createElement("span");
-    dot.className = "radio-btn-dot";
-    btn.appendChild(dot);
+    dot.className = "radio-menu-dot";
+    item.appendChild(dot);
 
     const label = document.createElement("span");
     label.textContent = station.name;
-    btn.appendChild(label);
+    item.appendChild(label);
 
-    btn.addEventListener("click", function () {
+    item.addEventListener("click", function (ev) {
+      ev.stopPropagation();
       toggleRadioStation(station.url);
     });
 
-    els.radioBar.appendChild(btn);
+    els.radioMenu.appendChild(item);
+  });
+
+  els.radioToggle.addEventListener("click", function (ev) {
+    ev.stopPropagation();
+    setRadioMenuOpen(!radioMenuOpen);
+  });
+
+  // Irgendwo sonst hintippen schließt das Menü wieder — sonst bliebe es
+  // offen und würde bei jedem Karussell-Wechsel im Weg stehen.
+  document.addEventListener("click", function () {
+    if (radioMenuOpen) setRadioMenuOpen(false);
   });
 }
 

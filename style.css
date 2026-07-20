@@ -222,53 +222,105 @@ html, body {
 }
 
 /* ---------- Radio-Schnellzugriff ---------- */
-/* Erste echte Touch-Interaktion auf einer bis dahin rein passiven Tafel —
-   deshalb bewusst große Tap-Flächen (Apple-HIG-Mindestmaß ~44px Höhe) und
-   -webkit-tap-highlight-color:transparent, sonst blitzt beim Antippen auf
-   iOS ein hässliches graues Rechteck über der Glas-Optik auf. */
-.radio-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
-.radio-btn {
+/* Erste echte Touch-Interaktion auf einer bis dahin rein passiven Tafel.
+   ERSTER ANLAUF: eine eigene Zeile mit vier Buttons unter dem Header —
+   hat allen Panels spürbar Höhe weggenommen (.stage bekommt per flex:1
+   nur den Rest von 100vh nach allem Festen im Header) und wirkte gequetscht.
+   ZWEITER ANLAUF: ein einzelner kompakter Knopf IM Header, direkt neben
+   der Uhr (siehe .topbar-right) — kostet keine zusätzliche Zeile. Tippen
+   klappt ein kleines Menü mit den vier Sendern auf, statt sie dauerhaft
+   zu zeigen. */
+.topbar-right {
   display: flex;
   align-items: center;
-  gap: 9px;
-  font-family: 'Inter', -apple-system, system-ui, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ink);
-  background: var(--glass-bg);
-  border: 1px solid var(--panel-edge);
-  border-radius: 999px;
-  padding: 11px 18px;
-  min-height: 44px;
-  box-shadow: var(--glass-shadow);
-  -webkit-tap-highlight-color: transparent;
-  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  gap: 14px;
 }
 
-.radio-btn-dot {
+.radio-widget {
+  position: relative;
+}
+
+.radio-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  font-size: 22px;
+  background: var(--glass-bg);
+  border: 1px solid var(--panel-edge);
+  border-radius: 50%;
+  box-shadow: var(--glass-shadow);
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.radio-toggle.is-playing {
+  background: var(--brass);
+  border-color: var(--brass);
+}
+
+.radio-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 210px;
+  padding: 10px;
+  background: var(--glass-bg);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-m);
+  box-shadow: var(--glass-shadow);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 50;
+}
+
+.radio-menu.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.radio-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-s);
+  padding: 10px 12px;
+  min-height: 44px;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.radio-menu-dot {
   width: 8px;
   height: 8px;
+  flex-shrink: 0;
   border-radius: 50%;
   background: currentColor;
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
 /* Wiederverwendet dieselbe compositor-billige Puls-Animation wie der
    "Live"-Punkt im Header (siehe dotPulse-Kommentar oben) statt eine
    eigene zu erfinden. */
-.radio-btn.is-playing {
-  color: #ffffff;
-  background: var(--brass);
-  border-color: var(--brass);
+.radio-menu-item.is-playing {
+  color: var(--brass-ink);
+  background: rgba(169, 121, 63, 0.14);
 }
 
-.radio-btn.is-playing .radio-btn-dot {
+.radio-menu-item.is-playing .radio-menu-dot {
   opacity: 1;
   animation: dotPulse 2.6s ease-in-out infinite;
 }
