@@ -2188,13 +2188,21 @@ function renderCommuteMap(coords, results) {
 
   els.commuteMapImg.onload = function () {
     if (els.commuteMapWrap) els.commuteMapWrap.classList.remove("is-empty");
+    // Falls ein vorheriger Versuch auf die Balken zurückgefallen war (siehe
+    // onerror unten), bei Erfolg wieder auf die Kartenansicht umschalten.
+    if (els.commuteMapWrap) els.commuteMapWrap.style.display = "";
+    if (els.commuteRace) els.commuteRace.style.display = "none";
   };
   els.commuteMapImg.onerror = function () {
     // Kartenbild nicht verfügbar (Netzwerk, Kontingent, ungültiger Key) —
     // Route weglassen statt ein kaputtes Bild + falsch platzierte Linie
-    // stehen zu lassen.
+    // stehen zu lassen. Die Balken-Ansicht wurde in updateCommute() schon
+    // im Hintergrund mitgebaut (nur versteckt) — jetzt draufschalten statt
+    // das Panel auf einen bloßen Text-Hinweis zu reduzieren.
     els.commuteMapRoute.innerHTML = "";
     if (els.commuteMapWrap) els.commuteMapWrap.classList.add("is-empty");
+    if (els.commuteMapWrap) els.commuteMapWrap.style.display = "none";
+    if (els.commuteRace) els.commuteRace.style.display = "";
   };
   els.commuteMapImg.src = imgUrl;
 
@@ -2254,6 +2262,11 @@ function updateCommute() {
       // Kartenansicht nur mit TomTom-Key (sonst kein Kartenbild abrufbar
       // und keine echte Routenführung vorhanden) — ohne Key bleibt es bei
       // der Balken-Ansicht, damit das Panel nie leer/kaputt aussieht.
+      // Balken werden auch mit Key im Hintergrund mitgebaut (nur versteckt)
+      // — falls das Kartenbild fehlschlägt, kann renderCommuteMap()s
+      // onerror-Handler sofort darauf zurückfallen, statt das Panel auf
+      // einen bloßen Text-Hinweis zu reduzieren.
+      renderCommuteRace(results);
       if (CONFIG.tomtomApiKey) {
         if (els.commuteRace) els.commuteRace.style.display = "none";
         if (els.commuteMapWrap) els.commuteMapWrap.style.display = "";
@@ -2261,7 +2274,6 @@ function updateCommute() {
       } else {
         if (els.commuteMapWrap) els.commuteMapWrap.style.display = "none";
         if (els.commuteRace) els.commuteRace.style.display = "";
-        renderCommuteRace(results);
       }
     });
   }).catch(function (err) {
