@@ -1098,6 +1098,13 @@ html, body {
   margin-top: 2px;
 }
 
+.commute-hero-forecast {
+  font-size: 12px;
+  color: var(--ink-dim);
+  opacity: 0.75;
+  margin-top: 6px;
+}
+
 .commute-race {
   flex: 1;
   min-height: 0;
@@ -1186,6 +1193,47 @@ html, body {
   font-size: 12px;
   color: var(--ink-dim);
   margin-top: 8px;
+}
+
+/* Kartenansicht statt Balken (nur aktiv, wenn CONFIG.tomtomApiKey gesetzt
+   ist — sonst bleiben die Balken oben die Anzeige). Statisches Kartenbild
+   von TomToms Static-Image-API (kein WebGL, ganz normaler Bild-Request —
+   die interaktive TomTom-Karte scheitert auf Safari 12/iPad Air 1 an
+   fehlendem WebGL2-Support) plus eine selbst gezeichnete SVG-Route
+   darüber. Bild und SVG werden beide ungleichmäßig gestreckt (kein
+   object-fit: cover/contain), dadurch bleibt die Route exakt über der
+   Karte ausgerichtet, egal welches Seitenverhältnis der Container gerade
+   hat. */
+.commute-map-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  border: 1px solid var(--panel-edge);
+  background: #e9e6df;
+  box-shadow: var(--glass-shadow);
+}
+
+.commute-map-wrap.is-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.commute-map-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.commute-map-route {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 /* ---------- Zitat-Panel ---------- */

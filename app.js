@@ -29,6 +29,9 @@ const els = {
   quoteBlock: document.getElementById("quoteBlock"),
   commuteHero: document.getElementById("commuteHero"),
   commuteRace: document.getElementById("commuteRace"),
+  commuteMapWrap: document.getElementById("commuteMapWrap"),
+  commuteMapImg: document.getElementById("commuteMapImg"),
+  commuteMapRoute: document.getElementById("commuteMapRoute"),
   wasteLine: document.getElementById("wasteLine"),
   sportBlock: document.getElementById("sportBlock"),
 };
@@ -1404,45 +1407,91 @@ function fetchTransitItinerary(from, to) {
   });
 }
 
-// Echte Live-Verkehrsdaten für die Auto-Zeit (TomTom Routing API,
-// traffic=true) statt der bisherigen freien-Fahrt-Schätzung. Nur aktiv,
-// wenn CONFIG.tomtomApiKey gesetzt ist — sonst/bei Fehlern fällt
-// fetchCarItinerary weiter unten automatisch auf die alte Transitous-
-// Route + Plausibilitätsschätzung zurück (keine harte Abhängigkeit).
-function fetchTomTomCarRoute(from, to) {
+// Nächster Zeitpunkt, zu dem tatsächlich losgefahren würde (siehe
+// CONFIG.commuteTypicalDepartTime) — an Werktagen die nächste noch nicht
+// verstrichene Abfahrtszeit, sonst der nächste Werktag. Grund: die Tafel
+// hängt an der Wand und zeigt das Pendel-Panel auch abends oder am
+// Wochenende in der Rotation — "live jetzt" wäre dann fast immer
+// irreführend kurz (kein Berufsverkehr um 22 Uhr oder Sonntagmittag).
+// TomTom bekommt diesen Zeitpunkt über departAt und liefert die für DANN
+// typische Verkehrslage statt der Lage genau jetzt.
+function nextCommuteDepartureDate() {
+  const timeStr = CONFIG.commuteTypicalDepartTime || "07:30";
+  const parts = timeStr.split(":");
+  const hh = parseInt(parts[0], 10) || 7;
+  const mm = parseInt(parts[1], 10) || 30;
+
+  const now = new Date();
+  let d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+
+  if (d.getTime() <= now.getTime()) {
+    d = new Date(d.getTime() + 86400000);
+  }
+  while (d.getDay() === 0 || d.getDay() === 6) {
+    d = new Date(d.getTime() + 86400000);
+  }
+  return d;
+}
+
+// Echte Routendaten über die TomTom Routing API statt der bisherigen
+// Luftlinien-Schätzung — bei travelMode "car" zusätzlich mit Live-/
+// vorhergesagtem Verkehr (traffic=true). Nur aktiv, wenn CONFIG.tomtomApiKey
+// gesetzt ist; die Aufrufer weiter unten fallen sonst/bei Fehlern auf die
+// alte Transitous-Route + Plausibilitätsschätzung zurück (keine harte
+// Abhängigkeit von einem einzelnen Drittanbieter).
+function fetchTomTomRoute(from, to, travelMode, departDate) {
   if (!CONFIG.tomtomApiKey) {
     return Promise.reject(new Error("kein TomTom-Key konfiguriert"));
   }
+  const wantsTraffic = travelMode === "car";
   const url = "https://api.tomtom.com/routing/1/calculateRoute/" +
     from.lat + "," + from.lon + ":" + to.lat + "," + to.lon +
     "/json?key=" + encodeURIComponent(CONFIG.tomtomApiKey) +
-    "&traffic=true&travelMode=car&routeType=fastest" +
+    "&travelMode=" + travelMode + "&routeType=fastest" +
+    (wantsTraffic ? "&traffic=true" : "") +
+    (departDate ? "&departAt=" + encodeURIComponent(departDate.toISOString()) : "") +
     "&_=" + Date.now();
 
   return fetch(url, { cache: "no-store" }).then(function (res) {
-    if (!res.ok) throw new Error("TomTom-Routenabruf fehlgeschlagen (" + res.status + ")");
+    if (!res.ok) throw new Error("TomTom-Routenabruf (" + travelMode + ") fehlgeschlagen (" + res.status + ")");
     return res.json();
   }).then(function (data) {
     const route = data && Array.isArray(data.routes) ? data.routes[0] : null;
     const summary = route && route.summary;
     if (!summary || typeof summary.travelTimeInSeconds !== "number") {
-      throw new Error("TomTom-Antwort ohne verwertbare Route");
+      throw new Error("TomTom-Antwort (" + travelMode + ") ohne verwertbare Route");
     }
     const minutes = Math.max(1, Math.round(summary.travelTimeInSeconds / 60));
-    const delayMin = typeof summary.trafficDelayInSeconds === "number"
+    const delayMin = wantsTraffic && typeof summary.trafficDelayInSeconds === "number"
       ? Math.round(summary.trafficDelayInSeconds / 60)
       : 0;
-    return { minutes: minutes, delayMin: delayMin };
+
+    // Echte Streckenführung für die Kartenansicht (siehe renderCommuteMap)
+    // — [lon, lat]-Paare aus den Leg-Punkten. Fehlt das Feld oder ist leer,
+    // zeichnet renderCommuteMap später einfach eine gerade Linie
+    // Start→Ziel statt der echten Route — kein harter Fehler.
+    const points = [];
+    if (route && Array.isArray(route.legs)) {
+      route.legs.forEach(function (leg) {
+        if (leg && Array.isArray(leg.points)) {
+          leg.points.forEach(function (p) {
+            if (p && typeof p.longitude === "number" && typeof p.latitude === "number") {
+              points.push([p.longitude, p.latitude]);
+            }
+          });
+        }
+      });
+    }
+
+    return { minutes: minutes, delayMin: delayMin, points: points };
   });
 }
 
-// Baut das Auto-Ergebnis fürs Pendel-Panel: erst TomTom mit Live-Verkehr
+// Baut das Auto-Ergebnis fürs Pendel-Panel: erst TomTom mit Verkehr
 // versuchen (falls konfiguriert), bei Erfolg direkt verwenden. Ohne Key
-// oder bei jedem Fehler (Netzwerk, Kontingent, kaputte Antwort) fällt es
-// genau auf den bisherigen Weg zurück — Transitous-Route + Plausibilitäts-
-// Schätzung —, damit die Tafel nie von einem einzelnen Drittanbieter
-// abhängt.
-function fetchCarItinerary(from, to, distanceMeters) {
+// oder bei jedem Fehler fällt es auf den bisherigen Weg zurück —
+// Transitous-Route + Plausibilitätsschätzung.
+function fetchCarItinerary(from, to, distanceMeters, departDate) {
   function viaMotis() {
     return fetchDirectItinerary(from, to, "CAR")
       .then(function (it) {
@@ -1465,12 +1514,49 @@ function fetchCarItinerary(from, to, distanceMeters) {
 
   if (!CONFIG.tomtomApiKey) return viaMotis();
 
-  return fetchTomTomCarRoute(from, to)
+  return fetchTomTomRoute(from, to, "car", departDate)
     .then(function (r) {
-      return { itinerary: null, minutes: r.minutes, estimated: false, delayMin: r.delayMin, source: "tomtom" };
+      return {
+        itinerary: null, minutes: r.minutes, estimated: false, delayMin: r.delayMin,
+        source: "tomtom", points: r.points,
+      };
     })
     .catch(function (err) {
-      console.error("TomTom-Verkehrsdaten nicht verfügbar, nutze Ersatzroute:", err);
+      console.error("TomTom-Route (Auto) nicht verfügbar, nutze Ersatzroute:", err);
+      return viaMotis();
+    });
+}
+
+// Analog fürs Fahrrad: TomTom liefert die reale Straßenführung (Kanäle,
+// Umwege etc.) statt der reinen Luftlinien-Schätzung. Stau spielt beim Rad
+// kaum eine Rolle, deshalb ohne traffic=true — departAt wird trotzdem
+// mitgeschickt, schadet nicht und hält den Code für Auto/Rad einheitlich.
+function fetchBikeItinerary(from, to, distanceMeters, departDate) {
+  function viaMotis() {
+    return fetchDirectItinerary(from, to, "BIKE")
+      .then(function (it) {
+        const check = plausibleMinutesOrFallback(
+          itineraryDurationMin(it), estimateBikeMinutes(distanceMeters), "Fahrrad"
+        );
+        return {
+          itinerary: it, minutes: check.minutes, estimated: check.estimated,
+          source: check.estimated ? "fallback" : "motis",
+        };
+      })
+      .catch(function (err) {
+        console.error(err);
+        return { itinerary: null, minutes: estimateBikeMinutes(distanceMeters), estimated: true, source: "fallback" };
+      });
+  }
+
+  if (!CONFIG.tomtomApiKey) return viaMotis();
+
+  return fetchTomTomRoute(from, to, "bicycle", departDate)
+    .then(function (r) {
+      return { itinerary: null, minutes: r.minutes, estimated: false, source: "tomtom", points: r.points };
+    })
+    .catch(function (err) {
+      console.error("TomTom-Route (Rad) nicht verfügbar, nutze Ersatzroute:", err);
       return viaMotis();
     });
 }
@@ -1647,9 +1733,14 @@ function renderCommuteHero(results) {
   const textWrap = document.createElement("div");
   textWrap.className = "commute-hero-text";
 
+  // Ohne Vorhersage (kein TomTom-Key) bleibt es bei "heute" — mit
+  // Vorhersage ist der Bezugstag/-zeitpunkt variabel (siehe
+  // nextCommuteDepartureDate), deshalb dann explizit benennen statt
+  // fälschlich "heute" zu behaupten, wenn eigentlich der nächste
+  // Werktagmorgen gemeint ist.
   const tag = document.createElement("span");
   tag.className = "commute-hero-tag";
-  tag.textContent = "Heute am schnellsten";
+  tag.textContent = results.forecastDate ? "Voraussichtlich am schnellsten" : "Heute am schnellsten";
   textWrap.appendChild(tag);
 
   const big = document.createElement("span");
@@ -1667,6 +1758,15 @@ function renderCommuteHero(results) {
   label.className = "commute-hero-label";
   label.textContent = "mit " + winner.label + " zu Max Müller GmbH";
   textWrap.appendChild(label);
+
+  if (results.forecastDate) {
+    const forecast = document.createElement("span");
+    forecast.className = "commute-hero-forecast";
+    const wd = results.forecastDate.toLocaleDateString("de-DE", { weekday: "short" });
+    const hm = results.forecastDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    forecast.textContent = "Prognose für " + wd + ", " + hm + " Uhr";
+    textWrap.appendChild(forecast);
+  }
 
   els.commuteHero.appendChild(textWrap);
 }
@@ -1786,24 +1886,107 @@ function renderCommuteRace(results) {
   commuteAvailable = !!known.length;
 }
 
+// Web-Mercator-Y (EPSG:3857) für eine Breitengrad — Standardformel, damit
+// die Route korrekt über dem TomTom-Kartenbild liegt (Kartenbilder werden
+// in Mercator-Projektion gerendert, geradlinige Interpolation von Breiten-
+// graden allein würde die Route leicht nach Norden/Süden verschieben).
+function mercatorY(lat) {
+  const rad = (lat * Math.PI) / 180;
+  return Math.log(Math.tan(Math.PI / 4 + rad / 2));
+}
+
+// Kartenansicht mit eingezeichneter Route für den schnellsten Verkehrsmittel
+// (Ersatz für die interaktive TomTom-Karte, die an fehlendem WebGL2 auf
+// Safari 12 scheitert — siehe Kommentar bei .commute-map-wrap in style.css).
+// Statisches Kartenbild von TomToms Static-Image-API + eine SVG-Linie
+// darüber, deren Koordinaten aus den echten Routen-Punkten (falls
+// vorhanden) oder sonst einer geraden Start→Ziel-Linie berechnet werden.
+function renderCommuteMap(coords, results) {
+  if (!els.commuteMapImg || !els.commuteMapRoute) return;
+
+  const winner = fastestCommuteMode(results);
+  if (!winner || !coords) {
+    els.commuteMapImg.removeAttribute("src");
+    els.commuteMapRoute.innerHTML = "";
+    return;
+  }
+
+  const winnerRes = results[winner.key];
+  const points = (winnerRes && Array.isArray(winnerRes.points) && winnerRes.points.length >= 2)
+    ? winnerRes.points
+    : [[coords.home.lon, coords.home.lat], [coords.work.lon, coords.work.lat]];
+
+  let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+  points.forEach(function (p) {
+    if (p[0] < minLon) minLon = p[0];
+    if (p[0] > maxLon) maxLon = p[0];
+    if (p[1] < minLat) minLat = p[1];
+    if (p[1] > maxLat) maxLat = p[1];
+  });
+  // Rand ringsum, sonst klebt die Route am Bildrand.
+  const padLon = Math.max((maxLon - minLon) * 0.18, 0.003);
+  const padLat = Math.max((maxLat - minLat) * 0.18, 0.002);
+  minLon -= padLon; maxLon += padLon; minLat -= padLat; maxLat += padLat;
+
+  const W = 900;
+  const H = 460;
+  const color = (CONFIG.commuteModeColors && CONFIG.commuteModeColors[winner.key]) || "#5b6b78";
+
+  const imgUrl = "https://api.tomtom.com/map/1/staticimage" +
+    "?key=" + encodeURIComponent(CONFIG.tomtomApiKey) +
+    "&bbox=" + minLon.toFixed(5) + "," + minLat.toFixed(5) + "," + maxLon.toFixed(5) + "," + maxLat.toFixed(5) +
+    "&format=jpg&layer=basic&style=main&width=" + W + "&height=" + H +
+    "&view=Unified&language=de-DE&_=" + Date.now();
+
+  els.commuteMapImg.onload = function () {
+    if (els.commuteMapWrap) els.commuteMapWrap.classList.remove("is-empty");
+  };
+  els.commuteMapImg.onerror = function () {
+    // Kartenbild nicht verfügbar (Netzwerk, Kontingent, ungültiger Key) —
+    // Route weglassen statt ein kaputtes Bild + falsch platzierte Linie
+    // stehen zu lassen.
+    els.commuteMapRoute.innerHTML = "";
+    if (els.commuteMapWrap) els.commuteMapWrap.classList.add("is-empty");
+  };
+  els.commuteMapImg.src = imgUrl;
+
+  const mercMinY = mercatorY(minLat);
+  const mercMaxY = mercatorY(maxLat);
+
+  function project(lon, lat) {
+    const x = ((lon - minLon) / (maxLon - minLon)) * W;
+    const y = ((mercMaxY - mercatorY(lat)) / (mercMaxY - mercMinY)) * H;
+    return [x, y];
+  }
+
+  const pathD = points.map(function (p, i) {
+    const xy = project(p[0], p[1]);
+    return (i === 0 ? "M" : "L") + xy[0].toFixed(1) + "," + xy[1].toFixed(1);
+  }).join(" ");
+
+  const homeXY = project(coords.home.lon, coords.home.lat);
+  const workXY = project(coords.work.lon, coords.work.lat);
+
+  els.commuteMapRoute.setAttribute("viewBox", "0 0 " + W + " " + H);
+  els.commuteMapRoute.innerHTML =
+    '<path d="' + pathD + '" fill="none" stroke="' + color + '" stroke-width="6" ' +
+    'stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.92"></path>' +
+    '<circle cx="' + homeXY[0].toFixed(1) + '" cy="' + homeXY[1].toFixed(1) + '" r="8" fill="#fff" stroke="' + color + '" stroke-width="4"></circle>' +
+    '<circle cx="' + workXY[0].toFixed(1) + '" cy="' + workXY[1].toFixed(1) + '" r="8" fill="' + color + '" stroke="#fff" stroke-width="3"></circle>';
+}
+
 function updateCommute() {
   if (!els.commuteHero) return;
+
+  // Nur wenn TomTom aktiv ist, macht eine Vorhersage-Uhrzeit überhaupt
+  // etwas — die alte Transitous-Schätzung kennt kein departAt.
+  const departDate = CONFIG.tomtomApiKey ? nextCommuteDepartureDate() : null;
 
   resolveCommuteCoords().then(function (coords) {
     const distanceMeters = haversineMeters(coords.home, coords.work);
 
     return Promise.all([
-      fetchDirectItinerary(coords.home, coords.work, "BIKE")
-        .then(function (it) {
-          const check = plausibleMinutesOrFallback(
-            itineraryDurationMin(it), estimateBikeMinutes(distanceMeters), "Fahrrad"
-          );
-          return { itinerary: it, minutes: check.minutes, estimated: check.estimated };
-        })
-        .catch(function (err) {
-          console.error(err);
-          return { itinerary: null, minutes: estimateBikeMinutes(distanceMeters), estimated: true };
-        }),
+      fetchBikeItinerary(coords.home, coords.work, distanceMeters, departDate),
       fetchTransitItinerary(coords.home, coords.work)
         .then(function (it) {
           return {
@@ -1815,11 +1998,23 @@ function updateCommute() {
           };
         })
         .catch(function (err) { console.error(err); return null; }),
-      fetchCarItinerary(coords.home, coords.work, distanceMeters),
+      fetchCarItinerary(coords.home, coords.work, distanceMeters, departDate),
     ]).then(function (all) {
-      const results = { bike: all[0], bus: all[1], car: all[2] };
+      const results = { bike: all[0], bus: all[1], car: all[2], forecastDate: departDate };
       renderCommuteHero(results);
-      renderCommuteRace(results);
+
+      // Kartenansicht nur mit TomTom-Key (sonst kein Kartenbild abrufbar
+      // und keine echte Routenführung vorhanden) — ohne Key bleibt es bei
+      // der Balken-Ansicht, damit das Panel nie leer/kaputt aussieht.
+      if (CONFIG.tomtomApiKey) {
+        if (els.commuteRace) els.commuteRace.style.display = "none";
+        if (els.commuteMapWrap) els.commuteMapWrap.style.display = "";
+        renderCommuteMap(coords, results);
+      } else {
+        if (els.commuteMapWrap) els.commuteMapWrap.style.display = "none";
+        if (els.commuteRace) els.commuteRace.style.display = "";
+        renderCommuteRace(results);
+      }
     });
   }).catch(function (err) {
     console.error(err);

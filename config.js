@@ -86,7 +86,15 @@ const CONFIG = {
   //   3. Den API-Key hier eintragen
   // Leer lassen ("") = Auto-Zeit fällt zurück auf die bisherige grobe
   // Schätzung (Luftlinie × Aufschlag) ohne echten Verkehr.
-  tomtomApiKey: "",
+  tomtomApiKey: "83kEpBN2fCEuAb4swgizpdqF1A0mJM3r",
+
+  // Übliche Abfahrtszeit an Werktagen. Die Tafel zeigt das Pendel-Panel
+  // auch außerhalb der eigentlichen Pendelzeit (Abend, Wochenende) in der
+  // Rotation — "Verkehr genau jetzt" wäre dann meist irreführend kurz.
+  // Ist ein TomTom-Key gesetzt, fragt die Tafel deshalb immer die
+  // vorhergesagte Verkehrslage für die nächste noch bevorstehende
+  // Abfahrt zu dieser Uhrzeit ab (an Werktagen, sonst nächster Werktag).
+  commuteTypicalDepartTime: "07:30",
 
   // Farben je Verkehrsmittel im Pendel-Panel (Rennen-Balken/Sieger-Anzeige).
   // Kein Kartenmaterial mehr nötig, seit die Karte durch die Rennen-
