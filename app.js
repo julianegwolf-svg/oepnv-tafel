@@ -16,6 +16,7 @@ const els = {
   clockTime: document.getElementById("clockTime"),
   clockDate: document.getElementById("clockDate"),
   greetingText: document.getElementById("greetingText"),
+  weatherPanel: document.getElementById("panel-weather"),
   weatherBig: document.getElementById("weatherBig"),
   weatherBigIcon: document.getElementById("weatherBigIcon"),
   weatherBigTemp: document.getElementById("weatherBigTemp"),
@@ -541,8 +542,25 @@ function weatherFxCategory(code, isDay) {
   return null;
 }
 
+const WEATHER_FX_CATEGORIES = ["rain", "storm", "snow", "fog", "cloud", "sun", "night"];
+
+// Setzt die fx-Kategorie auf .weather-scene (#panel-weather) über
+// classList statt className-Ersatz — showPanel() wechselt beim Karussell
+// ebenfalls per classList.toggle("active", …) auf demselben Element,
+// eine className-Zuweisung hier würde dessen "active"-Klasse (und die
+// hier gesetzten Klassen) beim nächsten Wechsel sonst gegenseitig
+// wegwischen.
+function setWeatherScene(fxCategory) {
+  if (!els.weatherPanel) return;
+  els.weatherPanel.classList.add("weather-scene");
+  WEATHER_FX_CATEGORIES.forEach(function (c) {
+    els.weatherPanel.classList.remove("fx-" + c);
+  });
+  if (fxCategory) els.weatherPanel.classList.add("fx-" + fxCategory);
+}
+
 function ensureWeatherFxLayers() {
-  if (weatherFxBuilt || !els.weatherBig) return;
+  if (weatherFxBuilt || !els.weatherPanel) return;
   weatherFxBuilt = true;
 
   // Regen: drei Tiefenebenen (fern/mittel/nah) mit eigener Geschwindigkeit,
@@ -574,7 +592,7 @@ function ensureWeatherFxLayers() {
   });
 
   // Gewitter nutzt dieselbe Regenebene (s.o.) + ein Blitz-Overlay, das
-  // per Klasse auf .weather-big nur bei "fx-storm" überhaupt aktiv wird.
+  // per Klasse auf .weather-scene nur bei "fx-storm" überhaupt aktiv wird.
   const lightningLayer = document.createElement("div");
   lightningLayer.className = "fx-lightning";
 
@@ -639,7 +657,7 @@ function ensureWeatherFxLayers() {
   }
 
   [nightLayer, sunLayer, fogLayer, snowLayer, cloudLayer, lightningLayer, rainLayer].forEach(function (layer) {
-    els.weatherBig.insertBefore(layer, els.weatherBig.firstChild);
+    els.weatherPanel.insertBefore(layer, els.weatherPanel.firstChild);
   });
 }
 
@@ -667,10 +685,10 @@ let lastWeatherPhotoTitle = null;
 let weatherPhotoFetchedAt = 0;
 
 function ensureWeatherPhotoLayer() {
-  if (weatherPhotoEl || !els.weatherBig) return;
+  if (weatherPhotoEl || !els.weatherPanel) return;
   weatherPhotoEl = document.createElement("div");
   weatherPhotoEl.className = "weather-photo";
-  els.weatherBig.insertBefore(weatherPhotoEl, els.weatherBig.firstChild);
+  els.weatherPanel.insertBefore(weatherPhotoEl, els.weatherPanel.firstChild);
 }
 
 function pickPhotoTitle() {
@@ -708,14 +726,15 @@ function applyWeatherPhotoTint(code, isDay) {
   if (!bgUrl) return;
   const tint = weatherPhotoTint(code, isDay);
   weatherPhotoEl.style.backgroundImage = "linear-gradient(" + tint + "," + tint + "), " + bgUrl;
-  // Textfarbe/Schatten ans Foto anpassen — className von updateWeather()
-  // wird bei jedem Refresh neu gesetzt, deshalb hier statt einmalig beim
-  // Laden, damit es auch nach dem Cache-Pfad (kein neuer Fetch) stimmt.
-  if (els.weatherBig) els.weatherBig.classList.add("has-photo");
+  // Textfarbe/Schatten ans Foto anpassen — die fx-/has-*-Klassen auf
+  // .weather-scene werden über classList gepflegt (nie per className-
+  // Zuweisung ersetzt), damit showPanel()'s eigene className-Zuweisung
+  // beim Karussell-Wechsel sie nicht versehentlich wieder wegwischt.
+  if (els.weatherPanel) els.weatherPanel.classList.add("has-photo");
 }
 
 function fetchWeatherPhoto(code, isDay) {
-  if (!els.weatherBig) return;
+  if (!els.weatherPanel) return;
   ensureWeatherPhotoLayer();
 
   const now = Date.now();
@@ -764,7 +783,7 @@ let weatherVideoCategory = null;
 const weatherVideoFailedFor = {};
 
 function ensureWeatherVideoLayer() {
-  if (weatherVideoEl || !els.weatherBig) return;
+  if (weatherVideoEl || !els.weatherPanel) return;
   weatherVideoEl = document.createElement("video");
   weatherVideoEl.className = "weather-video";
   weatherVideoEl.muted = true;
@@ -779,7 +798,7 @@ function ensureWeatherVideoLayer() {
   weatherVideoEl.addEventListener("error", function () {
     if (weatherVideoCategory) weatherVideoFailedFor[weatherVideoCategory] = true;
     weatherVideoEl.classList.remove("playing");
-    if (els.weatherBig) els.weatherBig.classList.remove("has-video");
+    if (els.weatherPanel) els.weatherPanel.classList.remove("has-video");
     if (els.weatherDebug) {
       els.weatherDebug.textContent = "fx: " + weatherVideoCategory + " · Video fehlgeschlagen → CSS/Foto";
     }
@@ -787,7 +806,7 @@ function ensureWeatherVideoLayer() {
 
   weatherVideoEl.addEventListener("loadeddata", function () {
     weatherVideoEl.classList.add("playing");
-    if (els.weatherBig) els.weatherBig.classList.add("has-video");
+    if (els.weatherPanel) els.weatherPanel.classList.add("has-video");
     if (els.weatherDebug) {
       els.weatherDebug.textContent = "fx: " + weatherVideoCategory + " · Video läuft";
     }
@@ -801,11 +820,11 @@ function ensureWeatherVideoLayer() {
     }
   });
 
-  els.weatherBig.appendChild(weatherVideoEl);
+  els.weatherPanel.appendChild(weatherVideoEl);
 }
 
 function applyWeatherVideo(category) {
-  if (!els.weatherBig) return;
+  if (!els.weatherPanel) return;
   ensureWeatherVideoLayer();
 
   const src = CONFIG.weatherVideos && CONFIG.weatherVideos[category];
@@ -813,23 +832,23 @@ function applyWeatherVideo(category) {
 
   if (!src || weatherVideoFailedFor[category]) {
     weatherVideoEl.classList.remove("playing");
-    els.weatherBig.classList.remove("has-video");
+    els.weatherPanel.classList.remove("has-video");
     return;
   }
 
   if (weatherVideoEl.getAttribute("data-src") === src) {
-    // Läuft schon — Sichtbarkeits-Klasse trotzdem neu setzen, da
-    // updateWeather() die className von .weather-big jedes Mal ersetzt.
+    // Läuft schon — Sichtbarkeits-Klasse trotzdem neu setzen (classList,
+    // kein className-Ersatz mehr — siehe showPanel()-Fix).
     if (weatherVideoEl.readyState >= 2) {
       weatherVideoEl.classList.add("playing");
-      els.weatherBig.classList.add("has-video");
+      els.weatherPanel.classList.add("has-video");
     }
     return;
   }
 
   weatherVideoEl.setAttribute("data-src", src);
   weatherVideoEl.classList.remove("playing");
-  els.weatherBig.classList.remove("has-video");
+  els.weatherPanel.classList.remove("has-video");
   weatherVideoEl.src = src;
   weatherVideoEl.load();
 }
@@ -922,10 +941,10 @@ function updateWeather() {
       els.weatherBigDesc.textContent = entry[1] || "";
     }
 
-    if (els.weatherBig) {
+    if (els.weatherPanel) {
       ensureWeatherFxLayers();
       const fxCategory = weatherFxCategory(code, isDay);
-      els.weatherBig.className = "weather-big" + (fxCategory ? " fx-" + fxCategory : "");
+      setWeatherScene(fxCategory);
       fetchWeatherPhoto(code, isDay);
       applyWeatherVideo(fxCategory);
 
@@ -2224,11 +2243,11 @@ function showPanel(name) {
   for (let i = 0; i < ids.length; i++) {
     const el = document.getElementById("panel-" + ids[i]);
     if (!el) continue;
-    if (ids[i] === name) {
-      el.className = "panel-view active";
-    } else {
-      el.className = "panel-view";
-    }
+    // classList.toggle statt className-Zuweisung — #panel-weather trägt
+    // inzwischen eigene Zustandsklassen (weather-scene, fx-*, has-photo,
+    // has-video), die hier sonst bei JEDEM Karussell-Wechsel überschrieben
+    // würden (className = "..." ersetzt IMMER alles).
+    el.classList.toggle("active", ids[i] === name);
   }
 
   if (name === "commute" && commuteMap) {

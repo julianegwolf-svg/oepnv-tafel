@@ -351,22 +351,28 @@ html, body {
   50% { transform: translateY(-9px); }
 }
 
-@keyframes weatherDrift {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
+/* Das ganze Wetter-Panel ist jetzt die "Bühne": Foto/Video/CSS-Effekte
+   liegen als volle Panel-Hintergründe hinter ALLEM (Kopfzeile, Kachel,
+   Stunden, Details) statt nur hinter der kleinen Icon/Temperatur-Zeile —
+   deutlich größer und wirkt jetzt wirklich wie ein Hintergrundvideo statt
+   ein kleines Element irgendwo im Panel. #panel-weather ist als
+   .panel-view bereits position:absolute und füllt die ganze Bühne, die
+   Hintergrund-Layer (position:absolute; inset:0) strecken sich dadurch
+   automatisch über das komplette Panel. */
+#panel-weather.weather-scene {
+  overflow: hidden;
 }
 
 .weather-big {
   position: relative;
-  overflow: hidden;
   display: flex;
   align-items: center;
-  padding: 26px 30px;
-  margin-bottom: 22px;
+  padding: 20px 26px;
+  margin-bottom: 18px;
   border-radius: 20px;
-  background: linear-gradient(120deg, #eaf1f6, #f7f9fb, #eef3ee, #f7f9fb);
-  background-size: 300% 100%;
-  animation: weatherDrift 18s ease-in-out infinite alternate;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border: 1px solid var(--panel-edge);
   box-shadow: var(--glass-shadow);
 }
@@ -375,13 +381,13 @@ html, body {
   margin-left: 26px;
 }
 
-/* Dezente Wetter-Effekte: liegen per z-index:-1 hinter Icon/Temperatur/
-   Text (siehe Stacking-Reihenfolge negativer z-index innerhalb eines
-   position:relative-Containers), werden nur per Klasse ein-/ausgeblendet. */
+/* Dezente Wetter-Effekte: liegen per z-index hinter allem Inhalt (siehe
+   Stacking-Reihenfolge negativer z-index innerhalb des position:absolute-
+   Panels), werden nur per Klasse auf .weather-scene ein-/ausgeblendet. */
 .weather-photo {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  z-index: -2;
+  z-index: -4;
   background-size: cover;
   background-position: center;
   opacity: 0;
@@ -400,7 +406,7 @@ html, body {
 .weather-video {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  z-index: -1;
+  z-index: -3;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -411,43 +417,45 @@ html, body {
 }
 
 .weather-video.playing {
-  opacity: 0.92;
+  opacity: 0.95;
 }
 
 /* Textfarbe/Schatten umschalten, sobald ein Foto oder Video hinter dem
    Panel liegt — sonst wäre die normale dunkle Schrift je nach Helligkeit
    schlecht lesbar. text-shadow statt Kontrastberechnung, damit es bei
-   jedem Foto/Video funktioniert statt nur bei den getesteten. */
-.weather-big.has-photo .weather-big-temp,
-.weather-big.has-photo .weather-big-desc,
-.weather-big.has-video .weather-big-temp,
-.weather-big.has-video .weather-big-desc {
+   jedem Foto/Video funktioniert statt nur bei den getesteten. Die Klasse
+   sitzt jetzt auf .weather-scene (dem ganzen Panel), nicht mehr nur auf
+   der kleinen Icon-Zeile. */
+.weather-scene.has-photo .weather-big-temp,
+.weather-scene.has-photo .weather-big-desc,
+.weather-scene.has-video .weather-big-temp,
+.weather-scene.has-video .weather-big-desc {
   color: #ffffff;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
-.weather-big.has-photo .weather-big-icon,
-.weather-big.has-video .weather-big-icon {
+.weather-scene.has-photo .weather-big-icon,
+.weather-scene.has-video .weather-big-icon {
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
 }
 
 .weather-fx-layer {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  z-index: -1;
+  z-index: -2;
   overflow: hidden;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.8s ease;
 }
 
-.weather-big.fx-rain .weather-fx-rain,
-.weather-big.fx-storm .weather-fx-rain,
-.weather-big.fx-cloud .weather-fx-cloud,
-.weather-big.fx-snow .weather-fx-snow,
-.weather-big.fx-fog .weather-fx-fog,
-.weather-big.fx-sun .weather-fx-sun,
-.weather-big.fx-night .weather-fx-night {
+.weather-scene.fx-rain .weather-fx-rain,
+.weather-scene.fx-storm .weather-fx-rain,
+.weather-scene.fx-cloud .weather-fx-cloud,
+.weather-scene.fx-snow .weather-fx-snow,
+.weather-scene.fx-fog .weather-fx-fog,
+.weather-scene.fx-sun .weather-fx-sun,
+.weather-scene.fx-night .weather-fx-night {
   opacity: 1;
 }
 
@@ -521,7 +529,7 @@ html, body {
   display: none;
 }
 
-.weather-big.fx-storm .fx-lightning {
+.weather-scene.fx-storm .fx-lightning {
   display: block;
   animation: fxLightningFlash 6.5s ease-in-out infinite;
 }
@@ -650,8 +658,8 @@ html, body {
   border-radius: 6px;
 }
 
-.weather-big.has-photo .weather-debug,
-.weather-big.has-video .weather-debug {
+.weather-scene.has-photo .weather-debug,
+.weather-scene.has-video .weather-debug {
   color: rgba(255, 255, 255, 0.75);
   background: rgba(0, 0, 0, 0.35);
 }
