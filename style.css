@@ -255,8 +255,6 @@ html, body {
 .panel-view:not(.active) .fx-star,
 .panel-view:not(.active) .weather-big-icon,
 .panel-view:not(.active) .weather-hour-icon,
-.panel-view:not(.active) .commute-chip-icon,
-.panel-view:not(.active) .commute-pin-pulse,
 .panel-view:not(.active) .typewriter-cursor,
 .panel-view:not(.active) .sport-slide-crest {
   animation-play-state: paused;
@@ -1021,149 +1019,173 @@ html, body {
   text-overflow: ellipsis;
 }
 
-/* ---------- Pendel-Panel (Arbeitsweg) ---------- */
-.commute-chips {
-  display: flex;
-  flex-shrink: 0;
-  padding-bottom: 16px;
-}
-
-.commute-chips > * + * {
-  margin-left: 12px;
-}
-
-.commute-chip {
+/* ---------- Pendel-Panel (Arbeitsweg) ----------
+   Ersetzt die alte Chip-Reihe + Leaflet-Karte komplett. Die Karte war
+   sowohl optisch der schwächste Teil der ganzen Tafel als auch eine
+   schwere JS-Abhängigkeit (Leaflet + Tile-Requests) auf einem Gerät, das
+   ohnehin schon an seine Grenzen kommt — beides Gründe, sie zu streichen.
+   Neues Konzept: "Wer gewinnt heute?" — oben eine große Sieger-Anzeige,
+   darunter ein Balken-Rennen aller drei Verkehrsmittel. Alles hier ist
+   entweder statisch oder ein einmaliger width-Übergang (kein keyframe
+   `animation`), passt also zur Performance-Linie aus Runde 2 oben. */
+.commute-hero {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
+  gap: 22px;
+  padding: 26px 30px;
+  margin-bottom: 20px;
   background: var(--glass-bg);
   border: 1px solid var(--panel-edge);
-  border-radius: 999px;
-  padding: 12px 22px 12px 16px;
+  border-radius: var(--radius-l);
   box-shadow: var(--glass-shadow);
-  transition: transform 0.4s ease, opacity 0.4s ease;
 }
 
-.commute-chip > * + * {
-  margin-left: 12px;
-}
-
-.commute-chip.unavailable {
-  opacity: 0.4;
-}
-
-.commute-chip-dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
+.commute-hero-icon {
   flex-shrink: 0;
+  width: 82px;
+  height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 42px;
+  border-radius: 50%;
+  background: var(--winner-color, var(--steel));
+  box-shadow: 0 10px 24px rgba(28, 29, 31, 0.16);
 }
 
-.commute-chip-icon {
-  font-size: 24px;
-  line-height: 1;
-  display: inline-block;
-  animation: commuteIconBob 2.8s ease-in-out infinite;
-}
-
-@keyframes commuteIconBob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-
-.commute-chip-text {
+.commute-hero-text {
   display: flex;
   flex-direction: column;
-  line-height: 1.2;
+  min-width: 0;
 }
 
-.commute-chip-time {
+.commute-hero-tag {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--winner-color, var(--steel));
+}
+
+.commute-hero-big {
+  display: flex;
+  align-items: baseline;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 21px;
+  font-size: 52px;
   font-weight: 700;
   color: var(--ink);
+  line-height: 1.15;
 }
 
-.commute-chip-estimated {
+.commute-hero-estimated {
   font-family: 'Inter', sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--ink-dim);
   background: var(--panel-edge);
   border-radius: 8px;
-  padding: 2px 6px;
-  margin-left: 8px;
+  padding: 3px 8px;
+  margin-left: 10px;
   vertical-align: middle;
 }
 
-.commute-chip-note {
-  font-size: 12px;
+.commute-hero-label {
+  font-size: 15px;
   color: var(--ink-dim);
   margin-top: 2px;
 }
 
-.commute-chip-extra {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--accent);
-  margin-top: 3px;
-}
-
-.panel-view:not(.active) .commute-chip {
-  transform: translateY(6px);
-  opacity: 0;
-}
-
-.commute-map-wrap {
+.commute-race {
   flex: 1;
   min-height: 0;
-  border-radius: var(--radius-m);
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.commute-race-row {
+  flex-shrink: 0;
+  background: var(--glass-bg);
   border: 1px solid var(--panel-edge);
-  background: #e9e6df;
+  border-radius: var(--radius-m);
+  padding: 16px 20px;
   box-shadow: var(--glass-shadow);
+  transition: opacity 0.4s ease, border-color 0.4s ease;
 }
 
-.commute-map {
-  width: 100%;
-  height: 100%;
+.commute-race-row.unavailable {
+  opacity: 0.4;
 }
 
-.leaflet-control-attribution {
-  font-size: 10px !important;
-  opacity: 0.55;
+.commute-race-row.is-winner {
+  border-color: var(--mode-color, var(--steel));
 }
 
-.leaflet-control-zoom { display: none; }
-
-.commute-pin-wrap {
+.commute-race-head {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-.commute-pin {
-  font-size: 24px;
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
+.commute-race-icon {
+  font-size: 20px;
+  line-height: 1;
 }
 
-@keyframes commutePulse {
-  0% { transform: scale(1); opacity: 0.55; }
-  70% { transform: scale(2.2); opacity: 0; }
-  100% { transform: scale(2.2); opacity: 0; }
+.commute-race-label {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
-.commute-pin-pulse {
+.commute-race-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: var(--mode-color, var(--steel));
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.commute-race-track {
+  position: relative;
+  height: 22px;
+  background: var(--panel-edge);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.commute-race-fill {
+  height: 100%;
+  width: 0;
+  background: var(--mode-color, var(--steel));
+  border-radius: 999px;
+  transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.commute-race-time {
   position: absolute;
   top: 50%;
-  left: 50%;
-  width: 14px;
-  height: 14px;
-  margin: -7px 0 0 -7px;
-  border-radius: 50%;
-  background: var(--brass);
-  animation: commutePulse 2.2s ease-out infinite;
+  right: 10px;
+  transform: translateY(-50%);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-dim);
+}
+
+.commute-race-extra {
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin-top: 8px;
 }
 
 /* ---------- Zitat-Panel ---------- */

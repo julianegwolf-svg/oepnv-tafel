@@ -27,7 +27,8 @@ const els = {
   newsList: document.getElementById("newsList"),
   musicList: document.getElementById("musicList"),
   quoteBlock: document.getElementById("quoteBlock"),
-  commuteChips: document.getElementById("commuteChips"),
+  commuteHero: document.getElementById("commuteHero"),
+  commuteRace: document.getElementById("commuteRace"),
   wasteLine: document.getElementById("wasteLine"),
   sportBlock: document.getElementById("sportBlock"),
 };
@@ -993,7 +994,13 @@ function fetchArticleBody(item) {
   const detailUrl = item.details || item.detailsweb;
   if (!detailUrl) return Promise.resolve(null);
 
-  return fetch(detailUrl).then(function (res) {
+  // Cache-Buster + no-store — gleicher Bug/Fix wie beim Wetter-Abruf
+  // (siehe updateWeather): ohne das kann ein Zwischenspeicher eine
+  // veraltete Antwort ausliefern, obwohl die Tafel brav alle 15 Minuten
+  // neu abfragt.
+  const bustUrl = detailUrl + (detailUrl.indexOf("?") === -1 ? "?" : "&") + "_=" + Date.now();
+
+  return fetch(bustUrl, { cache: "no-store" }).then(function (res) {
     if (!res.ok) throw new Error("Artikel-Abruf fehlgeschlagen (" + res.status + ")");
     return res.json();
   }).then(function (data) {
@@ -1097,7 +1104,13 @@ function stopNewsSlideshow() {
 // runterreißt — kommt ein Pool nicht durch, gibt es halt weniger Slides
 // aus diesem Bereich statt eines komplett leeren News-Panels.
 function fetchNewsPool(url, label, count) {
-  return fetch(url).then(function (res) {
+  // Cache-Buster + no-store — gleicher Bug/Fix wie beim Wetter-Abruf: ohne
+  // das kann Safaris HTTP-Cache (oder ein CDN vor Tagesschau) über die
+  // 15-Minuten-Aktualisierung hinaus eine ältere Antwort ausliefern, ohne
+  // dass die Tafel etwas davon merkt — "Nachrichten sind nicht aktuell".
+  const bustUrl = url + (url.indexOf("?") === -1 ? "?" : "&") + "_=" + Date.now();
+
+  return fetch(bustUrl, { cache: "no-store" }).then(function (res) {
     if (!res.ok) throw new Error("News-Pool fehlgeschlagen (" + res.status + ")");
     return res.json();
   }).then(function (data) {
@@ -1519,248 +1532,182 @@ const COMMUTE_MODES = [
   { key: "car", icon: "🚗", label: "Auto" },
 ];
 
-// ---------- Kartendarstellung (Leaflet + OpenStreetMap-Kacheln, kein
-// API-Key nötig). Die Routenlinien kommen direkt aus der Transitous-Antwort
-// (legGeometry, Google-Polyline-Format mit Präzision 1e6) — dieselbe API,
-// keine zusätzliche Abhängigkeit. Läuft Leaflet auf dem alten Safari aus
-// irgendeinem Grund nicht an, bleibt das Panel bei den Zeit-Chips oben und
-// die Karte bleibt einfach leer, statt das ganze Panel zu zerschießen.
-function decodePolyline(encoded, precisionDivisor) {
-  precisionDivisor = precisionDivisor || 1e6;
-  const points = [];
-  let index = 0, lat = 0, lon = 0;
-  const len = encoded.length;
-
-  while (index < len) {
-    let result = 1, shift = 0, b;
-    do {
-      b = encoded.charCodeAt(index++) - 63 - 1;
-      result += b << shift;
-      shift += 5;
-    } while (b >= 0x1f);
-    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
-
-    result = 1;
-    shift = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63 - 1;
-      result += b << shift;
-      shift += 5;
-    } while (b >= 0x1f);
-    lon += (result & 1) ? ~(result >> 1) : (result >> 1);
-
-    points.push([lat / precisionDivisor, lon / precisionDivisor]);
-  }
-
-  return points;
-}
-
-function legLatLngs(leg) {
-  try {
-    const geom = leg && leg.legGeometry;
-    if (!geom || !geom.points) return [];
-    return decodePolyline(geom.points, 1e6);
-  } catch (e) {
-    console.error(e);
-    return [];
-  }
-}
-
-let commuteMap = null;
-let commuteMapFailed = false;
-let commuteLayers = [];
-
-function ensureCommuteMap() {
-  if (commuteMap || commuteMapFailed) return commuteMap;
-  if (typeof window.L === "undefined" || !document.getElementById("commuteMap")) {
-    commuteMapFailed = true;
-    return null;
-  }
-
-  try {
-    commuteMap = L.map("commuteMap", {
-      zoomControl: false,
-      attributionControl: true,
-      dragging: false,
-      touchZoom: false,
-      scrollWheelZoom: false,
-      doubleClickZoom: false,
-      boxZoom: false,
-      keyboard: false,
-      tap: false,
-    });
-
-    L.tileLayer(CONFIG.mapTileUrl, {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap-Mitwirkende",
-    }).addTo(commuteMap);
-  } catch (e) {
-    console.error(e);
-    commuteMapFailed = true;
-    commuteMap = null;
-  }
-
-  return commuteMap;
-}
-
-function pinDivIcon(emoji) {
-  return L.divIcon({
-    className: "commute-pin-wrap",
-    html: '<span class="commute-pin-pulse"></span><span class="commute-pin">' + emoji + "</span>",
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
-  });
-}
-
-function renderCommuteMap(coords, results) {
-  const map = ensureCommuteMap();
-  if (!map) return;
-
-  commuteLayers.forEach(function (l) { map.removeLayer(l); });
-  commuteLayers = [];
-
-  const homeMarker = L.marker([coords.home.lat, coords.home.lon], { icon: pinDivIcon("🏠") }).addTo(map);
-  const workMarker = L.marker([coords.work.lat, coords.work.lon], { icon: pinDivIcon("🏢") }).addTo(map);
-  commuteLayers.push(homeMarker, workMarker);
-
-  const allPoints = [[coords.home.lat, coords.home.lon], [coords.work.lat, coords.work.lon]];
-  const drawnLines = [];
-
-  COMMUTE_MODES.forEach(function (m, modeIndex) {
+// ---------- "Wer gewinnt heute?"-Rennen statt Karte ----------
+// Vorher: Leaflet + OpenStreetMap-Kacheln mit eingezeichneten Routen. Trotz
+// mehrerer Politur-Runden nie richtig "hochwertig" — generische Karten-
+// kacheln lassen sich schwer schick gestalten — UND eine schwere JS-
+// Abhängigkeit (Kachel-Laden, SVG-Pfad-Animation), die in einer Phase, wo
+// jedes Gramm Performance zählt, nicht mehr zu rechtfertigen war. Jetzt
+// stattdessen: eine große Sieger-Anzeige (welches Verkehrsmittel gerade
+// am schnellsten ist) plus drei Vergleichsbalken darunter, deren Länge die
+// relative Dauer zeigt — auf einen Blick verständlich, kein Kartenmaterial
+// nötig, rein CSS-Breiten-Übergang (genauso billig wie der Fortschritts-
+// balken oben im Header).
+function fastestCommuteMode(results) {
+  let best = null;
+  COMMUTE_MODES.forEach(function (m) {
     const res = results[m.key];
-    if (!res || !res.itinerary) return;
-
-    const color = (CONFIG.commuteMapColors && CONFIG.commuteMapColors[m.key]) || "#5b6b78";
-    const legs = (res.itinerary.legs && res.itinerary.legs.length) ? res.itinerary.legs : [res.itinerary];
-
-    legs.forEach(function (leg) {
-      const latlngs = legLatLngs(leg);
-      if (!latlngs.length) return;
-
-      // Breite, sehr transparente "Glow"-Linie drunter für etwas Tiefe,
-      // die eigentliche Route obendrauf schön kräftig.
-      const glow = L.polyline(latlngs, {
-        color: color,
-        weight: 12,
-        opacity: 0.18,
-        lineCap: "round",
-      }).addTo(map);
-      commuteLayers.push(glow);
-
-      const line = L.polyline(latlngs, {
-        color: color,
-        weight: 5,
-        opacity: 0.9,
-        lineCap: "round",
-      }).addTo(map);
-
-      commuteLayers.push(line);
-      // Pro Verkehrsmittel zeitversetzt einzeichnen (Rad zuerst, dann Bus,
-      // dann Auto) statt alle drei Routen gleichzeitig hinzuklatschen.
-      drawnLines.push({ line: line, delayMs: modeIndex * 220 });
-      latlngs.forEach(function (p) { allPoints.push(p); });
-    });
+    if (!res || res.minutes == null) return;
+    if (!best || res.minutes < best.minutes) {
+      best = { key: m.key, icon: m.icon, label: m.label, minutes: res.minutes, estimated: res.estimated };
+    }
   });
-
-  if (allPoints.length > 1) {
-    map.fitBounds(allPoints, { padding: [26, 26] });
-  } else {
-    map.setView([coords.home.lat, coords.home.lon], 13);
-  }
-
-  // Routen "einzeichnen" lassen statt sie einfach hinzuklatschen.
-  setTimeout(function () {
-    drawnLines.forEach(function (entry) {
-      try {
-        const el = entry.line.getElement();
-        if (!el || !el.getTotalLength) return;
-        const length = el.getTotalLength();
-        el.style.transition = "none";
-        el.style.strokeDasharray = length + " " + length;
-        el.style.strokeDashoffset = String(length);
-        void el.getBoundingClientRect();
-        el.style.transition = "stroke-dashoffset 1.1s ease " + entry.delayMs + "ms";
-        el.style.strokeDashoffset = "0";
-      } catch (e) {
-        console.error(e);
-      }
-    });
-  }, 60);
+  return best;
 }
 
-function renderCommuteChips(results) {
-  if (!els.commuteChips) return;
-  els.commuteChips.innerHTML = "";
+function renderCommuteHero(results) {
+  if (!els.commuteHero) return;
+  els.commuteHero.innerHTML = "";
 
-  let anyOk = false;
+  const winner = fastestCommuteMode(results);
+  if (!winner) {
+    els.commuteHero.innerHTML = '<div class="view-placeholder">Keine Route verfügbar</div>';
+    return;
+  }
+
+  const color = (CONFIG.commuteModeColors && CONFIG.commuteModeColors[winner.key]) || "#5b6b78";
+  els.commuteHero.style.setProperty("--winner-color", color);
+
+  const icon = document.createElement("span");
+  icon.className = "commute-hero-icon";
+  icon.textContent = winner.icon;
+  els.commuteHero.appendChild(icon);
+
+  const textWrap = document.createElement("div");
+  textWrap.className = "commute-hero-text";
+
+  const tag = document.createElement("span");
+  tag.className = "commute-hero-tag";
+  tag.textContent = "Heute am schnellsten";
+  textWrap.appendChild(tag);
+
+  const big = document.createElement("span");
+  big.className = "commute-hero-big";
+  big.textContent = winner.minutes + " Min";
+  if (winner.estimated) {
+    const est = document.createElement("span");
+    est.className = "commute-hero-estimated";
+    est.textContent = "geschätzt";
+    big.appendChild(est);
+  }
+  textWrap.appendChild(big);
+
+  const label = document.createElement("span");
+  label.className = "commute-hero-label";
+  label.textContent = "mit " + winner.label + " zu Max Müller GmbH";
+  textWrap.appendChild(label);
+
+  els.commuteHero.appendChild(textWrap);
+}
+
+function renderCommuteRace(results) {
+  if (!els.commuteRace) return;
+  els.commuteRace.innerHTML = "";
+
+  const known = COMMUTE_MODES
+    .map(function (m) { return { mode: m, res: results[m.key] }; })
+    .filter(function (e) { return e.res && e.res.minutes != null; });
+
+  const maxMinutes = known.length
+    ? Math.max.apply(null, known.map(function (e) { return e.res.minutes; }))
+    : 0;
+  const winner = fastestCommuteMode(results);
+  const fillTargets = [];
 
   COMMUTE_MODES.forEach(function (m) {
     const res = results[m.key];
-    const color = (CONFIG.commuteMapColors && CONFIG.commuteMapColors[m.key]) || "#5b6b78";
+    const color = (CONFIG.commuteModeColors && CONFIG.commuteModeColors[m.key]) || "#5b6b78";
+    const available = !!(res && res.minutes != null);
+    const isWinner = !!(winner && winner.key === m.key);
 
-    const chip = document.createElement("div");
-    chip.className = "commute-chip" + (res && res.minutes != null ? "" : " unavailable");
-    // Dezenter Farbring passend zur Kartenfarbe des Verkehrsmittels —
-    // Hex+Alpha statt color-mix()/rgba(var), da auf Safari 12 sicher.
-    chip.style.boxShadow = "var(--glass-shadow), 0 0 0 1.5px " + color + "40";
+    const row = document.createElement("div");
+    row.className = "commute-race-row" + (available ? "" : " unavailable") + (isWinner ? " is-winner" : "");
+    row.style.setProperty("--mode-color", color);
 
-    const dot = document.createElement("span");
-    dot.className = "commute-chip-dot";
-    dot.style.background = color;
+    const head = document.createElement("div");
+    head.className = "commute-race-head";
 
     const icon = document.createElement("span");
-    icon.className = "commute-chip-icon";
+    icon.className = "commute-race-icon";
     icon.textContent = m.icon;
+    head.appendChild(icon);
 
-    const text = document.createElement("span");
-    text.className = "commute-chip-text";
+    const label = document.createElement("span");
+    label.className = "commute-race-label";
+    label.textContent = m.label;
+    head.appendChild(label);
 
-    const time = document.createElement("span");
-    time.className = "commute-chip-time";
-    time.textContent = res && res.minutes != null ? (res.minutes + " min") : "–";
-    if (res && res.estimated) {
-      const estimateTag = document.createElement("span");
-      estimateTag.className = "commute-chip-estimated";
-      estimateTag.textContent = "geschätzt";
-      time.appendChild(estimateTag);
+    if (isWinner) {
+      const badge = document.createElement("span");
+      badge.className = "commute-race-badge";
+      badge.textContent = "Schnellster";
+      head.appendChild(badge);
     }
-    text.appendChild(time);
 
-    const noteText = res ? (res.note || m.label) : "nicht verfügbar";
-    const note = document.createElement("span");
-    note.className = "commute-chip-note";
-    note.textContent = noteText;
-    text.appendChild(note);
+    row.appendChild(head);
 
-    // Bus/ÖPNV: zusätzlich Linie(n) + wirkliche nächste Abfahrtszeit
-    // zeigen, statt nur einer nackten Minutenzahl — deutlich planbarer.
+    const track = document.createElement("div");
+    track.className = "commute-race-track";
+
+    const fill = document.createElement("div");
+    fill.className = "commute-race-fill";
+    track.appendChild(fill);
+
+    // Kürzere Zeit = kürzerer Balken (relativ zum langsamsten Verkehrs-
+    // mittel), damit "kürzer ist besser" auf einen Blick stimmt. Mindestens
+    // 8%, sonst wäre ein sehr schnelles Verkehrsmittel kaum als Balken
+    // erkennbar.
+    const pct = available && maxMinutes > 0
+      ? Math.max(8, Math.round((res.minutes / maxMinutes) * 100))
+      : 0;
+    fillTargets.push({ el: fill, pct: pct });
+
+    const timeLabel = document.createElement("span");
+    timeLabel.className = "commute-race-time";
+    timeLabel.textContent = available ? (res.minutes + " min") : "nicht verfügbar";
+    track.appendChild(timeLabel);
+
+    row.appendChild(track);
+
+    // Bus/ÖPNV: zusätzlich Linie(n) + wirkliche nächste Abfahrtszeit statt
+    // nur einer nackten Minutenzahl — deutlich planbarer.
     if (m.key === "bus" && res) {
       const lineText = res.lines && res.lines.length ? "Linie " + res.lines.join("/") : "";
       const depText = res.departure
         ? "ab " + res.departure.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
         : "";
-      const extraText = [lineText, depText].filter(function (s) { return !!s; }).join(" · ");
+      const noteText = res.note || "";
+      const extraText = [lineText, depText, noteText].filter(function (s) { return !!s; }).join(" · ");
       if (extraText) {
-        const extra = document.createElement("span");
-        extra.className = "commute-chip-extra";
+        const extra = document.createElement("div");
+        extra.className = "commute-race-extra";
         extra.textContent = extraText;
-        text.appendChild(extra);
+        row.appendChild(extra);
       }
+    } else if (res && res.estimated) {
+      const extra = document.createElement("div");
+      extra.className = "commute-race-extra";
+      extra.textContent = "geschätzt, keine Live-Route verfügbar";
+      row.appendChild(extra);
     }
 
-    chip.appendChild(dot);
-    chip.appendChild(icon);
-    chip.appendChild(text);
-    els.commuteChips.appendChild(chip);
-
-    if (res && res.minutes != null) anyOk = true;
+    els.commuteRace.appendChild(row);
   });
 
-  commuteAvailable = anyOk;
+  // Balken erst NACH dem Einfügen ins DOM auf die Zielbreite setzen (wie
+  // schon beim Fortschrittsbalken oben), sonst überspringt der Browser den
+  // Übergang und der Balken erscheint einfach fertig statt "einzurennen".
+  setTimeout(function () {
+    fillTargets.forEach(function (entry) {
+      entry.el.style.width = entry.pct + "%";
+    });
+  }, 50);
+
+  commuteAvailable = !!known.length;
 }
 
 function updateCommute() {
-  if (!els.commuteChips) return;
+  if (!els.commuteHero) return;
 
   resolveCommuteCoords().then(function (coords) {
     const distanceMeters = haversineMeters(coords.home, coords.work);
@@ -1801,8 +1748,8 @@ function updateCommute() {
         }),
     ]).then(function (all) {
       const results = { bike: all[0], bus: all[1], car: all[2] };
-      renderCommuteChips(results);
-      renderCommuteMap(coords, results);
+      renderCommuteHero(results);
+      renderCommuteRace(results);
     });
   }).catch(function (err) {
     console.error(err);
@@ -2287,14 +2234,6 @@ function showPanel(name) {
     // has-video), die hier sonst bei JEDEM Karussell-Wechsel überschrieben
     // würden (className = "..." ersetzt IMMER alles).
     el.classList.toggle("active", ids[i] === name);
-  }
-
-  if (name === "commute" && commuteMap) {
-    // Karte war ggf. unsichtbar (opacity:0), Leaflet braucht nach dem
-    // Sichtbarwerden einen Anstoß, um die Kachelgröße neu zu berechnen.
-    setTimeout(function () {
-      commuteMap.invalidateSize();
-    }, 80);
   }
 
   if (name === "quote") {

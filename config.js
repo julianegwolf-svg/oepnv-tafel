@@ -76,10 +76,10 @@ const CONFIG = {
   workLabel: "Max Müller GmbH",
   refreshCommuteMs: 10 * 60 * 1000,
 
-  // Karten-Kacheln (OpenStreetMap, kostenlos, kein API-Key) + Routenfarben
-  // je Verkehrsmittel für das Pendel-Panel.
-  mapTileUrl: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-  commuteMapColors: {
+  // Farben je Verkehrsmittel im Pendel-Panel (Rennen-Balken/Sieger-Anzeige).
+  // Kein Kartenmaterial mehr nötig, seit die Karte durch die Rennen-
+  // Visualisierung ersetzt wurde.
+  commuteModeColors: {
     bike: "#3f7d52",
     bus: "#5b6b78",
     car: "#a9793f",
