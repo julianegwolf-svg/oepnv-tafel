@@ -162,6 +162,13 @@ html, body {
   color: var(--ink);
 }
 
+.now-playing-hint {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-dim);
+  opacity: 0.55;
+}
+
 .now-playing-song {
   font-size: 14px;
   color: var(--ink-dim);
@@ -257,13 +264,13 @@ html, body {
 
 .radio-menu {
   position: absolute;
-  top: calc(100% + 10px);
+  top: calc(100% + 12px);
   right: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-width: 210px;
-  padding: 10px;
+  gap: 8px;
+  min-width: 240px;
+  padding: 12px;
   background: var(--glass-bg);
   border: 1px solid var(--panel-edge);
   border-radius: var(--radius-m);
@@ -284,23 +291,23 @@ html, body {
 .radio-menu-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   font-family: 'Inter', -apple-system, system-ui, sans-serif;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--ink);
   background: transparent;
   border: none;
   border-radius: var(--radius-s);
-  padding: 10px 12px;
-  min-height: 44px;
+  padding: 12px 14px;
+  min-height: 52px;
   text-align: left;
   -webkit-tap-highlight-color: transparent;
 }
 
 .radio-menu-dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   flex-shrink: 0;
   border-radius: 50%;
   background: currentColor;

@@ -83,7 +83,13 @@ function updateNowPlaying() {
 
   els.nowPlaying.innerHTML = "";
   els.nowPlaying.classList.toggle("is-active", isPlaying);
-  if (!isPlaying) return;
+  if (!isPlaying) {
+    const hint = document.createElement("span");
+    hint.className = "now-playing-hint";
+    hint.textContent = "📻 Radio antippen";
+    els.nowPlaying.appendChild(hint);
+    return;
+  }
 
   const dot = document.createElement("span");
   dot.className = "now-playing-dot";
