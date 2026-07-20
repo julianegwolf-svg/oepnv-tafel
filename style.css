@@ -119,8 +119,8 @@ html, body {
    Wiedererkennung, ohne den Kopfbereich vollzuschreiben. */
 .home-label {
   font-weight: 800;
-  letter-spacing: 0.05em;
-  font-size: 20px;
+  letter-spacing: 0.02em;
+  font-size: 40px;
   color: var(--ink);
   flex-shrink: 0;
 }
