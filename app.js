@@ -1109,9 +1109,6 @@ function showNewsSlide(index) {
     if (i === index) slides[i].className += " active";
   }
   newsSlideIndex = index;
-  // .news-slideshow klippt + Slide-Crossfade läuft 0.9s — Ecken-Bug-
-  // Kandidat wie das Wetter-Panel, siehe pulseClipFix.
-  pulseClipFix(els.newsList, 950);
 }
 
 function startNewsSlideshow() {
@@ -2473,12 +2470,6 @@ function fetchTeamMatches(teamName) {
 }
 
 function buildCrestImg(team) {
-  // filter:drop-shadow sitzt auf einem statischen Wrapper statt direkt auf
-  // dem animierten <img> — kombiniert mit sportCrestPop würde WebKit den
-  // Schatten sonst bei jedem Animations-Frame neu berechnen (filter ist
-  // anders als transform/opacity kein reiner Compositor-Effekt).
-  const wrap = document.createElement("span");
-  wrap.className = "sport-slide-crest-wrap";
   const img = document.createElement("img");
   img.className = "sport-slide-crest";
   img.src = (team && team.teamIconUrl) || "";
@@ -2486,8 +2477,7 @@ function buildCrestImg(team) {
   // Manche Wappen-URLs sind mal nicht erreichbar/gesperrt — dann das
   // Bild einfach ausblenden statt ein kaputtes Icon anzuzeigen.
   img.onerror = function () { img.style.display = "none"; };
-  wrap.appendChild(img);
-  return wrap;
+  return img;
 }
 
 // Statt einer scrollbaren Liste läuft der Sport-Ticker jetzt als eigene
@@ -2663,9 +2653,6 @@ function showSportSlide(index) {
     if (i === index) slides[i].className += " active";
   }
   sportSlideIndex = index;
-  // .sport-block klippt + Slide-Crossfade (0.8s) + Wappen-Pop (0.55s+0.12s
-  // delay) — gleicher Ecken-Bug-Kandidat, siehe pulseClipFix.
-  pulseClipFix(els.sportBlock, 850);
 }
 
 function startSportSlideshow() {
@@ -2754,22 +2741,6 @@ const PANEL_AVAILABILITY = {
   events: function () { return eventsAvailable; },
 };
 
-// Ecken-Bug (border-radius + overflow:hidden "poppt eckig" kurz während
-// eines Übergangs): Layer-Promotion nur auf dem betroffenen Element und
-// nur für die Übergangsdauer, siehe .clip-fix-active in style.css für die
-// volle Historie. setTimeout statt transitionend/animationend, weil Safari
-// 12 diese Events bei überlappenden/unterbrochenen Übergängen (z.B.
-// schnelles Weiterschalten) zuverlässig verschluckt — ein simpler Timer
-// mit Sicherheitsmarge ist hier robuster als Event-basiertes Aufräumen.
-function pulseClipFix(el, ms) {
-  if (!el) return;
-  el.classList.add("clip-fix-active");
-  clearTimeout(el._clipFixTimer);
-  el._clipFixTimer = setTimeout(function () {
-    el.classList.remove("clip-fix-active");
-  }, ms);
-}
-
 function showPanel(name) {
   const ids = ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "events"];
   for (let i = 0; i < ids.length; i++) {
@@ -2780,10 +2751,6 @@ function showPanel(name) {
     // has-video), die hier sonst bei JEDEM Karussell-Wechsel überschrieben
     // würden (className = "..." ersetzt IMMER alles).
     el.classList.toggle("active", ids[i] === name);
-    // Wetter-Panel klippt (border-radius + overflow:hidden) und crossfaded
-    // per .panel-view-Opacity-Übergang (0.7s) — genau der Kandidat für den
-    // Ecken-Bug. Bei jedem Wechsel pulsen, egal ob rein oder raus.
-    if (ids[i] === "weather") pulseClipFix(el, 750);
   }
 
   if (name === "quote") {

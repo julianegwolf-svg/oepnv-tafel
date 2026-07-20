@@ -316,20 +316,28 @@ html, body {
    war das schlicht der falsche Tausch: kosmetischer Kanten-Blitzer gegen
    spürbares Ruckeln. Komplett entfernt.
 
-   NEUER ANLAUF (diesmal gezielt statt pauschal): nur die drei Container,
-   die tatsächlich border-radius + overflow:hidden UND ein animierendes/
-   übergehendes Kind gleichzeitig haben (#panel-weather, .news-slideshow,
-   .sport-block), bekommen die Layer-Promotion — und auch die nur für die
-   ~0.7-0.9s Dauer des jeweiligen Übergangs, per JS-Klasse kurz vor dem
-   Übergang gesetzt und danach wieder entfernt (siehe pulseClipFix in
-   app.js). Kein -webkit-mask-image — das war der eigentlich teure Teil
-   des alten Fixes. Maximal 1-2 Elemente gleichzeitig befördert statt
-   dauerhaft 7+10, dadurch auf dem A7-Chip praktisch kostenlos. */
-.clip-fix-active {
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-  will-change: opacity;
-}
+   ZWEITER ANLAUF (nur während des Übergangs, per JS-Klasse): Annahme war,
+   das Ecken-Problem sei ein kurzes Flackern GENAU beim Übergang. Fotos vom
+   echten iPad zeigen aber: die Ecken sind DAUERHAFT eckig, nicht nur kurz
+   beim Wechsel — die Annahme war falsch. Zurückgenommen.
+
+   DRITTER ANLAUF (dauerhaftes translateZ(0) auf #panel-weather,
+   .news-slideshow, .sport-block): ebenfalls zurückgenommen — hat im Test
+   einen NEUEN, schlimmeren Bug erzeugt. transform erzeugt einen eigenen
+   Stacking-Context; auf #panel-weather (das selbst das .panel-view-Element
+   mit der Opacity-Karussell-Animation ist) hat das die Stapelreihenfolge
+   der Geschwister-Panels durcheinandergebracht — inaktive Panels
+   (opacity:0) haben trotzdem sichtbar durch aktive Panels hindurch-
+   geschimmert (reproduziert: Wetter-Inhalt sichtbar durch das Sport-Panel
+   hindurch). Ein unsichtbares Bleeding zwischen Panels ist schlimmer als
+   eckige Ecken — deshalb komplett zurückgenommen.
+
+   Die Ecken-Sache bleibt damit unschön, aber ungelöst. Zwei Anläufe sind
+   gescheitert (einer an Performance, einer an einem Stacking-Bug); ein
+   dritter Versuch sollte nicht mehr blind im Code geraten werden, sondern
+   nur noch mit echtem Zugriff auf das iPad zum Testen (Safari Web
+   Inspector Remote-Debugging), um die tatsächliche Ursache zu sehen statt
+   sie zu vermuten. */
 
 .view-label {
   display: flex;
@@ -681,10 +689,27 @@ html, body {
   100% { transform: translateX(120vw); }
 }
 
+/* ECHTER BUG gefunden (auf dem echten iPad UND im Test-Browser
+   reproduziert): eine flache Pille mit border-radius sieht aus der Nähe
+   nicht wie eine Wolke aus, sondern wie ein leerer/kaputter UI-Kasten —
+   genau das hat der Nutzer auf Fotos vom Gerät bemängelt. Kein Bug im
+   Sinne von falschem Code, aber ein echtes Wahrnehmungsproblem. Fix:
+   mehrere versetzte, kleinere "Puffs" per box-shadow statt einer
+   einzelnen Fläche — ergibt eine grob wolkenförmige Silhouette. Bewusst
+   box-shadow statt filter (siehe ausführlicher Kommentar bei
+   .weather-big-icon, warum filter auf altem WebKit riskant ist) — box-
+   shadow ist ein alter, zuverlässiger Effekt, wird einmal beim Bau des
+   Layers berechnet und nicht pro Animations-Frame neu (transform:
+   translateX läuft compositor-only, das Element wird nicht neu
+   gestrichen). */
 .fx-cloud-shape {
   position: absolute;
-  border-radius: 50px;
+  border-radius: 50%;
   background: rgba(255, 255, 255, 0.55);
+  box-shadow:
+    18px -10px 0 -6px rgba(255, 255, 255, 0.5),
+    -16px -6px 0 -8px rgba(255, 255, 255, 0.45),
+    6px 9px 0 -10px rgba(255, 255, 255, 0.4);
   animation-name: fxCloudDrift;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
@@ -766,21 +791,21 @@ html, body {
    weatherSkyGradient in app.js), der ist immer dunkel genug abgestimmt —
    deshalb Text unconditional hell mit Schatten statt eines has-photo/
    has-video-Sonderfalls wie früher. */
-/* filter auf dem statischen Wrapper statt auf dem animierten Icon selbst —
-   gleiche Begründung wie beim Sport-Wappen (.sport-slide-crest-wrap):
-   filter ist kein reiner Compositor-Effekt, kombiniert mit einer laufenden
-   transform-Animation auf demselben Element würde WebKit den Schatten
-   jeden Frame neu berechnen. */
-.weather-big-icon-wrap {
-  display: inline-block;
-  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.4));
-}
-
+/* ECHTER BUG auf dem echten iPad gefunden (Foto-Beleg): filter:drop-shadow
+   auf einem inline-block-Wrapper um ein Emoji-Zeichen rendert auf Safari
+   12/iOS 12.5 (altes WebKit) nicht als weicher Schatten, sondern als
+   solider grauer Kasten über dem Icon — ein bekanntes altes WebKit-Bug-
+   Muster (Filter rastert das Element falsch, verliert den Alpha-Kanal des
+   Emoji-Glyphen). Deshalb kein filter mehr hier, sondern text-shadow
+   direkt auf dem Text-Element — funktioniert pro Glyph statt über eine
+   volle Element-Rasterisierung, ist auf altem WebKit deutlich robuster
+   (wird an anderer Stelle hier schon so für .weather-big-temp genutzt). */
 .weather-big-icon {
   font-size: 138px;
   line-height: 1;
   display: inline-block;
   animation: weatherFloat 4.5s ease-in-out infinite;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
 .weather-big-temp {
@@ -1648,19 +1673,17 @@ html, body {
   opacity: 1;
 }
 
-/* filter auf dem statischen Wrapper, nicht auf dem animierten <img> selbst
-   (siehe Kommentar in buildCrestImg, app.js) — Schatten wird einmal
-   berechnet statt bei jedem sportCrestPop-Frame neu. */
-.sport-slide-crest-wrap {
-  display: inline-block;
-  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4));
-}
-
+/* Kein filter:drop-shadow mehr (siehe ausführlicher Kommentar bei
+   .weather-big-icon für den Fund auf echter Hardware: filter rendert auf
+   Safari 12/iOS 12.5 bei transparenten PNGs/Emoji als solider grauer
+   Kasten statt als Schatten). box-shadow statt filter — folgt zwar nur
+   der rechteckigen Bounding-Box statt der Wappen-Silhouette, ist dafür
+   aber ein alter, zuverlässiger CSS-Effekt ohne Rasterisierungs-Bug. */
 .sport-slide-crest {
   width: 96px;
   height: 96px;
   object-fit: contain;
-  display: block;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
   animation: sportCrestPop 0.55s cubic-bezier(0.22, 0.9, 0.32, 1.2) both;
 }
 
