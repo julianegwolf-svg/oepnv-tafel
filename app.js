@@ -40,12 +40,104 @@ const els = {
   commuteMapRoute: document.getElementById("commuteMapRoute"),
   wasteLine: document.getElementById("wasteLine"),
   sportBlock: document.getElementById("sportBlock"),
+  radioBar: document.getElementById("radioBar"),
 };
 
 let resolvedStopIds = (CONFIG.stopIds && CONFIG.stopIds.length)
   ? CONFIG.stopIds.slice()
   : null;
 let resolvedStopCoord = null;
+
+// ---------- Radio-Schnellzugriff ----------
+// Erste echte Touch-Interaktion der Tafel: ein Tap startet einen der
+// fest hinterlegten Radiosender (siehe CONFIG.radioStations) und öffnet
+// Safaris native AirPlay-Geräteauswahl, damit's auf dem HomePod läuft
+// statt aus dem eingebauten iPad-Lautsprecher. webkitShowPlaybackTargetPicker
+// ist eine alte, WebKit-spezifische Funktion auf <audio>-Elementen — auf
+// anderen Browsern schlicht nicht vorhanden, dann spielt es einfach lokal.
+let radioAudioEl = null;
+let radioActiveUrl = null;
+
+function updateRadioButtonStates() {
+  if (!els.radioBar) return;
+  const buttons = els.radioBar.querySelectorAll(".radio-btn");
+  for (let i = 0; i < buttons.length; i++) {
+    const isActive = !!(radioActiveUrl && buttons[i].dataset.url === radioActiveUrl
+      && radioAudioEl && !radioAudioEl.paused);
+    buttons[i].classList.toggle("is-playing", isActive);
+  }
+}
+
+function toggleRadioStation(url) {
+  if (!radioAudioEl) return;
+
+  // Nochmal denselben Sender antippen = stoppen, statt neu zu starten.
+  if (radioActiveUrl === url && !radioAudioEl.paused) {
+    radioAudioEl.pause();
+    radioActiveUrl = null;
+    updateRadioButtonStates();
+    return;
+  }
+
+  radioActiveUrl = url;
+  if (radioAudioEl.getAttribute("src") !== url) {
+    radioAudioEl.src = url;
+  }
+  radioAudioEl.play().catch(function (err) {
+    console.error("Radio-Wiedergabe fehlgeschlagen:", err);
+    radioActiveUrl = null;
+    updateRadioButtonStates();
+  });
+
+  // Geräteauswahl nur zeigen, wenn noch nicht per AirPlay verbunden —
+  // sonst würde jeder Sender-Wechsel erneut den Dialog aufreißen, obwohl
+  // schon auf den HomePod geroutet ist.
+  if (!radioAudioEl.webkitCurrentPlaybackTargetIsWireless
+    && typeof radioAudioEl.webkitShowPlaybackTargetPicker === "function") {
+    radioAudioEl.webkitShowPlaybackTargetPicker();
+  }
+
+  updateRadioButtonStates();
+}
+
+function initRadioBar() {
+  if (!els.radioBar) return;
+  const stations = CONFIG.radioStations || [];
+  if (!stations.length) return;
+
+  radioAudioEl = document.createElement("audio");
+  radioAudioEl.id = "radioAudio";
+  radioAudioEl.preload = "none";
+  radioAudioEl.addEventListener("play", updateRadioButtonStates);
+  radioAudioEl.addEventListener("pause", updateRadioButtonStates);
+  radioAudioEl.addEventListener("error", function () {
+    console.error("Radio-Stream-Fehler:", radioAudioEl.error);
+    radioActiveUrl = null;
+    updateRadioButtonStates();
+  });
+  document.body.appendChild(radioAudioEl);
+
+  stations.forEach(function (station) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "radio-btn";
+    btn.dataset.url = station.url;
+
+    const dot = document.createElement("span");
+    dot.className = "radio-btn-dot";
+    btn.appendChild(dot);
+
+    const label = document.createElement("span");
+    label.textContent = station.name;
+    btn.appendChild(label);
+
+    btn.addEventListener("click", function () {
+      toggleRadioStation(station.url);
+    });
+
+    els.radioBar.appendChild(btn);
+  });
+}
 
 // ---------- Uhrzeit ----------
 function tickClock() {
@@ -3199,6 +3291,8 @@ function scheduleCarousel() {
 
 // ---------- Start ----------
 function init() {
+  initRadioBar();
+
   tickClock();
   setInterval(tickClock, CONFIG.refreshClockMs);
 

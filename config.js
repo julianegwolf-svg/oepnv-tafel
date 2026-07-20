@@ -161,6 +161,25 @@ const CONFIG = {
   // Spruch-des-Tages-Panel, das ebenfalls englische Inhalte zeigt.
   refreshQuizMs: 60 * 60 * 1000,
 
+  // ---------------------------------------------------------------
+  // Radio-Schnellzugriff: feste Senderliste, ein Tap startet die
+  // Wiedergabe + öffnet (beim ersten Mal) die native AirPlay-Geräte-
+  // auswahl von Safari, damit's auf dem HomePod läuft statt aus dem
+  // iPad-Lautsprecher. Alle vier Stream-URLs sind echte HTTPS-Direkt-
+  // streams (per curl geprüft) — wichtig, weil die Tafel selbst über
+  // HTTPS läuft und ein http-Stream als Mixed Content geblockt würde.
+  // Kein Home Assistant, kein API-Key, kein Sicherheitsrisiko im
+  // öffentlichen Repo — die URLs sind ja nur Radiosender, keine
+  // Zugangsdaten.
+  // ---------------------------------------------------------------
+  radioStations: [
+    { name: "80s80s", url: "https://streams.80s80s.de/web/mp3-192/streams.80s80s.de/" },
+    { name: "WDR 4", url: "https://icecast.wdr.de/wdr/wdr4/rheinruhr/mp3/128/stream.mp3" },
+    { name: "House/Techno", url: "https://stream.sunshine-live.de/live/mp3-192/stream.sunshine-live.de/" },
+    // "Radio Italia — Solo Musica Italiana", offizieller HLS-Stream.
+    { name: "Italiano", url: "https://radioitaliasmi.akamaized.net/hls/live/2093120/RISMI/master.m3u8" },
+  ],
+
   // Veranstaltungen-Panel (Bremen) — InfraNode (infranode.dev), kostenlos,
   // kein Key, CORS offen (access-control-allow-origin: *), Daten stammen
   // von open.destination.one (Lizenz CC0, geprüft per Testabruf). Erste
