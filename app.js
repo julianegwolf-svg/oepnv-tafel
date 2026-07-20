@@ -31,6 +31,7 @@ const els = {
   quoteBlock: document.getElementById("quoteBlock"),
   triviaBlock: document.getElementById("triviaBlock"),
   quizBlock: document.getElementById("quizBlock"),
+  riddleBlock: document.getElementById("riddleBlock"),
   eventsList: document.getElementById("eventsList"),
   commuteHero: document.getElementById("commuteHero"),
   commuteRace: document.getElementById("commuteRace"),
@@ -1934,6 +1935,111 @@ function updateQuiz(retryCount) {
   });
 }
 
+// ---------- Rätsel-des-Tages-Panel ----------
+// Keine externe API (siehe CONFIG.riddles-Kommentar in config.js) — eine
+// feste lokale Sammlung, deterministisch nach Tag-des-Jahres ausgewählt,
+// damit an einem Tag immer dasselbe Rätsel gezeigt wird. Gleiche Tipp-
+// und-Warten-Dramaturgie wie Quiz/Trivia, nur ohne Multiple-Choice: die
+// Lösung wird als Text erst zur Hälfte der Panel-Anzeigezeit eingeblendet.
+let riddleQuestion = null;
+let riddleAnswerText = null;
+let riddleTypeTimer = null;
+let riddleRevealTimer = null;
+let riddleAvailable = false;
+
+function pickRiddleForToday() {
+  const riddles = CONFIG.riddles || [];
+  if (!riddles.length) return null;
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((now - startOfYear) / 86400000);
+  return riddles[dayOfYear % riddles.length];
+}
+
+function renderRiddleShell() {
+  if (!els.riddleBlock) return;
+  els.riddleBlock.innerHTML = "";
+
+  const label = document.createElement("div");
+  label.className = "trivia-date";
+  label.textContent = "RÄTSEL DES TAGES";
+  els.riddleBlock.appendChild(label);
+
+  const text = document.createElement("div");
+  text.className = "trivia-text";
+
+  const typed = document.createElement("span");
+  typed.id = "riddleTypedText";
+  text.appendChild(typed);
+
+  const cursor = document.createElement("span");
+  cursor.id = "riddleCursor";
+  cursor.className = "typewriter-cursor";
+  text.appendChild(cursor);
+
+  els.riddleBlock.appendChild(text);
+
+  const answer = document.createElement("div");
+  answer.className = "riddle-answer";
+  answer.id = "riddleAnswer";
+  els.riddleBlock.appendChild(answer);
+}
+
+function startRiddleReveal() {
+  if (!riddleQuestion) return;
+  const typedEl = document.getElementById("riddleTypedText");
+  const cursorEl = document.getElementById("riddleCursor");
+  const answerEl = document.getElementById("riddleAnswer");
+  if (!typedEl || !answerEl) return;
+
+  if (riddleTypeTimer) clearInterval(riddleTypeTimer);
+  if (riddleRevealTimer) clearTimeout(riddleRevealTimer);
+  typedEl.textContent = "";
+  if (cursorEl) cursorEl.className = "typewriter-cursor";
+  answerEl.className = "riddle-answer";
+  answerEl.textContent = "Lösung: " + riddleAnswerText;
+
+  // Gleiches Prinzip wie beim Quiz-Panel: Auflösung erst zur Hälfte der
+  // gesamten Panel-Anzeigezeit statt sofort nach dem Fertigtippen, damit
+  // genug Zeit zum eigenen Grübeln bleibt.
+  const startedAt = Date.now();
+  const panelDuration = (CONFIG.panelDurations && CONFIG.panelDurations.riddle) || CONFIG.panelDurationMs || 24000;
+  const halfMs = panelDuration / 2;
+
+  const full = riddleQuestion;
+  let i = 0;
+  riddleTypeTimer = setInterval(function () {
+    i++;
+    typedEl.textContent = full.slice(0, i);
+    if (i >= full.length) {
+      clearInterval(riddleTypeTimer);
+      riddleTypeTimer = null;
+      if (cursorEl) cursorEl.className = "typewriter-cursor done";
+      const elapsed = Date.now() - startedAt;
+      const revealDelay = Math.max(halfMs - elapsed, 1500);
+      riddleRevealTimer = setTimeout(function () {
+        answerEl.classList.add("is-shown");
+      }, revealDelay);
+    }
+  }, 35);
+}
+
+function updateRiddle() {
+  if (!els.riddleBlock) return;
+  const pick = pickRiddleForToday();
+  if (!pick) { riddleAvailable = false; return; }
+
+  riddleQuestion = pick.q;
+  riddleAnswerText = pick.a;
+  renderRiddleShell();
+
+  const panelEl = document.getElementById("panel-riddle");
+  const isActive = panelEl && panelEl.className.indexOf("active") !== -1;
+  if (isActive) startRiddleReveal();
+
+  riddleAvailable = true;
+}
+
 // ---------- Pendel-Panel (Arbeitsweg zu Max Müller GmbH) ----------
 // Rad- und Auto-Zeit kommen als Direktverbindung (directModes, ohne
 // Transit) von Transitous, die Bus/ÖPNV-Zeit als normale Routenplanung.
@@ -3212,11 +3318,12 @@ const PANEL_AVAILABILITY = {
   quote: function () { return quoteAvailable; },
   trivia: function () { return triviaAvailable; },
   quiz: function () { return quizAvailable; },
+  riddle: function () { return riddleAvailable; },
   events: function () { return eventsAvailable; },
 };
 
 function showPanel(name) {
-  const ids = ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "events"];
+  const ids = ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events"];
   for (let i = 0; i < ids.length; i++) {
     const el = document.getElementById("panel-" + ids[i]);
     if (!el) continue;
@@ -3237,6 +3344,10 @@ function showPanel(name) {
 
   if (name === "quiz") {
     startQuizReveal();
+  }
+
+  if (name === "riddle") {
+    startRiddleReveal();
   }
 
   if (name === "news") {
@@ -3276,21 +3387,39 @@ function resetProgressBar(durationMs) {
   progressFillEl.style.transform = "scaleX(1)";
 }
 
+// Reihenfolge nach jeder vollen Runde neu gemischt (siehe Kommentar bei
+// CONFIG.panelSequence), damit man sie sich nach ein paar Wochen nicht
+// stur auswendig lernt. "departures" bleibt als Anker immer an erster
+// Stelle — die wichtigste Information soll direkt nach dem Rundenstart
+// kommen, nicht erst irgendwann per Zufall.
+let activeSequence = (CONFIG.panelSequence || []).slice();
+
+function shuffleSequence() {
+  const seq = CONFIG.panelSequence || [];
+  const anchor = seq[0];
+  const rest = seq.slice(1);
+  for (let i = rest.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = rest[i]; rest[i] = rest[j]; rest[j] = tmp;
+  }
+  activeSequence = [anchor].concat(rest);
+}
+
 function pickNextAvailablePanel() {
-  const seq = CONFIG.panelSequence;
   let tries = 0;
-  while (tries < seq.length) {
-    panelIndex = (panelIndex + 1) % seq.length;
-    const name = seq[panelIndex];
+  while (tries < activeSequence.length) {
+    panelIndex = (panelIndex + 1) % activeSequence.length;
+    if (panelIndex === 0) shuffleSequence();
+    const name = activeSequence[panelIndex];
     const check = PANEL_AVAILABILITY[name];
     if (!check || check()) return name;
     tries++;
   }
-  return seq[panelIndex];
+  return activeSequence[panelIndex];
 }
 
 function scheduleCarousel() {
-  const seq = CONFIG.panelSequence;
+  const seq = activeSequence;
   if (!seq || seq.length < 2) return;
 
   const currentName = seq[panelIndex];
@@ -3342,6 +3471,11 @@ function init() {
 
   updateQuiz();
   setInterval(updateQuiz, CONFIG.refreshQuizMs);
+
+  // Rein lokale Auswahl nach Tag-des-Jahres, kein Netzwerk-Refresh nötig —
+  // der tägliche Auto-Reload der Tafel sorgt schon dafür, dass der
+  // Tageswechsel ankommt.
+  updateRiddle();
 
   updateEvents();
   setInterval(updateEvents, CONFIG.refreshEventsMs);

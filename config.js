@@ -62,7 +62,12 @@ const CONFIG = {
   // Panels, deren Datenquelle gerade nicht klappt, werden automatisch
   // übersprungen.
   // ---------------------------------------------------------------
-  panelSequence: ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "events"],
+  // "departures" bleibt als erstes Panel jeder Runde fix (wichtigste
+  // Information, direkt nach dem Umschalten) — die Reihenfolge der
+  // restigen Panels wird bei jedem vollen Durchlauf neu gemischt (siehe
+  // shuffleSequence in app.js), damit sich die Reihenfolge nach ein paar
+  // Wochen nicht stur auswendig lernen lässt.
+  panelSequence: ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events"],
 
   // Anzeigedauer je Panel in Millisekunden. Fehlt ein Eintrag, gilt
   // panelDurationMs als Standard.
@@ -76,6 +81,7 @@ const CONFIG = {
     quote: 12 * 1000,
     trivia: 22 * 1000, // Tippdauer variiert mit Satzlänge + 3s Denkpause vor der Multiple-Choice-Auflösung
     quiz: 22 * 1000,
+    riddle: 24 * 1000, // Frage tippen, dann Lösung erst zur Halbzeit auflösen
     events: 16 * 1000,
   },
   panelDurationMs: 18 * 1000,
@@ -167,6 +173,61 @@ const CONFIG = {
   // (die API bietet kein Deutsch an) — gleiches Prinzip wie beim
   // Spruch-des-Tages-Panel, das ebenfalls englische Inhalte zeigt.
   refreshQuizMs: 60 * 60 * 1000,
+
+  // Rätsel-des-Tages-Panel — keine externe API: eine Recherche nach einer
+  // kostenlosen, keylosen, deutschsprachigen Rätsel-API mit Lösung blieb
+  // ergebnislos (anders als bei Trivia/Quiz gibt es dafür keine verlässliche
+  // öffentliche Quelle). Stattdessen eine feste, lokale Sammlung klassischer
+  // Rätsel — deterministisch nach Tag-des-Jahres ausgewählt (siehe
+  // pickRiddleForToday in app.js), damit an einem Tag immer dasselbe Rätsel
+  // gezeigt wird, ganz ohne Netzwerkabhängigkeit oder CORS-Risiko. Wiederholt
+  // sich nach riddles.length Tagen (aktuell ca. alle 6-7 Wochen).
+  riddles: [
+    { q: "Je mehr man davon wegnimmt, desto größer wird es. Was ist es?", a: "Ein Loch" },
+    { q: "Was wird nasser, je mehr es trocknet?", a: "Ein Handtuch" },
+    { q: "Welcher Monat hat 28 Tage?", a: "Alle Monate" },
+    { q: "Zwei Väter und zwei Söhne gehen angeln und fangen zusammen drei Fische — jeder bekommt einen ganzen. Wie ist das möglich?", a: "Es sind nur drei Personen: Großvater, Vater und Sohn" },
+    { q: "Was hat viele Zähne, kann aber nicht beißen?", a: "Ein Kamm" },
+    { q: "Ein Bauer hat 17 Schafe. Alle außer 9 laufen weg. Wie viele Schafe bleiben ihm?", a: "9" },
+    { q: "Welches Wort wird in jedem Wörterbuch immer falsch geschrieben?", a: "Das Wort „falsch“" },
+    { q: "Was kann man leicht zerbrechen, ohne es je zu berühren?", a: "Ein Versprechen" },
+    { q: "Ich habe Städte, aber keine Häuser, Berge, aber keine Bäume, und Wasser, aber keine Fische. Was bin ich?", a: "Eine Landkarte" },
+    { q: "Was geht ständig nach oben, aber niemals nach unten?", a: "Das Alter" },
+    { q: "Was hat einen Ring, aber keinen Finger?", a: "Ein Baum (Jahresring)" },
+    { q: "Was hat eine Zunge, kann aber nicht sprechen?", a: "Ein Schuh" },
+    { q: "Was füllt einen ganzen Raum, ohne Platz wegzunehmen?", a: "Licht" },
+    { q: "Je mehr davon in einem Zimmer ist, desto weniger sieht man. Was ist es?", a: "Dunkelheit" },
+    { q: "Was hat vier Beine, kann aber nicht laufen?", a: "Ein Tisch" },
+    { q: "Was hat Hände, aber keine Arme, und ein Gesicht, aber keine Augen?", a: "Eine Uhr" },
+    { q: "Was kann sprechen, ohne einen Mund zu haben, und hören, ohne Ohren zu haben?", a: "Ein Echo" },
+    { q: "Ich bin am Anfang der Ewigkeit, am Ende von Raum und Zeit, am Anfang jedes Endes und am Ende jedes Ortes. Welcher Buchstabe bin ich?", a: "Der Buchstabe E" },
+    { q: "Wie nennt man ein Wort, das vorwärts wie rückwärts gelesen gleich klingt, zum Beispiel „OTTO“?", a: "Ein Palindrom" },
+    { q: "Was ist schwarz-weiß und wird jeden Tag von vielen gelesen?", a: "Eine Zeitung" },
+    { q: "Welches Tier trägt sein ganzes Leben lang dieselben vier Schuhe?", a: "Ein Pferd (Hufeisen)" },
+    { q: "Was steigt ständig, ohne sich dabei je zu bewegen?", a: "Die Temperatur" },
+    { q: "Was kann man sich einfangen, aber nicht werfen?", a: "Eine Erkältung" },
+    { q: "Was hat einen Boden, kann aber nicht stehen?", a: "Das Meer" },
+    { q: "Was kann durch ein geschlossenes Fenster fallen, ohne es zu zerbrechen?", a: "Sonnenlicht" },
+    { q: "Wie viele Monate haben mindestens 30 Tage?", a: "Elf" },
+    { q: "Was hat keine Augen, kann aber trotzdem weinen?", a: "Eine Wolke" },
+    { q: "Welches Wasser kann man in einem Sieb tragen, ohne dass es durchläuft?", a: "Gefrorenes Wasser (Eis)" },
+    { q: "Was ist voller Löcher, hält aber trotzdem Wasser?", a: "Ein Schwamm" },
+    { q: "Sobald du meinen Namen aussprichst, bin ich nicht mehr da. Was bin ich?", a: "Stille" },
+    { q: "Was hat einen Hals, aber keinen Kopf?", a: "Eine Flasche" },
+    { q: "Was hat viele Blätter, ist aber kein Baum?", a: "Ein Buch" },
+    { q: "Was hat einen Bart, ist aber kein Mann?", a: "Ein Schlüssel" },
+    { q: "Was steigt aus dem Wasser auf, ohne selbst nass zu sein?", a: "Dampf" },
+    { q: "Was hat man umso mehr, je mehr man davon abgibt?", a: "Wissen" },
+    { q: "Was wird immer kürzer, je länger man es benutzt?", a: "Ein Bleistift" },
+    { q: "Was fällt jeden Tag, verletzt sich dabei aber nie?", a: "Der Regen" },
+    { q: "Welches Tier kann nicht rückwärts springen?", a: "Ein Känguru" },
+    { q: "Was hat morgens vier Beine, mittags zwei und abends drei?", a: "Der Mensch (als Baby, Erwachsener, mit Gehstock im Alter)" },
+    { q: "Was hat einen Mund, spricht aber nie, und ein Bett, schläft aber nie?", a: "Ein Fluss" },
+    { q: "Was liegt immer vor dir, aber du kannst es nie erreichen?", a: "Die Zukunft" },
+    { q: "Was kannst du in deine linke Hand nehmen, aber nicht in deine rechte?", a: "Deinen rechten Ellbogen" },
+    { q: "Ich habe Schlüssel, aber keine Schlösser, und Platz, aber keine Zimmer. Man kann bei mir eintreten, aber nicht hineingehen. Was bin ich?", a: "Eine Tastatur" },
+    { q: "Welcher Kamm kämmt niemals Haare?", a: "Ein Hahnenkamm" },
+  ],
 
   // ---------------------------------------------------------------
   // Radio-Schnellzugriff: feste Senderliste, ein Tap startet die

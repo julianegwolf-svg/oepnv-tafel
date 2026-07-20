@@ -103,6 +103,7 @@ html, body {
 #panel-quote { --accent: var(--brass); }
 #panel-trivia { --accent: #a34a6b; }
 #panel-quiz { --accent: #3c7ea8; }
+#panel-riddle { --accent: #5b8a5b; }
 #panel-events { --accent: #b1622f; }
 
 /* ---------- Topbar ---------- */
@@ -1843,6 +1844,24 @@ html, body {
 /* Allgemeinwissen-Antworten sind ganze Phrasen statt vierstelliger
    Jahreszahlen — eigene, etwas kompaktere Textdarstellung statt der
    großen Monospace-Ziffern-Optik. */
+/* ---------- Rätsel-des-Tages-Panel ---------- */
+/* Kein Multiple-Choice wie bei Quiz/Trivia — nur eine offene Frage plus
+   verzögert eingeblendete Lösung, gleiche Tipp-und-Warten-Dramaturgie. */
+.riddle-answer {
+  margin-top: 26px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.riddle-answer.is-shown {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .trivia-choice.text-choice {
   font-family: 'Inter', -apple-system, system-ui, sans-serif;
   font-size: 17px;
