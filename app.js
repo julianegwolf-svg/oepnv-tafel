@@ -2679,7 +2679,14 @@ function init() {
 
   if (CONFIG.fullReloadMs) {
     setTimeout(function () {
-      window.location.reload();
+      // Ein einfaches location.reload() kann trotzdem aus dem Cache
+      // beantwortet werden (GitHub Pages liefert über ein CDN aus, das
+      // eigene Cache-Control-Header setzt — die überstimmen unsere
+      // <meta http-equiv="Cache-Control">-Tags oben, die sind nur eine
+      // Empfehlung, kein echter HTTP-Header). Deshalb stattdessen auf
+      // eine neue URL mit Zeitstempel wechseln — die hat garantiert noch
+      // niemand im Cache, weder der Browser noch ein CDN dazwischen.
+      window.location.href = window.location.pathname + "?_=" + Date.now();
     }, CONFIG.fullReloadMs);
   }
 }
