@@ -149,6 +149,11 @@ const CONFIG = {
   ],
   sportLeagueWhitelist: ["bl1", "bl2", "bl3", "dfb"],
   refreshSportMs: 30 * 60 * 1000,
+  // Eine Vereins-Karte wird erst gezeigt, wenn das nächste Spiel innerhalb
+  // dieser Zahl an Tagen ansteht (oder das letzte höchstens so lange her
+  // ist) — weit entfernte "nächste Spiele" sind selten interessant genug
+  // für eine eigene Karte, lieber Platz für Fußball-News lassen.
+  sportRelevanceDays: 5,
   // Vereinsfarben fürs Sport-Panel (Verlauf/Glow hinterm eigenen Wappen).
   // Grobe Annäherung an die echten Vereinsfarben, kein Anspruch auf exakten
   // Markenfarbcode.
@@ -170,5 +175,5 @@ const CONFIG = {
   // ressort=ausland für Welt-News). Kein reines "nur Fußball"-Feed (Tages-
   // schau mischt auch andere Sportarten rein), aber die zuverlässigste
   // kostenlose Option ohne API-Key.
-  sportNewsCount: 4,
+  sportNewsCount: 6,
 };

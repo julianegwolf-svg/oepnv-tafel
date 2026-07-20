@@ -1982,7 +1982,23 @@ function fetchTeamMatches(teamName) {
     }
 
     if (!next && !last) return null;
-    return { teamName: teamName, next: next, last: last };
+
+    // Nicht jedes noch Wochen entfernte "nächste Spiel" verdient eine
+    // eigene Karte in der Diashow — erst zeigen, wenn es wirklich bald
+    // ansteht (oder gerade eben vorbei ist), sonst lieber der Fußball-News
+    // mehr Platz lassen (siehe CONFIG.sportRelevanceDays).
+    const windowMs = (CONFIG.sportRelevanceDays || 5) * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const nextSoon = next && (new Date(next.matchDateTime).getTime() - now) <= windowMs;
+    const lastRecent = last && (now - new Date(last.matchDateTime).getTime()) <= windowMs;
+
+    if (!nextSoon && !lastRecent) return null;
+
+    return {
+      teamName: teamName,
+      next: nextSoon ? next : null,
+      last: (!nextSoon && lastRecent) ? last : null,
+    };
   }).catch(function (err) {
     console.error(err);
     return null;

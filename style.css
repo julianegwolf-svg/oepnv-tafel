@@ -162,8 +162,8 @@ html, body {
   padding: 8px 20px;
   border-radius: var(--radius-m);
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(11px);
+  backdrop-filter: blur(11px);
   border: 1px solid var(--panel-edge);
   box-shadow: var(--glass-shadow);
 }
@@ -226,11 +226,51 @@ html, body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.7s ease;
+  /* Stabile eigene Compositing-Ebene erzwingen — hilft gegen das unten
+     beschriebene "Ecken poppen eckig"-Problem, siehe .panel-view etc.
+     weiter unten. */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .panel-view.active {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* PERFORMANCE: der größte Hebel gegen "laggy". Sechs von sieben Panels
+   sind IMMER unsichtbar (opacity:0), aber ohne diese Regel liefen ihre
+   CSS-Animationen (Regen/Wolken-Partikel, Icon-Wippen, Sport-Wappen-Glow,
+   Cursor-Blinken, Puls-Punkte …) die ganze Zeit im Hintergrund einfach
+   weiter — auf einem alten iPad Air 1 (A7-Chip von 2013) summiert sich
+   das spürbar. animation-play-state:paused für alles innerhalb eines
+   nicht-aktiven Panels friert die Animationen ein, sobald sie nicht zu
+   sehen sind, und läuft beim Wechsel zurück zur "active"-Klasse einfach
+   wieder normal weiter. Seit Safari 9 unterstützt, also auch hier sicher. */
+.panel-view:not(.active) * {
+  animation-play-state: paused !important;
+}
+
+/* BUG gefunden ("Ecken erst rund, dann poppen sie eckig"): bekannter alter
+   WebKit-Bug — ein Element mit border-radius + overflow:hidden (teils
+   kombiniert mit -webkit-backdrop-filter) "vergisst" die Rundung manchmal
+   kurz, sobald sich seine Compositing-Ebene ändert (genau das passiert
+   hier laufend: Opacity-Übergang beim Karussell-Wechsel, Backdrop-Blur,
+   neu eingefügte Kind-Elemente). Ergebnis: die Ecken blitzen für einen
+   Frame eckig auf, bevor die Rundung "nachzieht". Klassischer, folgenloser
+   Fix seit Jahren in der Web-Community: ein Mask-Image erzwingt den
+   korrekten Rundungs-Renderpfad, ohne optisch etwas zu verändern. */
+.panel-view,
+.row,
+.clock,
+.weather-bottom-sheet,
+.news-slideshow,
+.sport-block,
+.music-item,
+.commute-chip,
+.commute-map-wrap,
+.quote-block {
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 
 .view-label {
@@ -298,8 +338,8 @@ html, body {
   grid-template-columns: 100px 1fr 130px;
   align-items: center;
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(11px);
+  backdrop-filter: blur(11px);
   border: 1px solid var(--panel-edge);
   border-left: 6px solid transparent;
   border-radius: var(--radius-m);
@@ -715,8 +755,8 @@ html, body {
 .weather-bottom-sheet {
   margin-top: auto;
   background: rgba(8, 12, 18, 0.32);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(13px);
+  backdrop-filter: blur(13px);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: var(--radius-l);
   padding: 18px 18px 20px;
@@ -839,8 +879,8 @@ html, body {
   pointer-events: none;
   transition: opacity 0.9s ease;
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   border: 1px solid var(--panel-edge);
 }
 
@@ -944,8 +984,8 @@ html, body {
 
 .music-item {
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(11px);
+  backdrop-filter: blur(11px);
   border: 1px solid var(--panel-edge);
   border-radius: var(--radius-m);
   padding: 12px 20px;
@@ -1013,8 +1053,8 @@ html, body {
   display: flex;
   align-items: center;
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(11px);
+  backdrop-filter: blur(11px);
   border: 1px solid var(--panel-edge);
   border-radius: 999px;
   padding: 12px 22px 12px 16px;
@@ -1157,8 +1197,8 @@ html, body {
   align-items: flex-start;
   padding: 48px 56px;
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(11px);
+  backdrop-filter: blur(11px);
   border: 1px solid var(--panel-edge);
   border-radius: var(--radius-l);
   box-shadow: var(--glass-shadow);
