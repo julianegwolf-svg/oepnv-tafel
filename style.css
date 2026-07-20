@@ -392,17 +392,42 @@ html, body {
   opacity: 1;
 }
 
-/* Textfarbe/Schatten umschalten, sobald ein Foto hinter dem Panel liegt —
-   sonst wäre die normale dunkle Schrift je nach Fotohelligkeit schlecht
-   lesbar. text-shadow statt Kontrastberechnung, damit es bei jedem Foto
-   funktioniert statt nur bei den getesteten. */
+/* Echter Video-Loop (siehe CONFIG.weatherVideos) — liegt über dem Foto,
+   aber unter den Icon/Temperatur/Text-Inhalten (die sind normal-flow und
+   landen dadurch automatisch immer obenauf). Hardware-Videodecoder statt
+   noch mehr CSS-Animation, deshalb trotz "fluid video" performance-seitig
+   unkritisch fürs alte iPad. */
+.weather-video {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  background: #12181a;
+  transition: opacity 1s ease;
+  pointer-events: none;
+}
+
+.weather-video.playing {
+  opacity: 0.92;
+}
+
+/* Textfarbe/Schatten umschalten, sobald ein Foto oder Video hinter dem
+   Panel liegt — sonst wäre die normale dunkle Schrift je nach Helligkeit
+   schlecht lesbar. text-shadow statt Kontrastberechnung, damit es bei
+   jedem Foto/Video funktioniert statt nur bei den getesteten. */
 .weather-big.has-photo .weather-big-temp,
-.weather-big.has-photo .weather-big-desc {
+.weather-big.has-photo .weather-big-desc,
+.weather-big.has-video .weather-big-temp,
+.weather-big.has-video .weather-big-desc {
   color: #ffffff;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
-.weather-big.has-photo .weather-big-icon {
+.weather-big.has-photo .weather-big-icon,
+.weather-big.has-video .weather-big-icon {
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
 }
 

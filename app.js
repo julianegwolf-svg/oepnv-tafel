@@ -749,6 +749,82 @@ function fetchWeatherPhoto(code, isDay) {
   });
 }
 
+// ---------- Wetter-Panel: echte Video-Loops statt reiner CSS-Animation ----------
+// Für die Kategorien, wo ein passendes freies Loop-Video existiert (siehe
+// CONFIG.weatherVideos — kurze Vorschau-Clips von echten Lottie-Animationen),
+// läuft ein natives <video> als Hintergrund statt/über der CSS-Animation.
+// Hardware-Videodecoder statt JS/CSS-Rendering — auf dem alten iPad
+// tatsächlich günstiger als noch mehr CSS-Layer, und wirkt "flüssiger".
+// Kein <video>-Fehlschlag reißt was mit: schlägt das Laden fehl oder gibt
+// es für eine Kategorie kein Video, bleiben Foto + CSS-Effekt (s.o.)
+// einfach wie gehabt sichtbar.
+let weatherVideoEl = null;
+let weatherVideoCategory = null;
+const weatherVideoFailedFor = {};
+
+function ensureWeatherVideoLayer() {
+  if (weatherVideoEl || !els.weatherBig) return;
+  weatherVideoEl = document.createElement("video");
+  weatherVideoEl.className = "weather-video";
+  weatherVideoEl.muted = true;
+  weatherVideoEl.setAttribute("muted", "");
+  weatherVideoEl.autoplay = true;
+  weatherVideoEl.loop = true;
+  weatherVideoEl.playsInline = true;
+  weatherVideoEl.setAttribute("playsinline", "");
+  weatherVideoEl.setAttribute("webkit-playsinline", "");
+  weatherVideoEl.setAttribute("preload", "auto");
+
+  weatherVideoEl.addEventListener("error", function () {
+    if (weatherVideoCategory) weatherVideoFailedFor[weatherVideoCategory] = true;
+    weatherVideoEl.classList.remove("playing");
+    if (els.weatherBig) els.weatherBig.classList.remove("has-video");
+  });
+
+  weatherVideoEl.addEventListener("loadeddata", function () {
+    weatherVideoEl.classList.add("playing");
+    if (els.weatherBig) els.weatherBig.classList.add("has-video");
+    const p = weatherVideoEl.play();
+    if (p && p.catch) {
+      p.catch(function () {
+        // Autoplay evtl. blockiert — dann bleibt Foto/CSS-Effekt als Bild stehen.
+      });
+    }
+  });
+
+  els.weatherBig.appendChild(weatherVideoEl);
+}
+
+function applyWeatherVideo(category) {
+  if (!els.weatherBig) return;
+  ensureWeatherVideoLayer();
+
+  const src = CONFIG.weatherVideos && CONFIG.weatherVideos[category];
+  weatherVideoCategory = category;
+
+  if (!src || weatherVideoFailedFor[category]) {
+    weatherVideoEl.classList.remove("playing");
+    els.weatherBig.classList.remove("has-video");
+    return;
+  }
+
+  if (weatherVideoEl.getAttribute("data-src") === src) {
+    // Läuft schon — Sichtbarkeits-Klasse trotzdem neu setzen, da
+    // updateWeather() die className von .weather-big jedes Mal ersetzt.
+    if (weatherVideoEl.readyState >= 2) {
+      weatherVideoEl.classList.add("playing");
+      els.weatherBig.classList.add("has-video");
+    }
+    return;
+  }
+
+  weatherVideoEl.setAttribute("data-src", src);
+  weatherVideoEl.classList.remove("playing");
+  els.weatherBig.classList.remove("has-video");
+  weatherVideoEl.src = src;
+  weatherVideoEl.load();
+}
+
 // Kleine Zusatz-Daten unterm Wetter-Panel (Wind, Luftfeuchte, gefühlte
 // Temperatur, Regenwahrscheinlichkeit, Sonnenauf-/-untergang) — fehlt ein
 // Feld in der API-Antwort mal, wird die jeweilige Kachel einfach
@@ -842,6 +918,7 @@ function updateWeather() {
       const fxCategory = weatherFxCategory(code, isDay);
       els.weatherBig.className = "weather-big" + (fxCategory ? " fx-" + fxCategory : "");
       fetchWeatherPhoto(code, isDay);
+      applyWeatherVideo(fxCategory);
     }
 
     renderWeatherDetails(data);

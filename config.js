@@ -162,4 +162,18 @@ const CONFIG = {
   },
   // Wie lange jede Spiel-Karte in der Sport-Diashow einzeln zu sehen ist.
   sportSlideIntervalMs: 5 * 1000,
+
+  // Echte Video-Loops fürs Wetter-Panel statt/über der CSS-Animation —
+  // kurze, freie Vorschau-Clips von echten Lottie-Animationen (Quelle:
+  // lottiefiles.com, "Free to use under the Lottie Simple License").
+  // Läuft ein Video mal nicht (Quelle offline, Fehler beim Laden), fällt
+  // die jeweilige Kategorie automatisch auf Foto + CSS-Effekt zurück —
+  // kein Pflichtfeld, für "fog"/"storm" gibt es bewusst keins.
+  weatherVideos: {
+    rain: "https://assets-v2.lottiefiles.com/a/e46a1b14-1153-11ee-9928-63a11af713c1/vWiOy0CgSb.mp4",
+    snow: "https://assets-v2.lottiefiles.com/a/c9834de6-117d-11ee-9f2c-73f823e230e0/efNFEjvmry.mp4",
+    cloud: "https://assets-v2.lottiefiles.com/a/04d0ca82-116e-11ee-98fb-d3a6a29fd3f2/G6H4Y6svbi.mp4",
+    night: "https://assets-v2.lottiefiles.com/a/e9a1c380-1170-11ee-970a-43c443669001/myvIKfKbvz.mp4",
+    sun: "https://assets-v2.lottiefiles.com/a/824e9f04-1153-11ee-b7c5-c350bed05960/RYSqmArmfU.mp4",
+  },
 };
