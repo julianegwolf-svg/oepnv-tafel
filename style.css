@@ -351,16 +351,18 @@ html, body {
   50% { transform: translateY(-9px); }
 }
 
-/* Das ganze Wetter-Panel ist jetzt die "Bühne": Foto/Video/CSS-Effekte
-   liegen als volle Panel-Hintergründe hinter ALLEM (Kopfzeile, Kachel,
-   Stunden, Details) statt nur hinter der kleinen Icon/Temperatur-Zeile —
-   deutlich größer und wirkt jetzt wirklich wie ein Hintergrundvideo statt
-   ein kleines Element irgendwo im Panel. #panel-weather ist als
-   .panel-view bereits position:absolute und füllt die ganze Bühne, die
-   Hintergrund-Layer (position:absolute; inset:0) strecken sich dadurch
-   automatisch über das komplette Panel. */
+/* Das ganze Wetter-Panel ist die "Bühne": ein dynamischer Himmel-Verlauf
+   (siehe weatherSkyGradient in app.js — nach Wetterlage UND Tag/Nacht,
+   reines CSS, kein Netzwerk, kein Video) als eigener Hintergrund von
+   #panel-weather selbst, plus Bremen-Foto (weich eingeblendet) und
+   CSS-Wettereffekte obendrauf. Alles liegt hinter Kopfzeile, Kachel,
+   Stunden und Details (die sind normal-flow und landen automatisch immer
+   oben). #panel-weather ist als .panel-view bereits position:absolute und
+   füllt die ganze Bühne, die Hintergrund-Layer (position:absolute;
+   inset:0) strecken sich dadurch automatisch über das komplette Panel. */
 #panel-weather.weather-scene {
   overflow: hidden;
+  transition: background 1.2s ease;
 }
 
 .weather-big {
@@ -370,20 +372,20 @@ html, body {
   padding: 20px 26px;
   margin-bottom: 18px;
   border-radius: 20px;
-  background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--panel-edge);
-  box-shadow: var(--glass-shadow);
+  background: rgba(12, 16, 24, 0.38);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
 }
 
 .weather-big > * + * {
   margin-left: 26px;
 }
 
-/* Dezente Wetter-Effekte: liegen per z-index hinter allem Inhalt (siehe
-   Stacking-Reihenfolge negativer z-index innerhalb des position:absolute-
-   Panels), werden nur per Klasse auf .weather-scene ein-/ausgeblendet. */
+/* Bremen-Foto: liegt als weiche Textur/Ortsbezug über dem Himmel-Verlauf,
+   per mix-blend-mode ins Farbschema eingeblendet statt es zu übertünchen
+   — dezenter, "designter" Look statt flachem Foto-Hintergrund. */
 .weather-photo {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -391,53 +393,20 @@ html, body {
   background-size: cover;
   background-position: center;
   opacity: 0;
-  transition: opacity 1.2s ease;
+  mix-blend-mode: overlay;
+  transition: opacity 1.4s ease;
 }
 
 .weather-photo.loaded {
-  opacity: 1;
+  opacity: 0.55;
 }
 
-/* Echter Video-Loop (siehe CONFIG.weatherVideos) — liegt über dem Foto,
-   aber unter den Icon/Temperatur/Text-Inhalten (die sind normal-flow und
-   landen dadurch automatisch immer obenauf). Hardware-Videodecoder statt
-   noch mehr CSS-Animation, deshalb trotz "fluid video" performance-seitig
-   unkritisch fürs alte iPad. */
-.weather-video {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  z-index: -3;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  background: #12181a;
-  transition: opacity 1s ease;
-  pointer-events: none;
-}
-
-.weather-video.playing {
-  opacity: 0.95;
-}
-
-/* Textfarbe/Schatten umschalten, sobald ein Foto oder Video hinter dem
-   Panel liegt — sonst wäre die normale dunkle Schrift je nach Helligkeit
-   schlecht lesbar. text-shadow statt Kontrastberechnung, damit es bei
-   jedem Foto/Video funktioniert statt nur bei den getesteten. Die Klasse
-   sitzt jetzt auf .weather-scene (dem ganzen Panel), nicht mehr nur auf
-   der kleinen Icon-Zeile. */
-.weather-scene.has-photo .weather-big-temp,
-.weather-scene.has-photo .weather-big-desc,
-.weather-scene.has-video .weather-big-temp,
-.weather-scene.has-video .weather-big-desc {
-  color: #ffffff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.6);
-}
-
-.weather-scene.has-photo .weather-big-icon,
-.weather-scene.has-video .weather-big-icon {
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
-}
+/* Dezente Wetter-Effekte: liegen per z-index hinter allem Inhalt (siehe
+   Stacking-Reihenfolge negativer z-index innerhalb des position:absolute-
+   Panels), werden nur per Klasse auf .weather-scene ein-/ausgeblendet.
+   Text ist jetzt immer hell (siehe .weather-big-*), weil der Himmel-
+   Verlauf immer für genug Kontrast sorgt — kein has-photo/has-video-
+   Unterschied mehr nötig. */
 
 .weather-fx-layer {
   position: absolute;
@@ -622,46 +591,37 @@ html, body {
   will-change: opacity;
 }
 
+/* Text ist immer über dem dynamischen Himmel-Verlauf (siehe
+   weatherSkyGradient in app.js), der ist immer dunkel genug abgestimmt —
+   deshalb Text unconditional hell mit Schatten statt eines has-photo/
+   has-video-Sonderfalls wie früher. */
 .weather-big-icon {
   font-size: 92px;
   line-height: 1;
   display: inline-block;
   animation: weatherFloat 4.5s ease-in-out infinite;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
 }
 
 .weather-big-temp {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 78px;
   font-weight: 700;
-  color: var(--ink);
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
 .weather-big-desc {
   font-size: 24px;
-  color: var(--ink-dim);
+  color: #f0f2f5;
   font-weight: 500;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
-/* Temporäres Diagnose-Label (siehe app.js updateWeather) — bewusst winzig
-   und unauffällig in der Ecke, damit es nicht wie ein normales UI-Element
-   wirkt. Wieder entfernen, sobald die Animationen bestätigt laufen. */
-.weather-debug {
-  position: absolute;
-  bottom: 8px;
-  right: 14px;
-  z-index: 2;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  color: rgba(120, 120, 120, 0.7);
-  background: rgba(255, 255, 255, 0.5);
-  padding: 2px 6px;
-  border-radius: 6px;
-}
-
-.weather-scene.has-photo .weather-debug,
-.weather-scene.has-video .weather-debug {
-  color: rgba(255, 255, 255, 0.75);
-  background: rgba(0, 0, 0, 0.35);
+/* Panel-Label über dem farbigen Himmel-Verlauf lesbar halten. */
+#panel-weather.weather-scene .view-label {
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .weather-hours {

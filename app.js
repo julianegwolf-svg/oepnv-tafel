@@ -23,7 +23,6 @@ const els = {
   weatherBigDesc: document.getElementById("weatherBigDesc"),
   weatherHours: document.getElementById("weatherHours"),
   weatherDetails: document.getElementById("weatherDetails"),
-  weatherDebug: document.getElementById("weatherDebug"),
   newsList: document.getElementById("newsList"),
   musicList: document.getElementById("musicList"),
   quoteBlock: document.getElementById("quoteBlock"),
@@ -544,19 +543,54 @@ function weatherFxCategory(code, isDay) {
 
 const WEATHER_FX_CATEGORIES = ["rain", "storm", "snow", "fog", "cloud", "sun", "night"];
 
-// Setzt die fx-Kategorie auf .weather-scene (#panel-weather) über
-// classList statt className-Ersatz — showPanel() wechselt beim Karussell
-// ebenfalls per classList.toggle("active", …) auf demselben Element,
-// eine className-Zuweisung hier würde dessen "active"-Klasse (und die
-// hier gesetzten Klassen) beim nächsten Wechsel sonst gegenseitig
-// wegwischen.
-function setWeatherScene(fxCategory) {
+// Echte Bremen-Wetter-Videos gibt es nirgends kostenlos, und die einzigen
+// Bremen-Videoclips auf Wikimedia Commons (ein paar Bahn-Aufnahmen) liegen
+// als WebM/Ogg Theora vor — beides Codecs, die Safari 12 grundsätzlich gar
+// nicht abspielen kann (nur H.264/MP4). Ein generisches Lottie-Vorschau-
+// video war zwar technisch MP4, ist aber erstens nicht Bremen und wurde
+// zweitens von iOS nach kurzer Zeit als "nicht wirklich sichtbares
+// Hintergrundelement" pausiert (Energiespar-Heuristik für Video hinter
+// anderem Content) — daher der kurze Aufblitzer und dann Stillstand.
+// Stattdessen: ein dynamischer Himmel-Verlauf wie bei Apple Wetter/Carrot
+// Weather — reines CSS, läuft garantiert, kein Netzwerk, keine Codecs,
+// keine Energiespar-Überraschungen. Je nach Wetterlage UND Tag/Nacht
+// eigene Farbstimmung.
+const WEATHER_SKY_GRADIENTS = {
+  "sun": "linear-gradient(165deg, #2f7cc4 0%, #4fa0dd 45%, #ffb75e 100%)",
+  "night": "linear-gradient(165deg, #080e1f 0%, #16223f 55%, #283a5e 100%)",
+  "cloud:day": "linear-gradient(165deg, #4b5a68 0%, #6b7a89 50%, #8fa0ad 100%)",
+  "cloud:night": "linear-gradient(165deg, #0e131c 0%, #232936 55%, #383f4d 100%)",
+  "rain:day": "linear-gradient(165deg, #33424e 0%, #4c5f6e 50%, #66798a 100%)",
+  "rain:night": "linear-gradient(165deg, #0a121b 0%, #182732 55%, #263542 100%)",
+  "storm:day": "linear-gradient(165deg, #1c222c 0%, #333c4a 50%, #525c6c 100%)",
+  "storm:night": "linear-gradient(165deg, #05070b 0%, #131924 55%, #1f2532 100%)",
+  "snow:day": "linear-gradient(165deg, #4a6478 0%, #6f8ea3 50%, #9fc0d4 100%)",
+  "snow:night": "linear-gradient(165deg, #101827 0%, #202e42 55%, #33455c 100%)",
+  "fog:day": "linear-gradient(165deg, #5a6268 0%, #7c848a 50%, #9ea6ac 100%)",
+  "fog:night": "linear-gradient(165deg, #12151a 0%, #24282e 55%, #363b41 100%)",
+};
+
+function weatherSkyGradient(category, isDay) {
+  if (category === "sun") return WEATHER_SKY_GRADIENTS.sun;
+  if (category === "night") return WEATHER_SKY_GRADIENTS.night;
+  const key = category + ":" + (isDay ? "day" : "night");
+  return WEATHER_SKY_GRADIENTS[key] || WEATHER_SKY_GRADIENTS["cloud:day"];
+}
+
+// Setzt die fx-Kategorie + den Himmel-Verlauf auf .weather-scene
+// (#panel-weather) über classList/style statt className-Ersatz —
+// showPanel() wechselt beim Karussell ebenfalls per
+// classList.toggle("active", …) auf demselben Element, eine className-
+// Zuweisung hier würde dessen "active"-Klasse (und die hier gesetzten
+// Klassen) beim nächsten Wechsel sonst gegenseitig wegwischen.
+function setWeatherScene(fxCategory, isDay) {
   if (!els.weatherPanel) return;
   els.weatherPanel.classList.add("weather-scene");
   WEATHER_FX_CATEGORIES.forEach(function (c) {
     els.weatherPanel.classList.remove("fx-" + c);
   });
   if (fxCategory) els.weatherPanel.classList.add("fx-" + fxCategory);
+  els.weatherPanel.style.background = weatherSkyGradient(fxCategory, isDay);
 }
 
 function ensureWeatherFxLayers() {
@@ -708,40 +742,29 @@ function upsizeThumb(url) {
   return url.replace(/\/\d+px-/, "/900px-");
 }
 
-function weatherPhotoTint(code, isDay) {
-  const hour = new Date().getHours();
-  if (hour >= 21 || hour < 6) return "rgba(8,12,22,0.68)";
-  const cat = weatherFxCategory(code, isDay);
-  if (cat === "storm") return "rgba(24,28,42,0.62)";
-  if (cat === "rain") return "rgba(32,52,72,0.55)";
-  if (cat === "snow") return "rgba(190,204,216,0.5)";
-  if (cat === "fog") return "rgba(120,124,128,0.5)";
-  if (cat === "cloud") return "rgba(54,58,64,0.55)";
-  return "rgba(198,146,58,0.42)"; // klar/sonnig — warmer Ton
-}
-
-function applyWeatherPhotoTint(code, isDay) {
+// Der Himmel-Verlauf (siehe weatherSkyGradient) liefert jetzt die
+// eigentliche Wetter-/Tageszeit-Farbstimmung. Das Foto liegt nur noch als
+// weiche Textur/Bremen-Bezug darüber (mix-blend-mode: overlay, siehe CSS)
+// — deshalb hier nur noch ein neutraler Kontrast-Schleier fürs Lesen des
+// Textes, nicht mehr pro Wetterlage eingefärbt.
+function applyWeatherPhotoTint() {
   if (!weatherPhotoEl) return;
   const bgUrl = weatherPhotoEl.getAttribute("data-bg-url");
   if (!bgUrl) return;
-  const tint = weatherPhotoTint(code, isDay);
-  weatherPhotoEl.style.backgroundImage = "linear-gradient(" + tint + "," + tint + "), " + bgUrl;
-  // Textfarbe/Schatten ans Foto anpassen — die fx-/has-*-Klassen auf
-  // .weather-scene werden über classList gepflegt (nie per className-
-  // Zuweisung ersetzt), damit showPanel()'s eigene className-Zuweisung
-  // beim Karussell-Wechsel sie nicht versehentlich wieder wegwischt.
+  const scrim = "linear-gradient(180deg, rgba(8,12,20,0.1) 0%, rgba(8,12,20,0.5) 100%)";
+  weatherPhotoEl.style.backgroundImage = scrim + ", " + bgUrl;
+  // has-photo über classList (nie className-Ersatz) — siehe showPanel()-Fix.
   if (els.weatherPanel) els.weatherPanel.classList.add("has-photo");
 }
 
-function fetchWeatherPhoto(code, isDay) {
+function fetchWeatherPhoto() {
   if (!els.weatherPanel) return;
   ensureWeatherPhotoLayer();
 
   const now = Date.now();
   if (weatherPhotoEl.getAttribute("data-loaded") === "1" &&
       (now - weatherPhotoFetchedAt) < CONFIG.refreshWeatherMs) {
-    // Foto ist noch frisch genug — nur Tönung an Wetter/Tageszeit anpassen.
-    applyWeatherPhotoTint(code, isDay);
+    applyWeatherPhotoTint();
     return;
   }
 
@@ -761,96 +784,12 @@ function fetchWeatherPhoto(code, isDay) {
     weatherPhotoEl.setAttribute("data-loaded", "1");
     lastWeatherPhotoTitle = title;
     weatherPhotoFetchedAt = now;
-    applyWeatherPhotoTint(code, isDay);
+    applyWeatherPhotoTint();
     weatherPhotoEl.classList.add("loaded");
   }).catch(function (err) {
-    // Kein Foto? Kein Beinbruch — Verlaufshintergrund/Animation bleiben.
+    // Kein Foto? Kein Beinbruch — Himmel-Verlauf + Animation bleiben.
     console.error(err);
   });
-}
-
-// ---------- Wetter-Panel: echte Video-Loops statt reiner CSS-Animation ----------
-// Für die Kategorien, wo ein passendes freies Loop-Video existiert (siehe
-// CONFIG.weatherVideos — kurze Vorschau-Clips von echten Lottie-Animationen),
-// läuft ein natives <video> als Hintergrund statt/über der CSS-Animation.
-// Hardware-Videodecoder statt JS/CSS-Rendering — auf dem alten iPad
-// tatsächlich günstiger als noch mehr CSS-Layer, und wirkt "flüssiger".
-// Kein <video>-Fehlschlag reißt was mit: schlägt das Laden fehl oder gibt
-// es für eine Kategorie kein Video, bleiben Foto + CSS-Effekt (s.o.)
-// einfach wie gehabt sichtbar.
-let weatherVideoEl = null;
-let weatherVideoCategory = null;
-const weatherVideoFailedFor = {};
-
-function ensureWeatherVideoLayer() {
-  if (weatherVideoEl || !els.weatherPanel) return;
-  weatherVideoEl = document.createElement("video");
-  weatherVideoEl.className = "weather-video";
-  weatherVideoEl.muted = true;
-  weatherVideoEl.setAttribute("muted", "");
-  weatherVideoEl.autoplay = true;
-  weatherVideoEl.loop = true;
-  weatherVideoEl.playsInline = true;
-  weatherVideoEl.setAttribute("playsinline", "");
-  weatherVideoEl.setAttribute("webkit-playsinline", "");
-  weatherVideoEl.setAttribute("preload", "auto");
-
-  weatherVideoEl.addEventListener("error", function () {
-    if (weatherVideoCategory) weatherVideoFailedFor[weatherVideoCategory] = true;
-    weatherVideoEl.classList.remove("playing");
-    if (els.weatherPanel) els.weatherPanel.classList.remove("has-video");
-    if (els.weatherDebug) {
-      els.weatherDebug.textContent = "fx: " + weatherVideoCategory + " · Video fehlgeschlagen → CSS/Foto";
-    }
-  });
-
-  weatherVideoEl.addEventListener("loadeddata", function () {
-    weatherVideoEl.classList.add("playing");
-    if (els.weatherPanel) els.weatherPanel.classList.add("has-video");
-    if (els.weatherDebug) {
-      els.weatherDebug.textContent = "fx: " + weatherVideoCategory + " · Video läuft";
-    }
-    const p = weatherVideoEl.play();
-    if (p && p.catch) {
-      p.catch(function () {
-        if (els.weatherDebug) {
-          els.weatherDebug.textContent = "fx: " + weatherVideoCategory + " · Video geladen, Autoplay blockiert";
-        }
-      });
-    }
-  });
-
-  els.weatherPanel.appendChild(weatherVideoEl);
-}
-
-function applyWeatherVideo(category) {
-  if (!els.weatherPanel) return;
-  ensureWeatherVideoLayer();
-
-  const src = CONFIG.weatherVideos && CONFIG.weatherVideos[category];
-  weatherVideoCategory = category;
-
-  if (!src || weatherVideoFailedFor[category]) {
-    weatherVideoEl.classList.remove("playing");
-    els.weatherPanel.classList.remove("has-video");
-    return;
-  }
-
-  if (weatherVideoEl.getAttribute("data-src") === src) {
-    // Läuft schon — Sichtbarkeits-Klasse trotzdem neu setzen (classList,
-    // kein className-Ersatz mehr — siehe showPanel()-Fix).
-    if (weatherVideoEl.readyState >= 2) {
-      weatherVideoEl.classList.add("playing");
-      els.weatherPanel.classList.add("has-video");
-    }
-    return;
-  }
-
-  weatherVideoEl.setAttribute("data-src", src);
-  weatherVideoEl.classList.remove("playing");
-  els.weatherPanel.classList.remove("has-video");
-  weatherVideoEl.src = src;
-  weatherVideoEl.load();
 }
 
 // Kleine Zusatz-Daten unterm Wetter-Panel (Wind, Luftfeuchte, gefühlte
@@ -944,18 +883,8 @@ function updateWeather() {
     if (els.weatherPanel) {
       ensureWeatherFxLayers();
       const fxCategory = weatherFxCategory(code, isDay);
-      setWeatherScene(fxCategory);
-      fetchWeatherPhoto(code, isDay);
-      applyWeatherVideo(fxCategory);
-
-      // Winziges Diagnose-Label — steht klein und dezent in der Ecke, damit
-      // sich exakt sagen lässt, was der Code gerade "denkt" (Kategorie +
-      // Video-Status), statt weiter zu raten. Fliegt wieder raus, sobald
-      // klar ist, woran es hängt.
-      if (els.weatherDebug) {
-        els.weatherDebug.textContent = "fx: " + (fxCategory || "keine") +
-          (CONFIG.weatherVideos && CONFIG.weatherVideos[fxCategory] ? " · Video lädt…" : " · nur CSS");
-      }
+      setWeatherScene(fxCategory, isDay);
+      fetchWeatherPhoto();
     }
 
     renderWeatherDetails(data);
