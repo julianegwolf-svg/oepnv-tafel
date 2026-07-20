@@ -22,6 +22,7 @@ const els = {
   weatherBigDesc: document.getElementById("weatherBigDesc"),
   weatherHours: document.getElementById("weatherHours"),
   weatherDetails: document.getElementById("weatherDetails"),
+  weatherDebug: document.getElementById("weatherDebug"),
   newsList: document.getElementById("newsList"),
   musicList: document.getElementById("musicList"),
   quoteBlock: document.getElementById("quoteBlock"),
@@ -779,15 +780,23 @@ function ensureWeatherVideoLayer() {
     if (weatherVideoCategory) weatherVideoFailedFor[weatherVideoCategory] = true;
     weatherVideoEl.classList.remove("playing");
     if (els.weatherBig) els.weatherBig.classList.remove("has-video");
+    if (els.weatherDebug) {
+      els.weatherDebug.textContent = "fx: " + weatherVideoCategory + " · Video fehlgeschlagen → CSS/Foto";
+    }
   });
 
   weatherVideoEl.addEventListener("loadeddata", function () {
     weatherVideoEl.classList.add("playing");
     if (els.weatherBig) els.weatherBig.classList.add("has-video");
+    if (els.weatherDebug) {
+      els.weatherDebug.textContent = "fx: " + weatherVideoCategory + " · Video läuft";
+    }
     const p = weatherVideoEl.play();
     if (p && p.catch) {
       p.catch(function () {
-        // Autoplay evtl. blockiert — dann bleibt Foto/CSS-Effekt als Bild stehen.
+        if (els.weatherDebug) {
+          els.weatherDebug.textContent = "fx: " + weatherVideoCategory + " · Video geladen, Autoplay blockiert";
+        }
       });
     }
   });
@@ -919,17 +928,39 @@ function updateWeather() {
       els.weatherBig.className = "weather-big" + (fxCategory ? " fx-" + fxCategory : "");
       fetchWeatherPhoto(code, isDay);
       applyWeatherVideo(fxCategory);
+
+      // Winziges Diagnose-Label — steht klein und dezent in der Ecke, damit
+      // sich exakt sagen lässt, was der Code gerade "denkt" (Kategorie +
+      // Video-Status), statt weiter zu raten. Fliegt wieder raus, sobald
+      // klar ist, woran es hängt.
+      if (els.weatherDebug) {
+        els.weatherDebug.textContent = "fx: " + (fxCategory || "keine") +
+          (CONFIG.weatherVideos && CONFIG.weatherVideos[fxCategory] ? " · Video lädt…" : " · nur CSS");
+      }
     }
 
     renderWeatherDetails(data);
 
     if (els.weatherHours && data.hourly && data.hourly.time) {
-      const nowIso = data.current.time;
-      let startIdx = data.hourly.time.indexOf(nowIso);
-      if (startIdx === -1) startIdx = 0;
+      // BUG gefunden: hier stand ein exakter String-Vergleich
+      // (data.hourly.time.indexOf(data.current.time)) — die Stundenwerte
+      // stehen aber immer auf der vollen Stunde ("...T14:00"), während
+      // current.time die tatsächliche Minute enthält ("...T14:37"). Das
+      // hat NIE getroffen, ist immer auf 0 zurückgefallen und hat deshalb
+      // dauerhaft die ersten Stunden des Tages (00/01/02 Uhr…) gezeigt,
+      // egal wie spät es wirklich war. Jetzt: echter Zeitvergleich statt
+      // Text-Gleichheit, findet die erste Stunde ab jetzt.
+      const nowMs = Date.now();
+      let startIdx = data.hourly.time.length - 1;
+      for (let j = 0; j < data.hourly.time.length; j++) {
+        if (new Date(data.hourly.time[j]).getTime() >= nowMs) {
+          startIdx = j;
+          break;
+        }
+      }
 
       els.weatherHours.innerHTML = "";
-      for (let i = 1; i <= CONFIG.weatherHourCount; i++) {
+      for (let i = 0; i < CONFIG.weatherHourCount; i++) {
         const idx = startIdx + i;
         if (idx >= data.hourly.time.length) break;
 

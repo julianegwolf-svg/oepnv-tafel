@@ -634,6 +634,28 @@ html, body {
   font-weight: 500;
 }
 
+/* Temporäres Diagnose-Label (siehe app.js updateWeather) — bewusst winzig
+   und unauffällig in der Ecke, damit es nicht wie ein normales UI-Element
+   wirkt. Wieder entfernen, sobald die Animationen bestätigt laufen. */
+.weather-debug {
+  position: absolute;
+  bottom: 8px;
+  right: 14px;
+  z-index: 2;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: rgba(120, 120, 120, 0.7);
+  background: rgba(255, 255, 255, 0.5);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.weather-big.has-photo .weather-debug,
+.weather-big.has-video .weather-debug {
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(0, 0, 0, 0.35);
+}
+
 .weather-hours {
   display: flex;
   flex: 1;
