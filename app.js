@@ -645,19 +645,111 @@ const WEATHER_CODES = {
 
 const RAIN_CODES = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99];
 
-// WEATHER_CODES kennt pro Code nur EIN Icon — bei Code 0/1 ("klar"/
-// "überwiegend klar") war das immer die Sonne, auch mitten in der Nacht.
-// Open-Meteo unterscheidet Tag/Nacht separat über "is_day", nicht über den
-// weather_code selbst. Gleiche Unterscheidung wie bei weatherFxCategory()
-// (die den Hintergrund schon korrekt auf Sterne/Mond umschaltet) — nur der
-// Emoji-Text im Icon-Feld hat bisher nicht mitgezogen.
-function weatherIconFor(code, isDay) {
-  if (!isDay) {
-    if (code === 0) return "🌕"; // klar bei Nacht: Vollmond statt Sonne
-    if (code === 1) return "🌙"; // überwiegend klar bei Nacht
+// ---------- Wetter-Icons als eigene SVGs statt Emoji ----------
+// Emoji-Wettericons (☀️🌧️🌙 …) rendern je nach Gerät/Systemschriftart
+// unterschiedlich und wirken bei 138px Größe wie Sticker aus einer Kinder-
+// App statt wie ein eigenständig gestaltetes Wetter-Display. Eigene, ruhige
+// Vektor-Icons in einer einzigen Formsprache (Kreise/Linien, keine
+// Emoji-Buntheit) — sieben Kategorien, exakt dieselben wie
+// weatherFxCategory() weiter unten (dieselbe Funktion klassifiziert jetzt
+// sowohl den Hintergrund als auch das Icon, damit beide nie auseinanderlaufen).
+function cloudShapeSvg(fill, cx, cyBase) {
+  cx = cx == null ? 50 : cx;
+  cyBase = cyBase == null ? 58 : cyBase;
+  return '<ellipse cx="' + cx + '" cy="' + (cyBase + 6) + '" rx="30" ry="15" fill="' + fill + '"/>' +
+    '<circle cx="' + (cx - 20) + '" cy="' + (cyBase - 6) + '" r="13" fill="' + fill + '"/>' +
+    '<circle cx="' + cx + '" cy="' + (cyBase - 14) + '" r="17" fill="' + fill + '"/>' +
+    '<circle cx="' + (cx + 19) + '" cy="' + (cyBase - 4) + '" r="12" fill="' + fill + '"/>';
+}
+
+function sparkleSvg(cx, cy, scale, fill) {
+  scale = scale || 1;
+  return '<g transform="translate(' + cx + ',' + cy + ') scale(' + scale + ')">' +
+    '<path fill="' + fill + '" d="M0,-11 C1.2,-2.5 2.5,-1.2 11,0 C2.5,1.2 1.2,2.5 0,11 C-1.2,2.5 -2.5,1.2 -11,0 C-2.5,-1.2 -1.2,-2.5 0,-11 Z"/>' +
+    '</g>';
+}
+
+function raindropLinesSvg(color) {
+  return '<line x1="36" y1="80" x2="31" y2="93" stroke="' + color + '" stroke-width="5" stroke-linecap="round"/>' +
+    '<line x1="52" y1="82" x2="47" y2="95" stroke="' + color + '" stroke-width="5" stroke-linecap="round"/>' +
+    '<line x1="68" y1="80" x2="63" y2="93" stroke="' + color + '" stroke-width="5" stroke-linecap="round"/>';
+}
+
+function snowflakeSvg(cx, cy, r, color) {
+  let out = "";
+  for (let a = 0; a < 180; a += 60) {
+    const rad = a * Math.PI / 180;
+    const dx = Math.cos(rad) * r;
+    const dy = Math.sin(rad) * r;
+    out += '<line x1="' + (cx - dx) + '" y1="' + (cy - dy) + '" x2="' + (cx + dx) + '" y2="' + (cy + dy) +
+      '" stroke="' + color + '" stroke-width="3.5" stroke-linecap="round"/>';
   }
-  const entry = WEATHER_CODES[code];
-  return entry ? entry[0] : "🌡️";
+  return out;
+}
+
+function fogLinesSvg(color) {
+  return '<line x1="18" y1="34" x2="82" y2="34" stroke="' + color + '" stroke-width="6" stroke-linecap="round" opacity="0.9"/>' +
+    '<line x1="26" y1="50" x2="74" y2="50" stroke="' + color + '" stroke-width="6" stroke-linecap="round" opacity="0.7"/>' +
+    '<line x1="16" y1="66" x2="84" y2="66" stroke="' + color + '" stroke-width="6" stroke-linecap="round" opacity="0.85"/>' +
+    '<line x1="30" y1="82" x2="70" y2="82" stroke="' + color + '" stroke-width="6" stroke-linecap="round" opacity="0.6"/>';
+}
+
+// Acht Sonnenstrahlen, fest vorgerechnet (innerer Radius 27, äußerer 40 um
+// Mittelpunkt 50,50) statt zur Laufzeit Sinus/Cosinus zu rechnen.
+function sunSvg() {
+  return '<circle cx="50" cy="50" r="21" fill="#ffc55c"/>' +
+    '<g stroke="#ffc55c" stroke-width="6" stroke-linecap="round">' +
+    '<line x1="77" y1="50" x2="90" y2="50"/>' +
+    '<line x1="69.1" y1="69.1" x2="78.3" y2="78.3"/>' +
+    '<line x1="50" y1="77" x2="50" y2="90"/>' +
+    '<line x1="30.9" y1="69.1" x2="21.7" y2="78.3"/>' +
+    '<line x1="23" y1="50" x2="10" y2="50"/>' +
+    '<line x1="30.9" y1="30.9" x2="21.7" y2="21.7"/>' +
+    '<line x1="50" y1="23" x2="50" y2="10"/>' +
+    '<line x1="69.1" y1="30.9" x2="78.3" y2="21.7"/>' +
+    '</g>';
+}
+
+// Mondsichel als zwei vollständige Kreise (jeweils über die eigenen
+// Pole gezeichnet, das ist für JEDEN Radius ein gültiger Bogen) statt
+// einem einzelnen Pfad mit zwei unterschiedlichen Radien über dieselben
+// Endpunkte — DAS war der eigentliche Bug in der ersten Version: die
+// beiden Endpunkte lagen 60 Einheiten auseinander, der "innere" Bogen
+// hatte aber nur Radius 21 (Durchmesser 42 < 60) und war damit geometrisch
+// unmöglich. Browser korrigieren einen zu kleinen Bogenradius automatisch
+// hoch, aber nicht auf den beabsichtigten Wert — die Sichel blieb dadurch
+// unsichtbar/falsch geformt.
+// Jetzt: Kreis B (der "Biss") liegt komplett innerhalb von Kreis A (der
+// Mondscheibe) — bei vollständig enthaltenen Kreisen liefert fill-rule
+// evenodd zuverlässig eine echte Sichel, unabhängig von den genauen
+// Radien/Radien-Bögen.
+function moonSvg() {
+  return '<path fill-rule="evenodd" fill="#f4e6b8" d="' +
+    'M50,23 A27,27 0 1,0 50,77 A27,27 0 1,0 50,23 ' +
+    'M56,27 A18,18 0 1,0 56,63 A18,18 0 1,0 56,27 Z"/>' +
+    sparkleSvg(80, 30, 0.6, "#fff6da") +
+    sparkleSvg(24, 66, 0.4, "#fff6da");
+}
+
+const WEATHER_ICON_SVG = {
+  sun: sunSvg(),
+  night: moonSvg(),
+  cloud: cloudShapeSvg("#c7d0d9", 52, 62) + cloudShapeSvg("#f4f7f9", 47, 52),
+  rain: cloudShapeSvg("#b9c4d0", 50, 46) + raindropLinesSvg("#8fb8e0"),
+  snow: cloudShapeSvg("#c7d0d9", 50, 46) + snowflakeSvg(36, 87, 7, "#ffffff") +
+    snowflakeSvg(52, 91, 7, "#ffffff") + snowflakeSvg(68, 87, 7, "#ffffff"),
+  fog: fogLinesSvg("#dbe2e8"),
+  storm: cloudShapeSvg("#7c8797", 50, 44) +
+    '<path fill="#ffcc4d" d="M58,52 L44,76 L53,76 L41,94 L67,68 L54,68 Z"/>',
+};
+
+// weatherFxCategory() (weiter unten) klassifiziert Code+Tag/Nacht schon für
+// den Himmel-Hintergrund in exakt diese sieben Kategorien — hier
+// wiederverwendet, damit Icon und Hintergrund garantiert immer zusammenpassen.
+function weatherIconMarkup(code, isDay) {
+  const category = weatherFxCategory(code, isDay) || "cloud";
+  const inner = WEATHER_ICON_SVG[category] || WEATHER_ICON_SVG.cloud;
+  return '<svg viewBox="0 0 100 100" aria-hidden="true">' + inner + '</svg>';
 }
 
 // Konkrete Handlungs-Tipps statt bloßer Zahlen — genau das, was einem
@@ -737,7 +829,12 @@ const WEATHER_FX_CATEGORIES = ["rain", "storm", "snow", "fog", "cloud", "sun", "
 // 4-Stopp-Verlauf mit deutlich mehr Kontrast zwischen dunkelstem und
 // hellstem Punkt (vorher oft nur 2 nah beieinanderliegende Töne).
 const WEATHER_SKY_GRADIENTS = {
-  "sun": "radial-gradient(130% 70% at 75% -10%, rgba(255,214,140,0.35), transparent 55%), linear-gradient(165deg, #123f68 0%, #2f7cc4 35%, #57a4dd 65%, #ffcf87 100%)",
+  // Vorherige Version endete unten in kräftigem Orange (#ffcf87) — sah
+  // dadurch bei JEDEM "klar"-Wetter wie ein Sonnenuntergang aus, egal ob
+  // Mittag oder Nachmittag, und wirkte dadurch grell/unrealistisch statt
+  // wie ein normaler klarer Himmel. Jetzt ein glaubwürdigerer Blauverlauf,
+  // Wärme kommt nur noch dezent vom radialen Glow oben (Sonnenposition).
+  "sun": "radial-gradient(130% 70% at 80% -10%, rgba(255,236,190,0.4), transparent 55%), linear-gradient(165deg, #1c5a8c 0%, #3f86c2 45%, #7ab3dd 80%, #bcd9ec 100%)",
   "night": "radial-gradient(120% 60% at 50% -20%, rgba(120,150,220,0.18), transparent 60%), linear-gradient(165deg, #060a16 0%, #0f1830 40%, #1b2846 70%, #2a3a5e 100%)",
   "cloud:day": "radial-gradient(130% 60% at 30% -10%, rgba(255,255,255,0.18), transparent 55%), linear-gradient(165deg, #303a44 0%, #4c5964 40%, #71818d 70%, #9aa7b0 100%)",
   "cloud:night": "radial-gradient(120% 60% at 50% -15%, rgba(150,160,190,0.12), transparent 60%), linear-gradient(165deg, #0a0e15 0%, #1a212c 40%, #2c3540 70%, #414c58 100%)",
@@ -755,7 +852,7 @@ const WEATHER_SKY_GRADIENTS = {
 // before in style.css) — sorgt für echte Tiefe statt einer flachen
 // Textzeile vor dem Verlauf, Farbe passend zur jeweiligen Stimmung.
 const WEATHER_GLOW_COLORS = {
-  sun: "rgba(255, 200, 120, 0.4)",
+  sun: "rgba(255, 224, 170, 0.35)",
   night: "rgba(140, 165, 230, 0.28)",
   cloud: "rgba(255, 255, 255, 0.16)",
   rain: "rgba(160, 205, 230, 0.22)",
@@ -895,9 +992,10 @@ function ensureWeatherFxLayers() {
 
   const nightLayer = document.createElement("div");
   nightLayer.className = "weather-fx-layer weather-fx-night";
-  for (let i = 0; i < 10; i++) {
+  const STAR_SIZES = ["is-small", "", "", "is-large"];
+  for (let i = 0; i < 14; i++) {
     const star = document.createElement("span");
-    star.className = "fx-star";
+    star.className = "fx-star " + STAR_SIZES[Math.floor(Math.random() * STAR_SIZES.length)];
     star.style.left = Math.round(6 + Math.random() * 88) + "%";
     star.style.top = Math.round(8 + Math.random() * 60) + "%";
     star.style.animationDelay = (Math.random() * 2.6).toFixed(2) + "s";
@@ -917,6 +1015,40 @@ function ensureWeatherFxLayers() {
 // Fokus liegt auf sichtbaren Wetter-Effekten + Verlaufstiefe statt einem
 // kaum wahrnehmbaren Foto.
 
+// Gleiche Idee wie bei WEATHER_ICON_SVG oben: eigene ruhige Linien-Icons
+// statt Emoji (🌡️💨💦☔🌅🌇) für die kleinen Zusatz-Daten-Kacheln —
+// einfarbig (weiß, passend zum dunklen Glas der Kachel), keine Emoji-Buntheit.
+const WEATHER_DETAIL_ICON_SVG = {
+  thermo: '<rect x="42" y="14" width="16" height="48" rx="8" fill="none" stroke="#fff" stroke-width="7"/>' +
+    '<circle cx="50" cy="76" r="16" fill="#fff"/>' +
+    '<rect x="46" y="30" width="8" height="38" fill="#fff"/>',
+  wind: '<path d="M14,34 H62 a9,9 0 1 0 -9,-9" fill="none" stroke="#fff" stroke-width="6.5" stroke-linecap="round"/>' +
+    '<path d="M14,54 H78 a10,10 0 1 1 -10,10" fill="none" stroke="#fff" stroke-width="6.5" stroke-linecap="round"/>' +
+    '<path d="M14,74 H54 a8,8 0 1 0 -8,8" fill="none" stroke="#fff" stroke-width="6.5" stroke-linecap="round"/>',
+  humidity: '<path fill="#fff" d="M50,10 C66,34 80,53 80,68 a30,30 0 1,1 -60,0 C20,53 34,34 50,10 Z"/>',
+  rain: cloudShapeSvg("#fff", 50, 40) +
+    '<line x1="50" y1="72" x2="45" y2="86" stroke="#fff" stroke-width="6" stroke-linecap="round"/>',
+  // Pfeil zeigt nach OBEN: Schaft von unten (58) zur Spitze oben (20),
+  // Flügel spreizen von der Spitze nach unten weg — klassische ↑-Form.
+  sunrise: '<line x1="14" y1="72" x2="86" y2="72" stroke="#fff" stroke-width="6" stroke-linecap="round"/>' +
+    '<path d="M28,72 a22,22 0 0 1 44,0" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/>' +
+    '<path d="M50,58 L50,20 M39,31 L50,20 L61,31" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>',
+  // Gleiche Form, aber gespiegelt an einer festen Achse innerhalb des
+  // eigenen Viewbox (nicht wie im ersten Versuch um einen Punkt AUSSERHALB
+  // der Pfeilform herum, der die Spitze aus dem sichtbaren 0-100-Bereich
+  // rausgeschoben hat) — Pfeil zeigt jetzt nach UNTEN, Spitze knapp über
+  // dem Horizont.
+  sunset: '<line x1="14" y1="72" x2="86" y2="72" stroke="#fff" stroke-width="6" stroke-linecap="round"/>' +
+    '<path d="M28,72 a22,22 0 0 1 44,0" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/>' +
+    '<path d="M50,20 L50,58 M39,47 L50,58 L61,47" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>',
+};
+
+function weatherDetailIconMarkup(key) {
+  const inner = WEATHER_DETAIL_ICON_SVG[key];
+  if (!inner) return "";
+  return '<svg viewBox="0 0 100 100" aria-hidden="true">' + inner + '</svg>';
+}
+
 // Kleine Zusatz-Daten unterm Wetter-Panel (Wind, Luftfeuchte, gefühlte
 // Temperatur, Regenwahrscheinlichkeit, Sonnenauf-/-untergang) — fehlt ein
 // Feld in der API-Antwort mal, wird die jeweilige Kachel einfach
@@ -928,27 +1060,27 @@ function renderWeatherDetails(data) {
   const chips = [];
 
   if (c.apparent_temperature != null) {
-    chips.push({ icon: "🌡️", value: Math.round(c.apparent_temperature) + "°", label: "Gefühlt" });
+    chips.push({ iconKey: "thermo", value: Math.round(c.apparent_temperature) + "°", label: "Gefühlt" });
   }
   if (c.wind_speed_10m != null) {
-    chips.push({ icon: "💨", value: Math.round(c.wind_speed_10m) + " km/h", label: "Wind" });
+    chips.push({ iconKey: "wind", value: Math.round(c.wind_speed_10m) + " km/h", label: "Wind" });
   }
   if (c.relative_humidity_2m != null) {
-    chips.push({ icon: "💦", value: Math.round(c.relative_humidity_2m) + "%", label: "Luftfeuchte" });
+    chips.push({ iconKey: "humidity", value: Math.round(c.relative_humidity_2m) + "%", label: "Luftfeuchte" });
   }
   if (d.precipitation_probability_max && d.precipitation_probability_max[0] != null) {
-    chips.push({ icon: "☔", value: Math.round(d.precipitation_probability_max[0]) + "%", label: "Regen" });
+    chips.push({ iconKey: "rain", value: Math.round(d.precipitation_probability_max[0]) + "%", label: "Regen" });
   }
   if (d.sunrise && d.sunrise[0]) {
     chips.push({
-      icon: "🌅",
+      iconKey: "sunrise",
       value: parseOpenMeteoLocal(d.sunrise[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
       label: "Aufgang",
     });
   }
   if (d.sunset && d.sunset[0]) {
     chips.push({
-      icon: "🌇",
+      iconKey: "sunset",
       value: parseOpenMeteoLocal(d.sunset[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
       label: "Untergang",
     });
@@ -961,7 +1093,7 @@ function renderWeatherDetails(data) {
 
     const iconEl = document.createElement("span");
     iconEl.className = "weather-detail-icon";
-    iconEl.textContent = c2.icon;
+    iconEl.innerHTML = weatherDetailIconMarkup(c2.iconKey);
     chip.appendChild(iconEl);
 
     const textEl = document.createElement("span");
@@ -1007,7 +1139,7 @@ function updateWeather() {
     const entry = WEATHER_CODES[code] || ["🌡️", ""];
 
     if (els.weatherBigIcon) {
-      els.weatherBigIcon.textContent = weatherIconFor(code, isDay);
+      els.weatherBigIcon.innerHTML = weatherIconMarkup(code, isDay);
       els.weatherBigTemp.textContent = temp + "°";
       els.weatherBigDesc.textContent = entry[1] || "";
     }
@@ -1077,7 +1209,7 @@ function updateWeather() {
 
         const iconEl = document.createElement("span");
         iconEl.className = "weather-hour-icon";
-        iconEl.textContent = weatherIconFor(hCode, hIsDay);
+        iconEl.innerHTML = weatherIconMarkup(hCode, hIsDay);
 
         const tempEl = document.createElement("span");
         tempEl.className = "weather-hour-temp";

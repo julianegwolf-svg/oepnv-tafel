@@ -733,11 +733,15 @@ html, body {
    "Dashboard-Kachel"), mit einem weichen Licht-Glow dahinter (::before,
    Farbe via --sky-glow aus app.js je Wetterlage) für echte Tiefe statt
    einer flachen Textzeile. */
+/* Polster reduziert (war 40px/30px oben/unten) — zusammen mit dem großen
+   Icon lief der Inhalt vorher tatsächlich unten aus dem Panel heraus
+   (overflow:hidden auf #panel-weather hat das nur unsichtbar verschluckt,
+   die Zusatz-Daten-Zeile war real abgeschnitten). */
 .weather-big {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 40px 34px 30px;
+  padding: 22px 34px 16px;
 }
 
 .weather-big::before {
@@ -980,7 +984,7 @@ html, body {
   height: 220px;
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(255, 214, 120, 0.55), rgba(255, 214, 120, 0) 70%);
+  background: radial-gradient(circle, rgba(255, 226, 175, 0.45), rgba(255, 226, 175, 0) 70%);
   animation: fxSunPulse 4.5s ease-in-out infinite;
 }
 
@@ -990,39 +994,63 @@ html, body {
   50% { opacity: 0.95; }
 }
 
+/* War vorher ein reiner 3px-Kreis (weißer Punkt) — sah aus der Nähe eher
+   wie Bildrauschen/Schmutz als wie ein Stern. Vierzackige Sparkle-Form
+   per clip-path (unterstützt seit Safari 9.3, also auch auf dem iPad Air 1
+   sicher) statt eines runden Punkts, plus warmes statt reines Weiß, passend
+   zum Mond-Ton (siehe moonSvg in app.js). Größe variiert jetzt per Element
+   (siehe ensureWeatherFxLayers) für ein echtes Sternfeld statt lauter
+   gleich große Punkte. */
 .fx-star {
   position: absolute;
+  width: 5px;
+  height: 5px;
+  background: #fff6da;
+  clip-path: polygon(50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%);
+  -webkit-clip-path: polygon(50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%);
+  animation: fxStarTwinkle 2.6s ease-in-out infinite;
+}
+
+.fx-star.is-small {
   width: 3px;
   height: 3px;
-  border-radius: 50%;
-  background: #ffffff;
-  animation: fxStarTwinkle 2.6s ease-in-out infinite;
+}
+
+.fx-star.is-large {
+  width: 7px;
+  height: 7px;
 }
 
 /* Text ist immer über dem dynamischen Himmel-Verlauf (siehe
    weatherSkyGradient in app.js), der ist immer dunkel genug abgestimmt —
    deshalb Text unconditional hell mit Schatten statt eines has-photo/
    has-video-Sonderfalls wie früher. */
-/* ECHTER BUG auf dem echten iPad gefunden (Foto-Beleg): filter:drop-shadow
-   auf einem inline-block-Wrapper um ein Emoji-Zeichen rendert auf Safari
-   12/iOS 12.5 (altes WebKit) nicht als weicher Schatten, sondern als
-   solider grauer Kasten über dem Icon — ein bekanntes altes WebKit-Bug-
-   Muster (Filter rastert das Element falsch, verliert den Alpha-Kanal des
-   Emoji-Glyphen). Deshalb kein filter mehr hier, sondern text-shadow
-   direkt auf dem Text-Element — funktioniert pro Glyph statt über eine
-   volle Element-Rasterisierung, ist auf altem WebKit deutlich robuster
-   (wird an anderer Stelle hier schon so für .weather-big-temp genutzt). */
+/* War früher ein 138px-Emoji-Zeichen mit text-shadow (siehe Git-Historie) —
+   Emoji wirken bei der Größe wie Sticker aus einer Kinder-App, deshalb
+   jetzt ein eigenes SVG-Icon (siehe WEATHER_ICON_SVG in app.js). ECHTER
+   BUG von damals bleibt als Warnung relevant: filter:drop-shadow auf einem
+   Emoji-Wrapper rasterte auf Safari 12/iOS 12.5 als solider grauer Kasten
+   statt als weicher Schatten. Bei den neuen SVG-Icons deshalb bewusst
+   weiterhin kein filter — die Tiefe kommt allein vom vorhandenen
+   radialen Glow (.weather-big::before), nicht von einem Schatten auf dem
+   Icon selbst. */
 .weather-big-icon {
-  font-size: 138px;
-  line-height: 1;
   display: inline-block;
+  width: 112px;
+  height: 112px;
+  flex-shrink: 0;
   animation: weatherFloat 4.5s ease-in-out infinite;
-  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.weather-big-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .weather-big-temp {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 104px;
+  font-size: 88px;
   font-weight: 700;
   color: #ffffff;
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.6);
@@ -1132,9 +1160,16 @@ html, body {
 }
 
 .weather-hour-icon {
-  font-size: 30px;
   display: inline-block;
+  width: 34px;
+  height: 34px;
   animation: weatherFloat 4.5s ease-in-out infinite;
+}
+
+.weather-hour-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .weather-hour-temp {
@@ -1168,8 +1203,16 @@ html, body {
 }
 
 .weather-detail-icon {
-  font-size: 18px;
-  line-height: 1;
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.weather-detail-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .weather-detail-text {
