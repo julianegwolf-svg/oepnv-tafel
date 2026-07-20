@@ -1867,8 +1867,20 @@ function startQuizReveal() {
   }, 35);
 }
 
-function updateQuiz() {
+// Open Trivia DB blockt bei zu dichten Anfragen kurzzeitig mit 429 (eigene
+// Rate-Limit-Regel des Anbieters, ca. 1 Anfrage pro 5s je IP). Ohne Retry
+// blieb das Panel dann bis zum nächsten regulären Intervall (eine Stunde,
+// CONFIG.refreshQuizMs) leer — spürbar lang für einen einzelnen kurzen
+// Ausrutscher. Bei einem Fehlschlag jetzt bis zu drei erneute Versuche mit
+// wachsendem Abstand, bevor endgültig bis zum nächsten Intervall aufgegeben
+// wird.
+let quizRetryTimer = null;
+const QUIZ_RETRY_DELAYS_MS = [20000, 60000, 180000];
+
+function updateQuiz(retryCount) {
   if (!els.quizBlock) return;
+  retryCount = retryCount || 0;
+  if (quizRetryTimer) { clearTimeout(quizRetryTimer); quizRetryTimer = null; }
 
   // Cache-Buster wie bei allen anderen Feeds hier — sonst liefert ein
   // zwischengeschalteter Cache stur dieselbe Frage über Stunden hinweg.
@@ -1900,7 +1912,13 @@ function updateQuiz() {
     quizAvailable = true;
   }).catch(function (err) {
     console.error(err);
-    quizAvailable = false;
+    if (retryCount < QUIZ_RETRY_DELAYS_MS.length) {
+      quizRetryTimer = setTimeout(function () {
+        updateQuiz(retryCount + 1);
+      }, QUIZ_RETRY_DELAYS_MS[retryCount]);
+    } else {
+      quizAvailable = false;
+    }
   });
 }
 
