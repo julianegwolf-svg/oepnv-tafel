@@ -573,19 +573,38 @@ const WEATHER_FX_CATEGORIES = ["rain", "storm", "snow", "fog", "cloud", "sun", "
 // Weather — reines CSS, läuft garantiert, kein Netzwerk, keine Codecs,
 // keine Energiespar-Überraschungen. Je nach Wetterlage UND Tag/Nacht
 // eigene Farbstimmung.
+// Runde 2 der Überarbeitung: die erste Version wirkte "platt" — eine
+// nahezu einfarbige dunkle Fläche ohne Tiefe. Jetzt zwei kombinierte
+// Hintergründe pro Stimmung: ein radialer "Lichtquelle"-Glow oben (fürs
+// Volumen-/Atmosphäre-Gefühl, wie ein Sonnen-/Mondstand) UND ein breiterer
+// 4-Stopp-Verlauf mit deutlich mehr Kontrast zwischen dunkelstem und
+// hellstem Punkt (vorher oft nur 2 nah beieinanderliegende Töne).
 const WEATHER_SKY_GRADIENTS = {
-  "sun": "linear-gradient(165deg, #2f7cc4 0%, #4fa0dd 45%, #ffb75e 100%)",
-  "night": "linear-gradient(165deg, #080e1f 0%, #16223f 55%, #283a5e 100%)",
-  "cloud:day": "linear-gradient(165deg, #4b5a68 0%, #6b7a89 50%, #8fa0ad 100%)",
-  "cloud:night": "linear-gradient(165deg, #0e131c 0%, #232936 55%, #383f4d 100%)",
-  "rain:day": "linear-gradient(165deg, #33424e 0%, #4c5f6e 50%, #66798a 100%)",
-  "rain:night": "linear-gradient(165deg, #0a121b 0%, #182732 55%, #263542 100%)",
-  "storm:day": "linear-gradient(165deg, #1c222c 0%, #333c4a 50%, #525c6c 100%)",
-  "storm:night": "linear-gradient(165deg, #05070b 0%, #131924 55%, #1f2532 100%)",
-  "snow:day": "linear-gradient(165deg, #4a6478 0%, #6f8ea3 50%, #9fc0d4 100%)",
-  "snow:night": "linear-gradient(165deg, #101827 0%, #202e42 55%, #33455c 100%)",
-  "fog:day": "linear-gradient(165deg, #5a6268 0%, #7c848a 50%, #9ea6ac 100%)",
-  "fog:night": "linear-gradient(165deg, #12151a 0%, #24282e 55%, #363b41 100%)",
+  "sun": "radial-gradient(130% 70% at 75% -10%, rgba(255,214,140,0.35), transparent 55%), linear-gradient(165deg, #123f68 0%, #2f7cc4 35%, #57a4dd 65%, #ffcf87 100%)",
+  "night": "radial-gradient(120% 60% at 50% -20%, rgba(120,150,220,0.18), transparent 60%), linear-gradient(165deg, #060a16 0%, #0f1830 40%, #1b2846 70%, #2a3a5e 100%)",
+  "cloud:day": "radial-gradient(130% 60% at 30% -10%, rgba(255,255,255,0.18), transparent 55%), linear-gradient(165deg, #303a44 0%, #4c5964 40%, #71818d 70%, #9aa7b0 100%)",
+  "cloud:night": "radial-gradient(120% 60% at 50% -15%, rgba(150,160,190,0.12), transparent 60%), linear-gradient(165deg, #0a0e15 0%, #1a212c 40%, #2c3540 70%, #414c58 100%)",
+  "rain:day": "radial-gradient(120% 55% at 30% -10%, rgba(180,210,230,0.15), transparent 55%), linear-gradient(165deg, #182229 0%, #2c3b46 40%, #4a5f6f 70%, #6d8494 100%)",
+  "rain:night": "radial-gradient(120% 55% at 50% -15%, rgba(100,140,180,0.12), transparent 60%), linear-gradient(165deg, #050a10 0%, #101c26 40%, #1c2b38 70%, #2c3f4e 100%)",
+  "storm:day": "radial-gradient(120% 55% at 40% -10%, rgba(180,170,220,0.12), transparent 55%), linear-gradient(165deg, #0c0f14 0%, #1e2530 40%, #3a4453 70%, #57647a 100%)",
+  "storm:night": "radial-gradient(120% 55% at 50% -15%, rgba(120,110,180,0.1), transparent 60%), linear-gradient(165deg, #030407 0%, #0c0f16 40%, #171d28 70%, #232b3a 100%)",
+  "snow:day": "radial-gradient(130% 60% at 30% -10%, rgba(255,255,255,0.28), transparent 55%), linear-gradient(165deg, #2c4256 0%, #4d6a80 40%, #7396ab 70%, #a7c8db 100%)",
+  "snow:night": "radial-gradient(120% 60% at 50% -15%, rgba(160,190,220,0.15), transparent 60%), linear-gradient(165deg, #0a121e 0%, #172236 40%, #263650 70%, #3a4f6b 100%)",
+  "fog:day": "radial-gradient(130% 60% at 40% -10%, rgba(255,255,255,0.22), transparent 55%), linear-gradient(165deg, #3c454c 0%, #5b6469 40%, #838c92 70%, #a7afb4 100%)",
+  "fog:night": "radial-gradient(120% 60% at 50% -15%, rgba(180,185,195,0.1), transparent 60%), linear-gradient(165deg, #0d1013 0%, #1c2024 40%, #2e3338 70%, #43494e 100%)",
+};
+
+// Leuchtfarbe für den Glow hinter Icon/Temperatur (siehe .weather-big::
+// before in style.css) — sorgt für echte Tiefe statt einer flachen
+// Textzeile vor dem Verlauf, Farbe passend zur jeweiligen Stimmung.
+const WEATHER_GLOW_COLORS = {
+  sun: "rgba(255, 200, 120, 0.4)",
+  night: "rgba(140, 165, 230, 0.28)",
+  cloud: "rgba(255, 255, 255, 0.16)",
+  rain: "rgba(160, 205, 230, 0.22)",
+  storm: "rgba(180, 170, 220, 0.18)",
+  snow: "rgba(255, 255, 255, 0.32)",
+  fog: "rgba(255, 255, 255, 0.24)",
 };
 
 function weatherSkyGradient(category, isDay) {
@@ -615,6 +634,13 @@ function setWeatherScene(fxCategory, isDay) {
   if (els.weatherSky) {
     els.weatherSky.style.background = weatherSkyGradient(fxCategory, isDay);
   }
+  // Glow-Farbe hinterm Icon per CSS-Variable (siehe .weather-big::before) —
+  // macht aus der vorher komplett flachen Text-Zeile einen echten
+  // Lichtpunkt, ohne eigenes DOM-Element extra dafür zu brauchen.
+  els.weatherPanel.style.setProperty(
+    "--sky-glow",
+    WEATHER_GLOW_COLORS[fxCategory] || "rgba(255, 255, 255, 0.2)"
+  );
 }
 
 function ensureWeatherFxLayers() {
@@ -625,12 +651,15 @@ function ensureWeatherFxLayers() {
   // Deckkraft und leichtem Wind-Drift (via CSS-Var, siehe style.css),
   // plus ein paar Spritzer-Ringe am unteren Rand — dem Lottie-Referenz-
   // Regen nachempfunden, aber als reine Transform/Opacity-Animation.
+  // Runde 2: vorher praktisch unsichtbar (zu dünn, zu dunkel vor dem
+  // dunklen Himmel) — mehr Tropfen, heller, dicker (siehe .fx-drop in
+  // style.css für die eigentliche Farb-/Breiten-Anpassung).
   const rainLayer = document.createElement("div");
   rainLayer.className = "weather-fx-layer weather-fx-rain";
   [
-    { cls: "layer-far", positions: [4, 22, 40, 58, 76, 94], duration: 1.9 },
-    { cls: "layer-mid", positions: [12, 30, 48, 66, 84], duration: 1.4 },
-    { cls: "layer-near", positions: [8, 34, 60, 88], duration: 1.0 },
+    { cls: "layer-far", positions: [3, 16, 29, 42, 55, 68, 81, 94], duration: 1.7 },
+    { cls: "layer-mid", positions: [8, 24, 40, 56, 72, 88], duration: 1.25 },
+    { cls: "layer-near", positions: [6, 22, 38, 54, 70, 86], duration: 0.9 },
   ].forEach(function (depth) {
     depth.positions.forEach(function (left, i) {
       const drop = document.createElement("span");
@@ -641,11 +670,11 @@ function ensureWeatherFxLayers() {
       rainLayer.appendChild(drop);
     });
   });
-  [10, 32, 54, 76, 92].forEach(function (left, i) {
+  [6, 18, 30, 42, 54, 66, 78, 90].forEach(function (left, i) {
     const splash = document.createElement("span");
     splash.className = "fx-splash";
     splash.style.left = left + "%";
-    splash.style.animationDelay = (i * 0.28) + "s";
+    splash.style.animationDelay = (i * 0.2) + "s";
     rainLayer.appendChild(splash);
   });
 
@@ -719,102 +748,13 @@ function ensureWeatherFxLayers() {
   });
 }
 
-// ---------- Wetter-Panel: Bremen-Fotohintergrund ----------
-// Da es keine kostenlose Live-Wetterfoto-API gibt, wird stattdessen ein
-// bekanntes Bremer Wahrzeichen als Hintergrund geladen (über die
-// Wikipedia-REST-API, kostenlos/kein Key) und farblich per Verlauf zur
-// aktuellen Wetterlage/Tageszeit getönt — kein echtes Live-Wetterfoto,
-// aber deutlich "wohnlicher" als reines Icon+Text. Schlägt der Abruf
-// fehl (Artikel/Bild nicht da, Netzwerkfehler), bleibt einfach der
-// bisherige Verlaufshintergrund + die Animationen — nichts bricht.
-const BREMEN_PHOTO_TITLES = [
-  "Bremer Rathaus",
-  "Bremer Roland",
-  "Bremer Stadtmusikanten",
-  "Böttcherstraße",
-  "Schlachte (Bremen)",
-  "Bremer Dom",
-  "Weserstadion",
-  "Universum Bremen",
-];
-
-let weatherPhotoEl = null;
-let lastWeatherPhotoTitle = null;
-let weatherPhotoFetchedAt = 0;
-
-function ensureWeatherPhotoLayer() {
-  if (weatherPhotoEl || !els.weatherPanel) return;
-  weatherPhotoEl = document.createElement("div");
-  weatherPhotoEl.className = "weather-photo";
-  els.weatherPanel.insertBefore(weatherPhotoEl, els.weatherPanel.firstChild);
-}
-
-function pickPhotoTitle() {
-  let title = BREMEN_PHOTO_TITLES[Math.floor(Math.random() * BREMEN_PHOTO_TITLES.length)];
-  let tries = 0;
-  while (title === lastWeatherPhotoTitle && tries < 5) {
-    title = BREMEN_PHOTO_TITLES[Math.floor(Math.random() * BREMEN_PHOTO_TITLES.length)];
-    tries++;
-  }
-  return title;
-}
-
-// Wikipedia liefert die Thumb-URL standardmäßig recht klein
-// (.../320px-Datei.jpg) — Breite im Pfad einfach hochsetzen, spart einen
-// zweiten Request.
-function upsizeThumb(url) {
-  return url.replace(/\/\d+px-/, "/900px-");
-}
-
-// Der Himmel-Verlauf (siehe weatherSkyGradient) liefert jetzt die
-// eigentliche Wetter-/Tageszeit-Farbstimmung. Das Foto liegt nur noch als
-// weiche Textur/Bremen-Bezug darüber (mix-blend-mode: overlay, siehe CSS)
-// — deshalb hier nur noch ein neutraler Kontrast-Schleier fürs Lesen des
-// Textes, nicht mehr pro Wetterlage eingefärbt.
-function applyWeatherPhotoTint() {
-  if (!weatherPhotoEl) return;
-  const bgUrl = weatherPhotoEl.getAttribute("data-bg-url");
-  if (!bgUrl) return;
-  const scrim = "linear-gradient(180deg, rgba(8,12,20,0.1) 0%, rgba(8,12,20,0.5) 100%)";
-  weatherPhotoEl.style.backgroundImage = scrim + ", " + bgUrl;
-  // has-photo über classList (nie className-Ersatz) — siehe showPanel()-Fix.
-  if (els.weatherPanel) els.weatherPanel.classList.add("has-photo");
-}
-
-function fetchWeatherPhoto() {
-  if (!els.weatherPanel) return;
-  ensureWeatherPhotoLayer();
-
-  const now = Date.now();
-  if (weatherPhotoEl.getAttribute("data-loaded") === "1" &&
-      (now - weatherPhotoFetchedAt) < CONFIG.refreshWeatherMs) {
-    applyWeatherPhotoTint();
-    return;
-  }
-
-  const title = pickPhotoTitle();
-  const url = "https://de.wikipedia.org/api/rest_v1/page/summary/" +
-    encodeURIComponent(title) + "?redirect=true";
-
-  fetch(url).then(function (res) {
-    if (!res.ok) throw new Error("Foto-Abruf fehlgeschlagen (" + res.status + ")");
-    return res.json();
-  }).then(function (data) {
-    const src = data && data.thumbnail && data.thumbnail.source;
-    if (!src || !weatherPhotoEl) return;
-
-    const bigSrc = "url('" + upsizeThumb(src) + "')";
-    weatherPhotoEl.setAttribute("data-bg-url", bigSrc);
-    weatherPhotoEl.setAttribute("data-loaded", "1");
-    lastWeatherPhotoTitle = title;
-    weatherPhotoFetchedAt = now;
-    applyWeatherPhotoTint();
-    weatherPhotoEl.classList.add("loaded");
-  }).catch(function (err) {
-    // Kein Foto? Kein Beinbruch — Himmel-Verlauf + Animation bleiben.
-    console.error(err);
-  });
-}
+// Hinweis: eine frühere Version blendete zusätzlich ein Bremer Wahrzeichen-
+// Foto (Wikipedia REST API) per mix-blend-mode:overlay als Textur ein.
+// Bei genauerer Betrachtung war das auf dem dunklen Himmel-Verlauf praktisch
+// unsichtbar (overlay-Blend auf sehr dunklem Untergrund verschluckt fast
+// alles) — deshalb rausgeworfen statt weiter dran zu flicken. Der neue
+// Fokus liegt auf sichtbaren Wetter-Effekten + Verlaufstiefe statt einem
+// kaum wahrnehmbaren Foto.
 
 // Kleine Zusatz-Daten unterm Wetter-Panel (Wind, Luftfeuchte, gefühlte
 // Temperatur, Regenwahrscheinlichkeit, Sonnenauf-/-untergang) — fehlt ein
@@ -908,7 +848,6 @@ function updateWeather() {
       ensureWeatherFxLayers();
       const fxCategory = weatherFxCategory(code, isDay);
       setWeatherScene(fxCategory, isDay);
-      fetchWeatherPhoto();
     }
 
     renderWeatherDetails(data);
