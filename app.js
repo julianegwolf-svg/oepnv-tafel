@@ -46,6 +46,7 @@ const els = {
   panelNavToggle: document.getElementById("panelNavToggle"),
   panelNavOverlay: document.getElementById("panelNavOverlay"),
   panelNavGrid: document.getElementById("panelNavGrid"),
+  stage: document.getElementById("stage"),
 };
 
 let resolvedStopIds = (CONFIG.stopIds && CONFIG.stopIds.length)
@@ -1216,11 +1217,14 @@ function showNewsSlide(index) {
   newsSlideIndex = index;
 }
 
-function startNewsSlideshow() {
+// keepIndex=true beim Fortsetzen nach einer Touch-Pause (siehe
+// resumeCarouselFromFraction) — sonst würde jede Pause die Diashow
+// zurück auf die erste Meldung springen lassen.
+function startNewsSlideshow(keepIndex) {
   stopNewsSlideshow();
   if (!newsItems.length) return;
 
-  showNewsSlide(0);
+  if (!keepIndex) showNewsSlide(0);
   if (newsItems.length < 2) return;
 
   newsSlideTimer = setInterval(function () {
@@ -3224,11 +3228,13 @@ function showSportSlide(index) {
   sportSlideIndex = index;
 }
 
-function startSportSlideshow() {
+// keepIndex=true beim Fortsetzen nach einer Touch-Pause, gleiches Prinzip
+// wie bei startNewsSlideshow.
+function startSportSlideshow(keepIndex) {
   stopSportSlideshow();
   if (!sportItems.length) return;
 
-  showSportSlide(0);
+  if (!keepIndex) showSportSlide(0);
   if (sportItems.length < 2) return;
 
   sportSlideTimer = setInterval(function () {
@@ -3484,10 +3490,22 @@ function currentProgressFraction() {
   return isNaN(scale) ? 0 : Math.min(Math.max(scale, 0), 1);
 }
 
+// Pausiert nicht nur den Panel-Wechsel, sondern auch die inneren
+// Diashow-Timer von News/Sport — sonst "pausiert" ein Touch nur das
+// Springen zum nächsten PANEL, während die Meldungen/Karten darunter
+// unbeirrt weiter durchlaufen. Betrifft beide Timer unabhängig davon,
+// welches Panel gerade aktiv ist (clearInterval auf null ist ein
+// No-Op, kostet also nichts, wenn der jeweils andere gar nicht läuft).
+function pauseSlideshowTimers() {
+  stopNewsSlideshow();
+  stopSportSlideshow();
+}
+
 function pauseCarouselIndefinitely() {
   if (carouselTimer) { clearTimeout(carouselTimer); carouselTimer = null; }
   if (carouselIdleTimer) { clearTimeout(carouselIdleTimer); carouselIdleTimer = null; }
   freezeProgressBar();
+  pauseSlideshowTimers();
 }
 
 function resumeCarouselFromFraction() {
@@ -3501,6 +3519,11 @@ function resumeCarouselFromFraction() {
     progressFillEl.style.transition = "transform " + remaining + "ms linear";
     progressFillEl.style.transform = "scaleX(1)";
   }
+
+  // keepIndex=true: an der Meldung/Karte weiterlaufen, bei der pausiert
+  // wurde, nicht wieder bei der ersten anfangen.
+  if (currentName === "news") startNewsSlideshow(true);
+  if (currentName === "sport") startSportSlideshow(true);
 
   if (carouselTimer) clearTimeout(carouselTimer);
   carouselTimer = setTimeout(function () {
@@ -3518,6 +3541,7 @@ function deferCarouselAdvance() {
     clearTimeout(carouselTimer);
     carouselTimer = null;
     freezeProgressBar();
+    pauseSlideshowTimers();
   }
 
   if (carouselIdleTimer) clearTimeout(carouselIdleTimer);
@@ -3606,13 +3630,64 @@ function initPanelNav() {
   // Radio-Bereich sollen den Durchlauf aber genauso pausieren wie jeder
   // andere Touch. In der Capture-Phase feuert dieser Listener, bevor
   // stopPropagation() überhaupt greifen kann.
+  //
+  // touchstart zusätzlich zu click: ein Wisch (siehe initStageSwipe unten)
+  // löst auf iOS Safari nicht zuverlässig ein click-Event aus, touchstart
+  // dagegen immer — sonst würde eine Wischgeste den Durchlauf nicht
+  // pausieren.
   document.addEventListener("click", deferCarouselAdvance, true);
+  document.addEventListener("touchstart", deferCarouselAdvance, true);
+}
+
+// ---------- Wischgeste für News/Sport-Diashows ----------
+// Manuelles Vor-/Zurückblättern durch die Meldungen bzw. Vereinskarten,
+// unabhängig vom automatischen Diashow-Timer (der ja jetzt bei jedem
+// Touch sowieso pausiert, siehe pauseSlideshowTimers).
+let stageSwipeStartX = null;
+let stageSwipeStartY = null;
+
+function initStageSwipe() {
+  if (!els.stage) return;
+
+  els.stage.addEventListener("touchstart", function (ev) {
+    const t = ev.touches && ev.touches[0];
+    if (!t) return;
+    stageSwipeStartX = t.clientX;
+    stageSwipeStartY = t.clientY;
+  }, { passive: true });
+
+  els.stage.addEventListener("touchend", function (ev) {
+    if (stageSwipeStartX === null) return;
+    const t = ev.changedTouches && ev.changedTouches[0];
+    const startX = stageSwipeStartX;
+    const startY = stageSwipeStartY;
+    stageSwipeStartX = null;
+    stageSwipeStartY = null;
+    if (!t) return;
+
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    // Nur eindeutig horizontale Gesten werten (klar mehr Breite als
+    // Höhe), sonst zählt jedes leichte Zittern beim Antippen als Wisch.
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+
+    const activePanel = document.querySelector(".panel-view.active");
+    if (!activePanel) return;
+    const dir = dx < 0 ? 1 : -1;
+
+    if (activePanel.id === "panel-news" && newsItems.length > 1) {
+      showNewsSlide((newsSlideIndex + dir + newsItems.length) % newsItems.length);
+    } else if (activePanel.id === "panel-sport" && sportItems.length > 1) {
+      showSportSlide((sportSlideIndex + dir + sportItems.length) % sportItems.length);
+    }
+  }, { passive: true });
 }
 
 // ---------- Start ----------
 function init() {
   initRadioBar();
   initPanelNav();
+  initStageSwipe();
 
   tickClock();
   setInterval(tickClock, CONFIG.refreshClockMs);
