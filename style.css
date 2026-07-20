@@ -59,6 +59,12 @@ html, body {
   user-select: none;
 }
 
+/* Kein Platz mehr oben zu verschenken: der Fortschrittsbalken sitzt jetzt
+   als erstes Element ganz oben bündig an der Bildschirmkante (kein
+   padding-top mehr auf .panel), der schlanke Header darunter holt sich
+   seinen eigenen kleinen Abstand selbst (siehe .topbar). Jedes Panel
+   (.stage bekommt per flex:1 den kompletten Rest) hat dadurch spürbar
+   mehr Höhe als vorher mit dem hohen, boxigen Header. */
 .panel {
   position: relative;
   height: 100vh;
@@ -69,7 +75,7 @@ html, body {
     radial-gradient(circle at 12% 8%, rgba(169, 121, 63, 0.07) 0%, rgba(169, 121, 63, 0) 40%),
     radial-gradient(circle at 92% 88%, rgba(91, 107, 120, 0.07) 0%, rgba(91, 107, 120, 0) 45%),
     var(--bg);
-  padding: 30px;
+  padding: 0 26px 22px;
 }
 
 /* Nachtdimmung: die Tafel hängt dauerhaft an der Wand, nachts blendet
@@ -107,23 +113,19 @@ html, body {
 #panel-events { --accent: #b1622f; }
 
 /* ---------- Topbar ---------- */
+/* "Home"-Schriftzug komplett raus (kein eigener Wiedererkennungs-Text
+   mehr nötig) und der ganze Header spürbar geschrumpft — war vorher mit
+   der großen freistehenden Uhr-Kachel gut 170px hoch, geht jetzt in
+   knapp der Hälfte durch. Jedes Panel bekommt den freigewordenen Platz
+   automatisch (.stage: flex:1). */
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 18px;
+  padding-top: 10px;
+  padding-bottom: 10px;
   border-bottom: 2px solid var(--panel-edge);
-  margin-bottom: 18px;
-}
-
-/* Schlichtes Label statt des vollen Straßennamens — reicht als
-   Wiedererkennung, ohne den Kopfbereich vollzuschreiben. */
-.home-label {
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  font-size: 40px;
-  color: var(--ink);
-  flex-shrink: 0;
+  margin-bottom: 14px;
 }
 
 /* Der tägliche Zufalls-Spruch (Begrüßung) ist auf Wunsch komplett raus —
@@ -195,37 +197,32 @@ html, body {
   50% { transform: scale(1.4); opacity: 0.5; }
 }
 
-/* Kleine Glas-Kachel statt frei stehendem Text — reiht sich damit optisch
-   in die Karten-Sprache des restlichen Interfaces ein, statt ein Fremd-
-   körper im Header zu sein. */
+/* War eine freistehende Glas-Kachel mit 92px-Ziffern — allein die nahm
+   knapp 140px Höhe weg. Jetzt schlank im schmalen Header: Datum und Zeit
+   nebeneinander statt gestapelt, keine eigene Karte mehr (fügt sich
+   direkt in die Header-Zeile ein statt einen eigenen Block zu bilden). */
 .clock {
-  text-align: right;
-  padding: 10px 28px;
-  border-radius: var(--radius-m);
-  background: var(--glass-bg);
-  border: 1px solid var(--panel-edge);
-  box-shadow: var(--glass-shadow);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
 }
 
-/* Soll quer durch den Raum ablesbar sein, nicht nur aus der Nähe —
-   deutlich größer als vorher (58px). Breiter statt höher: die Höhe
-   (font-size) bleibt bei 92px, aber deutlich mehr letter-spacing zieht
-   die Ziffern spürbar auseinander, ohne die Zeile höher zu machen. */
 .clock-time {
   display: block;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 92px;
+  font-size: 30px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  line-height: 1.05;
+  letter-spacing: 0.03em;
+  line-height: 1;
   color: var(--ink);
 }
 
 .clock-date {
   display: block;
   color: var(--ink-dim);
-  font-size: 20px;
+  font-size: 14px;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 /* ---------- Radio-Schnellzugriff ---------- */
@@ -240,20 +237,23 @@ html, body {
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .radio-widget {
   position: relative;
 }
 
+/* War 72px (extra groß auf Wunsch) — im schlanken Header jetzt 44px,
+   Apples eigene Mindestgröße für Tap-Ziele, aber ohne dem Header wieder
+   die volle Zeilenhöhe wegzunehmen. */
 .radio-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 72px;
-  height: 72px;
-  font-size: 32px;
+  width: 44px;
+  height: 44px;
+  font-size: 20px;
   background: var(--glass-bg);
   border: 1px solid var(--panel-edge);
   border-radius: 50%;
@@ -341,9 +341,9 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 72px;
-  height: 72px;
-  font-size: 30px;
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
   background: var(--glass-bg);
   border: 1px solid var(--panel-edge);
   border-radius: 50%;
