@@ -23,6 +23,8 @@ const els = {
   weatherBigIcon: document.getElementById("weatherBigIcon"),
   weatherBigTemp: document.getElementById("weatherBigTemp"),
   weatherBigDesc: document.getElementById("weatherBigDesc"),
+  weatherBigMinMax: document.getElementById("weatherBigMinMax"),
+  weatherTip: document.getElementById("weatherTip"),
   weatherHours: document.getElementById("weatherHours"),
   weatherDetails: document.getElementById("weatherDetails"),
   newsList: document.getElementById("newsList"),
@@ -601,6 +603,44 @@ const WEATHER_CODES = {
   99: ["⛈️", "Gewitter mit Hagel"],
 };
 
+const RAIN_CODES = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99];
+
+// Konkrete Handlungs-Tipps statt bloßer Zahlen — genau das, was einem
+// vorm Rausgehen wirklich hilft. Schaut in die nächsten 12 Stunden nach
+// Regen (Schirm/Auto-Tipp, oder nachts: Fenster zu) und rät sonst bei
+// rundum angenehmem Wetter zum Lüften. Immer nur EIN Tipp gleichzeitig,
+// nach Dringlichkeit sortiert (Regen schlägt Lüften-Hinweis).
+function buildWeatherTip(hourlyTime, hourlyCode, hourlyTemp, startIdx, currentCode) {
+  const commuteHour = CONFIG.commuteTypicalDepartTime
+    ? parseInt(CONFIG.commuteTypicalDepartTime.split(":")[0], 10)
+    : null;
+
+  for (let i = startIdx; i < Math.min(startIdx + 12, hourlyTime.length); i++) {
+    if (RAIN_CODES.indexOf(hourlyCode[i]) === -1) continue;
+
+    const hDate = parseOpenMeteoLocal(hourlyTime[i]);
+    const hHour = hDate.getHours();
+    const isNight = hHour >= 22 || hHour < 6;
+    const hTimeStr = hDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+
+    if (isNight) {
+      return "🪟 Heute Nacht regnet's — Fenster rechtzeitig schließen.";
+    }
+    if (commuteHour != null && hHour === commuteHour) {
+      return "🚗 Gegen " + hTimeStr + " Uhr regnet's — für den Arbeitsweg lieber Auto oder Bus.";
+    }
+    return "☔ Gegen " + hTimeStr + " Uhr wird's nass — Regenschirm einpacken.";
+  }
+
+  const niceNow = [0, 1, 2].indexOf(currentCode) !== -1;
+  const tempNow = hourlyTemp[startIdx];
+  if (niceNow && tempNow != null && tempNow >= 14 && tempNow <= 26) {
+    return "🌬️ Schönes Wetter gerade — gute Gelegenheit zum Lüften.";
+  }
+
+  return null;
+}
+
 // Dezente Wetter-Animation: ein paar Regentropfen/Wolkenformen als reine
 // CSS-Transform/Opacity-Animationen (keine Partikel-Flut, GPU-billig) —
 // bewusst zurückhaltend gehalten für sichere Performance auf dem alten
@@ -925,6 +965,13 @@ function updateWeather() {
 
     renderWeatherDetails(data);
 
+    if (els.weatherBigMinMax && data.daily && data.daily.temperature_2m_max && data.daily.temperature_2m_min
+      && data.daily.temperature_2m_max[0] != null && data.daily.temperature_2m_min[0] != null) {
+      const hi = Math.round(data.daily.temperature_2m_max[0]);
+      const lo = Math.round(data.daily.temperature_2m_min[0]);
+      els.weatherBigMinMax.textContent = "H: " + hi + "°  T: " + lo + "°";
+    }
+
     if (els.weatherHours && data.hourly && data.hourly.time) {
       // BUG gefunden: hier stand ein exakter String-Vergleich
       // (data.hourly.time.indexOf(data.current.time)) — die Stundenwerte
@@ -974,6 +1021,17 @@ function updateWeather() {
         cell.appendChild(iconEl);
         cell.appendChild(tempEl);
         els.weatherHours.appendChild(cell);
+      }
+
+      if (els.weatherTip) {
+        const tip = buildWeatherTip(data.hourly.time, data.hourly.weather_code, data.hourly.temperature_2m, startIdx, code);
+        if (tip) {
+          els.weatherTip.textContent = tip;
+          els.weatherTip.classList.add("is-visible");
+        } else {
+          els.weatherTip.textContent = "";
+          els.weatherTip.classList.remove("is-visible");
+        }
       }
     }
   }).catch(function (err) {
@@ -1353,10 +1411,16 @@ function updateEvents() {
       title.className = "event-title";
       title.textContent = ev.title;
       text.appendChild(title);
-      if (ev.location) {
+      // 00:00 ist bei destination.one meist "keine genaue Uhrzeit bekannt"
+      // (ganztägig eingetragen), nicht wirklich Mitternacht — dann lieber
+      // keine falsch-genaue Zeit vorgaukeln.
+      const hasTime = !(d.getHours() === 0 && d.getMinutes() === 0);
+      const timeStr = hasTime ? d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr" : "";
+      const locLine = [timeStr, ev.location].filter(function (s) { return !!s; }).join(" · ");
+      if (locLine) {
         const loc = document.createElement("span");
         loc.className = "event-location";
-        loc.textContent = ev.location;
+        loc.textContent = locLine;
         text.appendChild(loc);
       }
 
@@ -1457,22 +1521,48 @@ function updateQuote() {
 // Key, CORS-freundlich. Liefert historische Ereignisse zum heutigen
 // Kalendertag; die Tafel wählt eins zufällig aus und tippt es als Frage
 // ein (gleicher Schreibmaschinen-Mechanismus wie beim Spruch des Tages,
-// startQuoteTypewriter oben), löst die Jahreszahl aber erst nach einer
-// kurzen Denkpause auf statt sie sofort mit anzuzeigen — echtes
-// Quiz-Gefühl statt reiner Fakten-Anzeige.
+// startQuoteTypewriter oben). Auflösung als echtes Multiple-Choice
+// (drei Jahreszahlen, eine davon richtig) statt einer nackten Zahl —
+// die Tafel hat kein Touch, also wird nach einer Denkpause automatisch
+// aufgelöst statt auf einen Tipp zu warten.
+const TRIVIA_MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+
 let triviaFullText = null;
 let triviaYear = null;
 let triviaTypeTimer = null;
 let triviaRevealTimer = null;
 
+// Zwei plausible, aber garantiert falsche Jahreszahlen um das richtige
+// Jahr herum bauen (nie in der Zukunft, nie vor 1) und zusammen mit der
+// echten Antwort mischen.
+function buildTriviaChoices(correctYear) {
+  const thisYear = new Date().getFullYear();
+  const offsets = [];
+  while (offsets.length < 2) {
+    const sign = Math.random() < 0.5 ? -1 : 1;
+    const delta = sign * (10 + Math.floor(Math.random() * 70));
+    const candidate = correctYear + delta;
+    if (candidate === correctYear || candidate < 1 || candidate > thisYear) continue;
+    if (offsets.indexOf(candidate) !== -1) continue;
+    offsets.push(candidate);
+  }
+  const all = [correctYear, offsets[0], offsets[1]];
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = all[i]; all[i] = all[j]; all[j] = tmp;
+  }
+  return all;
+}
+
 function renderTriviaShell() {
   if (!els.triviaBlock) return;
   els.triviaBlock.innerHTML = "";
 
-  const mark = document.createElement("div");
-  mark.className = "trivia-mark";
-  mark.textContent = "?";
-  els.triviaBlock.appendChild(mark);
+  const now = new Date();
+  const dateLabel = document.createElement("div");
+  dateLabel.className = "trivia-date";
+  dateLabel.textContent = "Historisches Ereignis vom " + now.getDate() + ". " + TRIVIA_MONTHS[now.getMonth()];
+  els.triviaBlock.appendChild(dateLabel);
 
   const text = document.createElement("div");
   text.className = "trivia-text";
@@ -1488,27 +1578,33 @@ function renderTriviaShell() {
 
   els.triviaBlock.appendChild(text);
 
-  const answer = document.createElement("div");
-  answer.className = "trivia-answer";
-  answer.id = "triviaAnswer";
-  els.triviaBlock.appendChild(answer);
+  const choices = document.createElement("div");
+  choices.className = "trivia-choices";
+  choices.id = "triviaChoices";
+  els.triviaBlock.appendChild(choices);
 }
 
 function startTriviaReveal() {
-  if (!triviaFullText) return;
+  if (!triviaFullText || triviaYear == null) return;
   const typedEl = document.getElementById("triviaTypedText");
   const cursorEl = document.getElementById("triviaCursor");
-  const answerEl = document.getElementById("triviaAnswer");
-  if (!typedEl) return;
+  const choicesEl = document.getElementById("triviaChoices");
+  if (!typedEl || !choicesEl) return;
 
   if (triviaTypeTimer) clearInterval(triviaTypeTimer);
   if (triviaRevealTimer) clearTimeout(triviaRevealTimer);
   typedEl.textContent = "";
   if (cursorEl) cursorEl.className = "typewriter-cursor";
-  if (answerEl) {
-    answerEl.textContent = "";
-    answerEl.className = "trivia-answer";
-  }
+  choicesEl.className = "trivia-choices";
+  choicesEl.innerHTML = "";
+
+  const options = buildTriviaChoices(triviaYear);
+  options.forEach(function (year) {
+    const chip = document.createElement("span");
+    chip.className = "trivia-choice" + (year === triviaYear ? " correct" : "");
+    chip.textContent = String(year);
+    choicesEl.appendChild(chip);
+  });
 
   const full = triviaFullText;
   let i = 0;
@@ -1519,12 +1615,10 @@ function startTriviaReveal() {
       clearInterval(triviaTypeTimer);
       triviaTypeTimer = null;
       if (cursorEl) cursorEl.className = "typewriter-cursor done";
+      choicesEl.classList.add("is-shown");
       triviaRevealTimer = setTimeout(function () {
-        if (!answerEl || triviaYear == null) return;
-        const yearsAgo = new Date().getFullYear() - triviaYear;
-        answerEl.textContent = triviaYear + " — vor " + yearsAgo + " Jahren";
-        answerEl.className = "trivia-answer is-revealed";
-      }, 2500);
+        choicesEl.classList.add("is-revealed");
+      }, 3000);
     }
   }, 35);
 }
@@ -2143,6 +2237,46 @@ function mercatorY(lat) {
   return Math.log(Math.tan(Math.PI / 4 + rad / 2));
 }
 
+// ECHTER BUG gefunden (per curl direkt gegen TomTom getestet, nicht nur
+// Sandbox-Netzwerk): die Static-Image-API gibt IMMER HTTP 400 zurück,
+// sobald bbox UND width/height gleichzeitig gesetzt sind — unabhängig von
+// Format, Stil oder Bildgröße (getestet von 512×512 bis 2048×1024, alle
+// 400). bbox ALLEINE (ohne width/height) funktioniert, liefert aber nur
+// ein winziges 291×291-Standardbild, verpixelt gestreckt auf Panelgröße.
+// center+zoom+width+height funktioniert dagegen einwandfrei (200, echtes
+// Bild in der angeforderten Größe) — deshalb hier auf center+zoom
+// umgestellt. Weltpixel-Projektion + der "welcher Zoom passt in die
+// Box"-Algorithmus sind Standard-Slippy-Map-Mathematik (dieselbe, die
+// hinter Google-/Leaflet-Kartenausschnitten steckt).
+function lonToWorldX(lon, zoom) {
+  return ((lon + 180) / 360) * (256 * Math.pow(2, zoom));
+}
+
+function latToWorldY(lat, zoom) {
+  return (0.5 - mercatorY(lat) / (2 * Math.PI)) * (256 * Math.pow(2, zoom));
+}
+
+function latRadClamped(lat) {
+  const sinVal = Math.sin((lat * Math.PI) / 180);
+  const radX2 = Math.log((1 + sinVal) / (1 - sinVal)) / 2;
+  return Math.max(Math.min(radX2, Math.PI), -Math.PI) / 2;
+}
+
+// Größter Zoom, bei dem die Bounding Box (mit Rand) noch komplett in ein
+// width×height-Bild passt — gleiches Grundprinzip wie Google Maps'
+// getBoundsZoomLevel().
+function zoomForBounds(minLon, minLat, maxLon, maxLat, mapW, mapH) {
+  const WORLD_DIM = 256;
+  const ZOOM_MAX = 19;
+  const latFraction = (latRadClamped(maxLat) - latRadClamped(minLat)) / Math.PI;
+  let lngDiff = maxLon - minLon;
+  if (lngDiff < 0) lngDiff += 360;
+  const lngFraction = lngDiff / 360;
+  const latZoom = Math.floor(Math.log(mapH / WORLD_DIM / latFraction) / Math.LN2);
+  const lngZoom = Math.floor(Math.log(mapW / WORLD_DIM / lngFraction) / Math.LN2);
+  return Math.max(1, Math.min(latZoom, lngZoom, ZOOM_MAX));
+}
+
 // Kartenansicht mit eingezeichneter Route für den schnellsten Verkehrsmittel
 // (Ersatz für die interaktive TomTom-Karte, die an fehlendem WebGL2 auf
 // Safari 12 scheitert — siehe Kommentar bei .commute-map-wrap in style.css).
@@ -2180,9 +2314,15 @@ function renderCommuteMap(coords, results) {
   const H = 460;
   const color = (CONFIG.commuteModeColors && CONFIG.commuteModeColors[winner.key]) || "#5b6b78";
 
+  // center+zoom statt bbox — siehe Kommentar bei zoomForBounds() weiter
+  // oben für den Grund (bbox+width/height gibt bei TomTom immer HTTP 400).
+  const centerLon = (minLon + maxLon) / 2;
+  const centerLat = (minLat + maxLat) / 2;
+  const zoom = zoomForBounds(minLon, minLat, maxLon, maxLat, W, H);
+
   const imgUrl = "https://api.tomtom.com/map/1/staticimage" +
     "?key=" + encodeURIComponent(CONFIG.tomtomApiKey) +
-    "&bbox=" + minLon.toFixed(5) + "," + minLat.toFixed(5) + "," + maxLon.toFixed(5) + "," + maxLat.toFixed(5) +
+    "&center=" + centerLon.toFixed(5) + "," + centerLat.toFixed(5) + "&zoom=" + zoom +
     "&format=jpg&layer=basic&style=main&width=" + W + "&height=" + H +
     "&view=Unified&language=de-DE&_=" + Date.now();
 
@@ -2206,12 +2346,16 @@ function renderCommuteMap(coords, results) {
   };
   els.commuteMapImg.src = imgUrl;
 
-  const mercMinY = mercatorY(minLat);
-  const mercMaxY = mercatorY(maxLat);
+  // Route in Weltpixeln bei genau dem Zoom projizieren, mit dem auch das
+  // Bild angefordert wurde, und relativ zum Bildmittelpunkt (= center)
+  // positionieren — muss zur center+zoom-Anfrage oben passen, sonst liegt
+  // die Route neben statt auf der Straße.
+  const centerWorldX = lonToWorldX(centerLon, zoom);
+  const centerWorldY = latToWorldY(centerLat, zoom);
 
   function project(lon, lat) {
-    const x = ((lon - minLon) / (maxLon - minLon)) * W;
-    const y = ((mercMaxY - mercatorY(lat)) / (mercMaxY - mercMinY)) * H;
+    const x = lonToWorldX(lon, zoom) - centerWorldX + W / 2;
+    const y = latToWorldY(lat, zoom) - centerWorldY + H / 2;
     return [x, y];
   }
 

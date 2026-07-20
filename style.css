@@ -837,6 +837,12 @@ html, body {
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
+.weather-big-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .weather-big-desc {
   font-size: 28px;
   color: #f0f2f5;
@@ -844,10 +850,26 @@ html, body {
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
-/* Panel-Label über dem farbigen Himmel-Verlauf lesbar halten. */
+/* Höchst-/Tiefstwert — fehlte bisher komplett, obwohl Open-Meteo sie schon
+   in jeder Antwort mitliefert (data.daily.temperature_2m_max/min). */
+.weather-big-minmax {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Panel-Label über dem farbigen Himmel-Verlauf lesbar halten. ECHTER BUG:
+   das Wetter-Panel ist das einzige, dessen .view-label direkt auf der
+   eigenen abgerundeten, farbigen Karte sitzt statt lose über einer Karte
+   zu schweben (wie bei allen anderen Panels) — ohne eigenen Abstand
+   klebte Punkt+Text sichtbar in der abgerundeten Ecke. Eigener Abstand
+   nur hier nötig. */
 #panel-weather.weather-scene .view-label {
   color: #ffffff;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  padding: 24px 30px 14px;
 }
 
 /* Runde 2: Stunden + Zusatz-Daten stecken jetzt zusammen in einer
@@ -862,6 +884,26 @@ html, body {
   border-radius: var(--radius-l);
   padding: 18px 18px 20px;
   box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+/* Konkreter Handlungs-Tipp (Schirm/Fenster/Auto/Lüften) statt bloßer
+   Messwerte — nur sichtbar, wenn buildWeatherTip() in app.js tatsächlich
+   etwas zu sagen hat (is-visible wird per JS gesetzt). */
+.weather-tip {
+  display: none;
+  align-items: center;
+  background: rgba(255, 214, 120, 0.16);
+  border: 1px solid rgba(255, 214, 120, 0.32);
+  border-radius: var(--radius-m);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.weather-tip.is-visible {
+  display: flex;
 }
 
 .weather-hours {
@@ -1571,9 +1613,10 @@ html, body {
 
 /* ---------- Trivia-Panel ("Auf den Tag genau") ---------- */
 /* Gleiche Glas-Karten- und Schreibmaschinen-Sprache wie das Zitat-Panel
-   (.quote-block/.typewriter-cursor werden wiederverwendet), nur mit einer
-   zweiten Stufe: erst die Frage tippen, dann nach einer kurzen Denkpause
-   die Jahreszahl auflösen. */
+   (.quote-block/.typewriter-cursor werden wiederverwendet). Ablauf: erst
+   das heutige Datum + die Frage tippen, dann drei Jahreszahlen als
+   Multiple-Choice zeigen, nach einer kurzen Denkpause die richtige
+   hervorheben statt nur eine nackte Zahl hinzuwerfen. */
 .trivia-block {
   flex: 1;
   display: flex;
@@ -1587,13 +1630,13 @@ html, body {
   box-shadow: var(--glass-shadow);
 }
 
-.trivia-mark {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 90px;
-  line-height: 1;
+.trivia-date {
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--accent);
-  opacity: 0.32;
-  margin-bottom: -8px;
+  margin-bottom: 14px;
 }
 
 .trivia-text {
@@ -1604,18 +1647,41 @@ html, body {
   max-width: 900px;
 }
 
-.trivia-answer {
-  margin-top: 22px;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--accent);
+.trivia-choices {
+  display: flex;
+  gap: 14px;
+  margin-top: 26px;
   opacity: 0;
-  transition: opacity 0.6s ease;
+  transform: translateY(6px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
-.trivia-answer.is-revealed {
+.trivia-choices.is-shown {
   opacity: 1;
+  transform: translateY(0);
+}
+
+.trivia-choice {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.05);
+  border: 2px solid var(--panel-edge);
+  border-radius: var(--radius-m);
+  padding: 10px 22px;
+  transition: background 0.5s ease, border-color 0.5s ease, color 0.5s ease, opacity 0.5s ease;
+}
+
+.trivia-choices.is-revealed .trivia-choice {
+  opacity: 0.4;
+}
+
+.trivia-choices.is-revealed .trivia-choice.correct {
+  opacity: 1;
+  color: #ffffff;
+  background: var(--ok);
+  border-color: var(--ok);
 }
 
 /* ---------- Sport-Ticker (Lieblingsvereine) ---------- */

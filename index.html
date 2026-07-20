@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=47">
+<link rel="stylesheet" href="style.css?v=48">
 </head>
 <body>
   <div class="panel">
@@ -68,9 +68,13 @@
         <div class="weather-big" id="weatherBig">
           <span class="weather-big-icon" id="weatherBigIcon">—</span>
           <span class="weather-big-temp" id="weatherBigTemp">–°</span>
-          <span class="weather-big-desc" id="weatherBigDesc">Lädt…</span>
+          <div class="weather-big-text">
+            <span class="weather-big-desc" id="weatherBigDesc">Lädt…</span>
+            <span class="weather-big-minmax" id="weatherBigMinMax"></span>
+          </div>
         </div>
         <div class="weather-bottom-sheet">
+          <div class="weather-tip" id="weatherTip"></div>
           <div class="weather-hours" id="weatherHours"></div>
           <div class="weather-details" id="weatherDetails"></div>
         </div>
@@ -130,7 +134,7 @@
     <div class="night-overlay" id="nightOverlay"></div>
   </div>
 
-  <script src="config.js?v=47"></script>
-  <script src="app.js?v=47"></script>
+  <script src="config.js?v=48"></script>
+  <script src="app.js?v=48"></script>
 </body>
 </html>

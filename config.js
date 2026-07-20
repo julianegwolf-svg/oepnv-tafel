@@ -74,7 +74,7 @@ const CONFIG = {
     music: 15 * 1000,
     sport: 50 * 1000, // bis zu 6 Vereine + 4 News à 5s Diashow
     quote: 12 * 1000,
-    trivia: 18 * 1000, // Tippdauer variiert mit Satzlänge + 2.5s Denkpause vor der Auflösung
+    trivia: 22 * 1000, // Tippdauer variiert mit Satzlänge + 3s Denkpause vor der Multiple-Choice-Auflösung
     events: 16 * 1000,
   },
   panelDurationMs: 18 * 1000,
