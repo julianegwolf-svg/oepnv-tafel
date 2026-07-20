@@ -115,14 +115,27 @@ html, body {
   margin-bottom: 18px;
 }
 
-/* ECHTER UMBAU: "ALTER POSTWEG 110"-Schriftzug entfernt (auf Wunsch) —
-   der Platz zeigt jetzt stattdessen, welcher Radiosender gerade läuft
-   (siehe initRadioBar/updateNowPlaying in app.js). Leer, solange kein
-   Sender läuft. */
+/* Schlichtes Label statt des vollen Straßennamens — reicht als
+   Wiedererkennung, ohne den Kopfbereich vollzuschreiben. */
+.home-label {
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  font-size: 20px;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+/* Der tägliche Zufalls-Spruch (Begrüßung) ist auf Wunsch komplett raus —
+   dieser Platz in der Mitte zeigt jetzt stattdessen, welcher Radiosender
+   gerade läuft (siehe initRadioBar/updateNowPlaying in app.js). Leer,
+   solange kein Sender läuft; zentriert im verfügbaren Platz, damit die
+   Anzeige auch bei kurzem Sendernamen ausgewogen wirkt. */
 .now-playing {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
+  flex: 1;
   min-width: 0;
 }
 
@@ -172,34 +185,6 @@ html, body {
 @keyframes dotPulse {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.4); opacity: 0.5; }
-}
-
-.greeting {
-  display: flex;
-  align-items: center;
-  max-width: 620px;
-  flex: 1;
-  justify-content: center;
-  padding: 0 20px;
-  min-width: 0;
-}
-
-.greeting-text {
-  font-size: 17px;
-  font-weight: 600;
-  font-style: italic;
-  color: var(--steel-ink);
-  letter-spacing: 0.01em;
-  text-align: center;
-  white-space: normal;
-  overflow-wrap: break-word;
-  line-height: 1.3;
-  transition: opacity 0.7s ease, transform 0.7s ease;
-}
-
-.greeting-text.swap-out {
-  opacity: 0;
-  transform: translateY(-4px);
 }
 
 /* Kleine Glas-Kachel statt frei stehendem Text — reiht sich damit optisch
@@ -254,9 +239,9 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
-  font-size: 22px;
+  width: 72px;
+  height: 72px;
+  font-size: 32px;
   background: var(--glass-bg);
   border: 1px solid var(--panel-edge);
   border-radius: 50%;

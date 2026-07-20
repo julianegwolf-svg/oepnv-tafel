@@ -16,7 +16,6 @@ const els = {
   clockTime: document.getElementById("clockTime"),
   clockDate: document.getElementById("clockDate"),
   nightOverlay: document.getElementById("nightOverlay"),
-  greetingText: document.getElementById("greetingText"),
   weatherPanel: document.getElementById("panel-weather"),
   weatherSky: document.getElementById("weatherSky"),
   weatherBig: document.getElementById("weatherBig"),
@@ -241,135 +240,6 @@ function updateNightDim(hour) {
   const active = isNightHour(hour);
   els.nightOverlay.style.setProperty("--night-dim-opacity", (cfg && cfg.opacity != null) ? cfg.opacity : 0.65);
   els.nightOverlay.classList.toggle("is-active", active);
-}
-
-// ---------- Begrüßung (ersetzt das Mini-Wetter im Header) ----------
-// Statt Icon+Temperatur oben (steht eh groß im Wetter-Panel) läuft hier
-// ein witziger, zur Tageszeit passender Spruch. Wechselt alle paar
-// Minuten und beim Wechsel der Tageszeit-Phase, mit sanftem Crossfade.
-const GREETINGS = {
-  night: [
-    "Immer noch wach? Respekt.",
-    "Schlaf ist auch nur eine Empfehlung.",
-    "Moin schon mal auf Vorrat.",
-    "Netflix hat wieder gewonnen, oder?",
-    "Die Nacht ist jung, du auch (hoffentlich).",
-    "Gute Nacht — falls du doch noch schlafen gehst.",
-    "Nachteule meldet sich zurück.",
-    "Wer schläft, verpasst die besten Memes.",
-    "Kein Ende in Sicht, was?",
-    "Psst, alle schlafen. Fast alle.",
-    "Mitternachtssnack-Alarm.",
-    "Träum was Schönes, wenn's soweit ist.",
-  ],
-  earlyMorning: [
-    "GuMo!",
-    "Guten Morgen, du Frühaufsteher-Legende.",
-    "Kaffee wartet auf dich. Beeil dich.",
-    "Der frühe Vogel nervt trotzdem.",
-    "Moin! Noch vor dem Wecker wach?",
-    "5-Uhr-Club, Respekt.",
-    "GuMo mit Ei.",
-    "Aufstehen, die Bahn wartet nicht.",
-    "Frühschicht-Energie, spürst du sie?",
-    "Moin Moin, Bremen ruft.",
-    "Sonne noch nicht wach, du schon.",
-  ],
-  morning: [
-    "Guten Morgen!",
-    "Moin, wie war die Nacht?",
-    "Kaffee Nummer zwei, oder?",
-    "Der Tag hat gerade erst angefangen, entspann dich.",
-    "Frühstück nicht vergessen!",
-    "Moin! Alter Postweg meldet sich.",
-    "Guten Morgen, Champion.",
-    "Zeit für den ersten Blick auf die Abfahrten.",
-    "Der Tag kann kommen.",
-    "Moin, lauf los oder chill weiter — du hast noch Zeit.",
-  ],
-  midday: [
-    "Mahlzeit!",
-    "Schon Hunger? Ist ok.",
-    "Halbzeit des Tages.",
-    "Mittagspause verdient, oder?",
-    "Moin, äh Mahlzeit.",
-    "Der Vormittag ist geschafft, stolz auf dich.",
-    "Zeit für was Warmes zu essen.",
-    "Mittagstief incoming, halt durch.",
-    "Guten Appetit, falls zutreffend.",
-    "Die Sonne steht hoch, du hoffentlich auch.",
-  ],
-  afternoon: [
-    "Guten Nachmittag!",
-    "Kaffee Nummer drei ist erlaubt.",
-    "Nachmittagstief? Kenn ich.",
-    "Feierabend rückt näher, halt durch.",
-    "Der Nachmittag zieht sich, was?",
-    "Noch ein paar Stunden, dann ist Ruhe.",
-    "Zeit für einen kurzen Motivationsschub.",
-    "Schon ans Wochenende gedacht?",
-    "Der Tag läuft, du auch (hoffentlich).",
-    "Kleine Pause gefällig?",
-  ],
-  evening: [
-    "Guten Abend!",
-    "Feierabend, na endlich.",
-    "Zeit zum Entspannen, verdient.",
-    "Der Tag ist geschafft, gut gemacht.",
-    "Abendrunde: Sofa oder noch was vor?",
-    "Moin — äh, Abend natürlich.",
-    "Zeit für was Gutes zum Essen.",
-    "Der Abend gehört dir.",
-    "Bildschirmzeit oder frische Luft? Deine Wahl.",
-    "Gemütlicher Abend gewünscht.",
-  ],
-};
-
-let lastGreetingBucket = null;
-let lastGreetingText = null;
-let lastGreetingSwapAt = 0;
-const GREETING_ROTATE_MS = 3 * 60 * 1000;
-
-function greetingBucket(hour) {
-  if (hour >= 22 || hour < 5) return "night";
-  if (hour < 8) return "earlyMorning";
-  if (hour < 11) return "morning";
-  if (hour < 14) return "midday";
-  if (hour < 18) return "afternoon";
-  return "evening";
-}
-
-function pickGreeting(bucket) {
-  const list = GREETINGS[bucket] || GREETINGS.morning;
-  if (list.length === 1) return list[0];
-  let pick = list[Math.floor(Math.random() * list.length)];
-  let tries = 0;
-  while (pick === lastGreetingText && tries < 5) {
-    pick = list[Math.floor(Math.random() * list.length)];
-    tries++;
-  }
-  return pick;
-}
-
-function updateGreeting() {
-  if (!els.greetingText) return;
-  const now = Date.now();
-  const bucket = greetingBucket(new Date().getHours());
-  const bucketChanged = bucket !== lastGreetingBucket;
-  const dueForRotation = (now - lastGreetingSwapAt) > GREETING_ROTATE_MS;
-  if (!bucketChanged && !dueForRotation && lastGreetingText) return;
-
-  const text = pickGreeting(bucket);
-  lastGreetingBucket = bucket;
-  lastGreetingText = text;
-  lastGreetingSwapAt = now;
-
-  const el = els.greetingText;
-  el.classList.add("swap-out");
-  setTimeout(function () {
-    el.textContent = text;
-    el.classList.remove("swap-out");
-  }, 350);
 }
 
 // ---------- Haltestellen auflösen ----------
@@ -3405,9 +3275,6 @@ function init() {
 
   tickClock();
   setInterval(tickClock, CONFIG.refreshClockMs);
-
-  updateGreeting();
-  setInterval(updateGreeting, 60 * 1000);
 
   updateDepartures();
   setInterval(updateDepartures, CONFIG.refreshDeparturesMs);
