@@ -15,9 +15,21 @@
      Schatten statt flachem Weiß — braucht einen leicht strukturierten
      Untergrund (siehe .panel-Verlauf unten), sonst ist der Blur-Effekt
      kaum sichtbar. -webkit-backdrop-filter läuft seit iOS 9, also auch
-     auf dem alten iPad sicher. */
-  --glass-bg: rgba(255, 255, 255, 0.68);
-  --glass-shadow: 0 8px 24px rgba(28, 29, 31, 0.07), 0 1px 3px rgba(28, 29, 31, 0.05);
+     auf dem alten iPad sicher.
+     Runde "mehr Liebe": tieferer, mehrschichtiger Schatten (weiter weg =
+     mehr "Schweben") PLUS ein hauchdünner heller Rand oben (inset), der
+     typische Glas-/Lack-Reflex-Trick — macht aus flachen Karten spürbar
+     hochwertigere, fast wie poliert wirkende Flächen. Kaskadiert automatisch
+     auf jede Karte, die var(--glass-shadow) nutzt. */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-shadow: 0 18px 40px rgba(28, 29, 31, 0.10), 0 4px 10px rgba(28, 29, 31, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  /* Radius-Skala statt überall verstreuter Einzelwerte — konsistent
+     "abgerundeter" über die ganze Seite, von kleinen Chips bis zu großen
+     Panel-Flächen. */
+  --radius-s: 12px;
+  --radius-m: 20px;
+  --radius-l: 28px;
 
   /* Panel-Akzentfarben — jede Ansicht bekommt ihren eigenen Farbton zur
      Wiedererkennung, per Default Messing. */
@@ -79,13 +91,25 @@ html, body {
   margin-left: 14px;
 }
 
+/* Kleiner "Live"-Puls statt eines starren Punkts — winzige Ergänzung, die
+   sofort ein Gefühl von "das läuft gerade wirklich" vermittelt, statt wie
+   ein Icon aus einem Screenshot zu wirken. currentColor statt fester Farbe,
+   damit derselbe Puls auf jedem Panel-Label (siehe .view-label::before)
+   automatisch in dessen eigener Akzentfarbe mitläuft. */
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; }
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+
 .brand-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background: var(--brass);
+  color: var(--brass);
   display: inline-block;
   margin-bottom: 3px;
+  animation: dotPulse 2.6s ease-in-out infinite;
 }
 
 .brand-text {
@@ -130,8 +154,18 @@ html, body {
   transform: translateY(-4px);
 }
 
+/* Kleine Glas-Kachel statt frei stehendem Text — reiht sich damit optisch
+   in die Karten-Sprache des restlichen Interfaces ein, statt ein Fremd-
+   körper im Header zu sein. */
 .clock {
   text-align: right;
+  padding: 8px 20px;
+  border-radius: var(--radius-m);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--panel-edge);
+  box-shadow: var(--glass-shadow);
 }
 
 .clock-time {
@@ -152,9 +186,9 @@ html, body {
 
 /* ---------- Fortschrittsbalken ---------- */
 .progress-bar {
-  height: 4px;
+  height: 5px;
   background: var(--panel-edge);
-  border-radius: 2px;
+  border-radius: 4px;
   overflow: hidden;
   margin-bottom: 16px;
   flex-shrink: 0;
@@ -165,7 +199,12 @@ html, body {
   width: 100%;
   transform: scaleX(0);
   transform-origin: left center;
+  /* Kein color-mix()/CSS-Farbfunktionen hier — Safari 12 kann die nicht,
+     die ganze Deklaration würde sonst stillschweigend ignoriert werden
+     und der Balken bliebe unsichtbar. Stattdessen schlicht die Akzentfarbe
+     plus außenliegendem Glow. */
   background: var(--accent, var(--brass));
+  box-shadow: 0 0 10px 1px var(--accent, var(--brass));
   will-change: transform;
 }
 
@@ -213,6 +252,8 @@ html, body {
   margin-right: 10px;
   border-radius: 50%;
   background: var(--accent);
+  color: var(--accent);
+  animation: dotPulse 2.6s ease-in-out infinite;
 }
 
 .view-placeholder {
@@ -233,7 +274,7 @@ html, body {
 .board-head {
   display: grid;
   grid-template-columns: 100px 1fr 130px;
-  padding: 0 20px 10px;
+  padding: 0 22px 10px;
   color: var(--ink-dim);
   font-size: 13px;
   letter-spacing: 0.09em;
@@ -257,13 +298,14 @@ html, body {
   grid-template-columns: 100px 1fr 130px;
   align-items: center;
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border: 1px solid var(--panel-edge);
   border-left: 6px solid transparent;
-  border-radius: 14px;
-  padding: 18px 20px;
+  border-radius: var(--radius-m);
+  padding: 18px 22px;
   box-shadow: var(--glass-shadow);
+  transition: transform 0.3s ease;
 }
 
 .row.placeholder {
@@ -276,10 +318,13 @@ html, body {
 
 /* Gehzeit-Indikator: signalisiert, wie dringend man los muss, um den
    jeweiligen Bus noch zu Fuß zu erreichen. */
-.row.walk-ok { border-left-color: var(--ok); }
-.row.walk-soon { border-left-color: var(--brass); }
-.row.walk-late { border-left-color: var(--danger); }
+.row.walk-ok { border-left-color: var(--ok); background: linear-gradient(90deg, rgba(63, 125, 82, 0.07), transparent 40%), var(--glass-bg); }
+.row.walk-soon { border-left-color: var(--brass); background: linear-gradient(90deg, rgba(169, 121, 63, 0.09), transparent 40%), var(--glass-bg); }
+.row.walk-late { border-left-color: var(--danger); background: linear-gradient(90deg, rgba(177, 64, 47, 0.09), transparent 40%), var(--glass-bg); }
 
+/* "Emaille"-Look statt flacher Füllfarbe: sanfter Verlauf + Innenschatten
+   (heller oben, dunkler unten) simuliert eine leicht gewölbte, polierte
+   Plakette statt eines platten Farbklecks. */
 .line-badge {
   display: inline-flex;
   align-items: center;
@@ -287,14 +332,15 @@ html, body {
   justify-self: start;
   width: 74px;
   height: 46px;
-  border-radius: 10px;
+  border-radius: var(--radius-s);
   font-family: 'IBM Plex Mono', monospace;
   font-weight: 700;
   font-size: 24px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7), inset 0 -3px 6px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(28, 29, 31, 0.1);
 }
 
-.line-badge.tram { background: #ede1cd; color: var(--brass-ink); }
-.line-badge.bus { background: #dfe7ec; color: var(--steel-ink); }
+.line-badge.tram { background: linear-gradient(165deg, #f4e9d8 0%, #e6d3ab 100%); color: var(--brass-ink); }
+.line-badge.bus { background: linear-gradient(165deg, #eaf2f5 0%, #d2e0e6 100%); color: var(--steel-ink); }
 
 .dest-wrap {
   display: flex;
@@ -667,9 +713,9 @@ html, body {
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 22px;
+  border-radius: var(--radius-l);
   padding: 18px 18px 20px;
-  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 .weather-hours {
@@ -688,7 +734,7 @@ html, body {
   flex: 1;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 14px;
+  border-radius: var(--radius-m);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -738,7 +784,7 @@ html, body {
   gap: 8px;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 12px;
+  border-radius: var(--radius-s);
   padding: 8px 12px;
 }
 
@@ -773,7 +819,7 @@ html, body {
   flex: 1;
   position: relative;
   min-height: 0;
-  border-radius: 20px;
+  border-radius: var(--radius-l);
   overflow: hidden;
   box-shadow: var(--glass-shadow);
 }
@@ -892,13 +938,14 @@ html, body {
 
 .music-item {
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border: 1px solid var(--panel-edge);
-  border-radius: 14px;
+  border-radius: var(--radius-m);
   padding: 12px 20px;
   display: flex;
   align-items: center;
+  box-shadow: var(--glass-shadow);
 }
 
 .music-item > * + * {
@@ -916,9 +963,10 @@ html, body {
 .music-art {
   width: 50px;
   height: 50px;
-  border-radius: 8px;
+  border-radius: 11px;
   object-fit: cover;
   background: var(--panel-edge);
+  box-shadow: 0 2px 6px rgba(28, 29, 31, 0.15);
 }
 
 .music-text {
@@ -959,8 +1007,8 @@ html, body {
   display: flex;
   align-items: center;
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border: 1px solid var(--panel-edge);
   border-radius: 999px;
   padding: 12px 22px 12px 16px;
@@ -1043,7 +1091,7 @@ html, body {
 .commute-map-wrap {
   flex: 1;
   min-height: 0;
-  border-radius: 16px;
+  border-radius: var(--radius-m);
   overflow: hidden;
   border: 1px solid var(--panel-edge);
   background: #e9e6df;
@@ -1092,13 +1140,22 @@ html, body {
 }
 
 /* ---------- Zitat-Panel ---------- */
+/* Vorher freischwebender Text ohne jede Karten-Fassung — fiel dadurch aus
+   der sonstigen Glas-Karten-Sprache raus. Jetzt dieselbe Behandlung wie
+   News/Musik/Sport: eigene Fläche mit Radius + Schatten. */
 .quote-block {
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  padding: 10px 20px;
+  padding: 48px 56px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-l);
+  box-shadow: var(--glass-shadow);
 }
 
 .quote-mark {
@@ -1152,7 +1209,7 @@ html, body {
   flex: 1;
   position: relative;
   min-height: 0;
-  border-radius: 22px;
+  border-radius: var(--radius-l);
   overflow: hidden;
   box-shadow: var(--glass-shadow);
 }
@@ -1307,7 +1364,13 @@ html, body {
   letter-spacing: 0.02em;
 }
 
+/* Kleine Chip-Fassung statt reinem Fließtext — reiht sich in die
+   Karten-/Chip-Sprache des restlichen Interfaces ein statt wie eine
+   Fußnote unterzugehen. */
 .waste-line {
   font-weight: 600;
   color: var(--steel-ink);
+  background: var(--panel-edge);
+  padding: 3px 12px;
+  border-radius: 999px;
 }
