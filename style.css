@@ -689,30 +689,51 @@ html, body {
   100% { transform: translateX(120vw); }
 }
 
-/* ECHTER BUG gefunden (auf dem echten iPad UND im Test-Browser
+/* ECHTER BUG, zweiter Anlauf (auf dem echten iPad UND im Test-Browser
    reproduziert): eine flache Pille mit border-radius sieht aus der Nähe
-   nicht wie eine Wolke aus, sondern wie ein leerer/kaputter UI-Kasten —
-   genau das hat der Nutzer auf Fotos vom Gerät bemängelt. Kein Bug im
-   Sinne von falschem Code, aber ein echtes Wahrnehmungsproblem. Fix:
-   mehrere versetzte, kleinere "Puffs" per box-shadow statt einer
-   einzelnen Fläche — ergibt eine grob wolkenförmige Silhouette. Bewusst
-   box-shadow statt filter (siehe ausführlicher Kommentar bei
-   .weather-big-icon, warum filter auf altem WebKit riskant ist) — box-
-   shadow ist ein alter, zuverlässiger Effekt, wird einmal beim Bau des
-   Layers berechnet und nicht pro Animations-Frame neu (transform:
-   translateX läuft compositor-only, das Element wird nicht neu
-   gestrichen). */
+   nicht wie eine Wolke aus, sondern wie ein leerer/kaputter UI-Kasten.
+   Erster Versuch (box-shadow-Versatz auf derselben flachen Ellipse) hat
+   auf dem echten Gerät immer noch wie ein Tinten-Klecks ausgesehen, nicht
+   wie eine Wolke — box-shadow übernimmt zwangsläufig die Form (und das
+   Seitenverhältnis) des Basis-Elements, bei einer breiten, flachen
+   Ellipse wirken die "Puffs" dadurch selbst nur wie flache Klecks-Kopien.
+   Jetzt: zwei echte, unabhängig geformte Kreise als ::before/::after
+   (Prozentwerte beziehen sich auf die eigene Box, funktioniert für jede
+   der drei Wolkengrößen aus app.js gleichermaßen), oben auf die Basis-
+   Ellipse gesetzt — das klassische "Cartoon-Wolke aus drei Kreisen"-
+   Muster. Weiterhin kein filter (siehe Kommentar bei .weather-big-icon)
+   und kein zusätzliches Animations-Overhead: beide Pseudo-Elemente
+   erben die transform:translateX-Animation der Basis automatisch, weil
+   sie relativ zu ihr positioniert sind. */
 .fx-cloud-shape {
   position: absolute;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.55);
-  box-shadow:
-    18px -10px 0 -6px rgba(255, 255, 255, 0.5),
-    -16px -6px 0 -8px rgba(255, 255, 255, 0.45),
-    6px 9px 0 -10px rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.6);
   animation-name: fxCloudDrift;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
+}
+
+.fx-cloud-shape::before,
+.fx-cloud-shape::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.fx-cloud-shape::before {
+  width: 62%;
+  height: 130%;
+  top: -58%;
+  left: 6%;
+}
+
+.fx-cloud-shape::after {
+  width: 50%;
+  height: 105%;
+  top: -42%;
+  right: 8%;
 }
 
 /* Gleicher Bug wie bei fxRainFall (translateY(%) bezieht sich auf die
@@ -1755,15 +1776,38 @@ html, body {
 }
 
 /* ---------- Statusbar ---------- */
+/* ECHTER BUG auf dem echten iPad gefunden: die Credits-Zeile ist über die
+   Zeit gewachsen (Wikipedia, open.destination.one kamen dazu) und passt
+   bei 1024px Breite nicht mehr in eine Zeile — ohne min-width:0 auf einem
+   Flex-Kind bricht der Text unkontrolliert um, dazu ohne festen Abstand
+   zwischen den vier Elementen wirkte die ganze Fußzeile gestaucht/schief.
+   Fix: status/Uhrzeit/Müll-Badge dürfen nie schrumpfen (kurz, wichtig),
+   nur die Credits-Zeile darf bei Platzmangel mit Ellipsis abgeschnitten
+   werden statt umzubrechen. */
 .statusbar {
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 16px;
   padding-top: 14px;
   margin-top: 14px;
   border-top: 1px solid var(--panel-edge);
   color: var(--ink-dim);
   font-size: 13px;
   letter-spacing: 0.02em;
+}
+
+.statusbar > * {
+  flex-shrink: 0;
+}
+
+.statusbar > .statusbar-credits {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: right;
 }
 
 /* Kleine Chip-Fassung statt reinem Fließtext — reiht sich in die
