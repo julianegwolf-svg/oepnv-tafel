@@ -1404,6 +1404,77 @@ function fetchTransitItinerary(from, to) {
   });
 }
 
+// Echte Live-Verkehrsdaten für die Auto-Zeit (TomTom Routing API,
+// traffic=true) statt der bisherigen freien-Fahrt-Schätzung. Nur aktiv,
+// wenn CONFIG.tomtomApiKey gesetzt ist — sonst/bei Fehlern fällt
+// fetchCarItinerary weiter unten automatisch auf die alte Transitous-
+// Route + Plausibilitätsschätzung zurück (keine harte Abhängigkeit).
+function fetchTomTomCarRoute(from, to) {
+  if (!CONFIG.tomtomApiKey) {
+    return Promise.reject(new Error("kein TomTom-Key konfiguriert"));
+  }
+  const url = "https://api.tomtom.com/routing/1/calculateRoute/" +
+    from.lat + "," + from.lon + ":" + to.lat + "," + to.lon +
+    "/json?key=" + encodeURIComponent(CONFIG.tomtomApiKey) +
+    "&traffic=true&travelMode=car&routeType=fastest" +
+    "&_=" + Date.now();
+
+  return fetch(url, { cache: "no-store" }).then(function (res) {
+    if (!res.ok) throw new Error("TomTom-Routenabruf fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const route = data && Array.isArray(data.routes) ? data.routes[0] : null;
+    const summary = route && route.summary;
+    if (!summary || typeof summary.travelTimeInSeconds !== "number") {
+      throw new Error("TomTom-Antwort ohne verwertbare Route");
+    }
+    const minutes = Math.max(1, Math.round(summary.travelTimeInSeconds / 60));
+    const delayMin = typeof summary.trafficDelayInSeconds === "number"
+      ? Math.round(summary.trafficDelayInSeconds / 60)
+      : 0;
+    return { minutes: minutes, delayMin: delayMin };
+  });
+}
+
+// Baut das Auto-Ergebnis fürs Pendel-Panel: erst TomTom mit Live-Verkehr
+// versuchen (falls konfiguriert), bei Erfolg direkt verwenden. Ohne Key
+// oder bei jedem Fehler (Netzwerk, Kontingent, kaputte Antwort) fällt es
+// genau auf den bisherigen Weg zurück — Transitous-Route + Plausibilitäts-
+// Schätzung —, damit die Tafel nie von einem einzelnen Drittanbieter
+// abhängt.
+function fetchCarItinerary(from, to, distanceMeters) {
+  function viaMotis() {
+    return fetchDirectItinerary(from, to, "CAR")
+      .then(function (it) {
+        const check = plausibleMinutesOrFallback(
+          itineraryDurationMin(it), estimateCarMinutes(distanceMeters), "Auto"
+        );
+        return {
+          itinerary: it, minutes: check.minutes, estimated: check.estimated,
+          delayMin: null, source: check.estimated ? "fallback" : "motis",
+        };
+      })
+      .catch(function (err) {
+        console.error(err);
+        return {
+          itinerary: null, minutes: estimateCarMinutes(distanceMeters), estimated: true,
+          delayMin: null, source: "fallback",
+        };
+      });
+  }
+
+  if (!CONFIG.tomtomApiKey) return viaMotis();
+
+  return fetchTomTomCarRoute(from, to)
+    .then(function (r) {
+      return { itinerary: null, minutes: r.minutes, estimated: false, delayMin: r.delayMin, source: "tomtom" };
+    })
+    .catch(function (err) {
+      console.error("TomTom-Verkehrsdaten nicht verfügbar, nutze Ersatzroute:", err);
+      return viaMotis();
+    });
+}
+
 function itineraryDurationMin(itinerary) {
   try {
     if (typeof itinerary.duration === "number") {
@@ -1684,6 +1755,15 @@ function renderCommuteRace(results) {
         extra.textContent = extraText;
         row.appendChild(extra);
       }
+    } else if (m.key === "car" && res && res.source === "tomtom") {
+      // Live-Verkehr über TomTom war erfolgreich — zeigen, ob und wie viel
+      // Stau eingerechnet ist, statt nur eine nackte Minutenzahl.
+      const extra = document.createElement("div");
+      extra.className = "commute-race-extra";
+      extra.textContent = res.delayMin > 0
+        ? ("inkl. " + res.delayMin + " Min. Stau · Live-Verkehr")
+        : "keine Verzögerung · Live-Verkehr";
+      row.appendChild(extra);
     } else if (res && res.estimated) {
       const extra = document.createElement("div");
       extra.className = "commute-race-extra";
@@ -1735,17 +1815,7 @@ function updateCommute() {
           };
         })
         .catch(function (err) { console.error(err); return null; }),
-      fetchDirectItinerary(coords.home, coords.work, "CAR")
-        .then(function (it) {
-          const check = plausibleMinutesOrFallback(
-            itineraryDurationMin(it), estimateCarMinutes(distanceMeters), "Auto"
-          );
-          return { itinerary: it, minutes: check.minutes, estimated: check.estimated };
-        })
-        .catch(function (err) {
-          console.error(err);
-          return { itinerary: null, minutes: estimateCarMinutes(distanceMeters), estimated: true };
-        }),
+      fetchCarItinerary(coords.home, coords.work, distanceMeters),
     ]).then(function (all) {
       const results = { bike: all[0], bus: all[1], car: all[2] };
       renderCommuteHero(results);

@@ -76,6 +76,18 @@ const CONFIG = {
   workLabel: "Max Müller GmbH",
   refreshCommuteMs: 10 * 60 * 1000,
 
+  // TomTom-API-Key für echte Live-Verkehrsdaten bei der Auto-Zeit (Stau,
+  // aktuelle Verkehrslage — nicht nur freie Fahrt wie bei der bisherigen
+  // Schätzung). Kostenloses Freemium-Konto, keine Kreditkarte nötig,
+  // 2.500 Anfragen/Tag gratis (die Tafel braucht bei 10-Minuten-Takt nur
+  // ~144/Tag):
+  //   1. Auf https://developer.tomtom.com registrieren
+  //   2. Im Dashboard eine App anlegen (Produkt "Routing API" reicht)
+  //   3. Den API-Key hier eintragen
+  // Leer lassen ("") = Auto-Zeit fällt zurück auf die bisherige grobe
+  // Schätzung (Luftlinie × Aufschlag) ohne echten Verkehr.
+  tomtomApiKey: "",
+
   // Farben je Verkehrsmittel im Pendel-Panel (Rennen-Balken/Sieger-Anzeige).
   // Kein Kartenmaterial mehr nötig, seit die Karte durch die Rennen-
   // Visualisierung ersetzt wurde.
