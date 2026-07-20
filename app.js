@@ -1850,6 +1850,16 @@ function startQuizReveal() {
     choicesEl.appendChild(chip);
   });
 
+  // Auflösung erst zur Hälfte der gesamten Panel-Anzeigezeit statt fix 3s
+  // nach dem Fertigtippen — lässt genug Zeit zum eigenen Raten, bevor die
+  // richtige Antwort markiert wird. Rechnet ab Start dieser Funktion, damit
+  // unterschiedlich lange Fragen (variable Tippdauer) nicht die Ratezeit
+  // auffressen; eine Mindestpause sorgt dafür, dass es bei sehr langen
+  // Fragen trotzdem noch etwas Spannung gibt.
+  const startedAt = Date.now();
+  const panelDuration = (CONFIG.panelDurations && CONFIG.panelDurations.quiz) || CONFIG.panelDurationMs || 22000;
+  const halfMs = panelDuration / 2;
+
   const full = quizQuestion.text;
   let i = 0;
   quizTypeTimer = setInterval(function () {
@@ -1860,9 +1870,11 @@ function startQuizReveal() {
       quizTypeTimer = null;
       if (cursorEl) cursorEl.className = "typewriter-cursor done";
       choicesEl.classList.add("is-shown");
+      const elapsed = Date.now() - startedAt;
+      const revealDelay = Math.max(halfMs - elapsed, 1500);
       quizRevealTimer = setTimeout(function () {
         choicesEl.classList.add("is-revealed");
-      }, 3000);
+      }, revealDelay);
     }
   }, 35);
 }
