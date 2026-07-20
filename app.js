@@ -822,14 +822,21 @@ function renderWeatherDetails(data) {
 }
 
 function updateWeather() {
+  // Cache-Buster (_=Date.now()), gleiches Muster wie beim Spruch-Abruf
+  // (updateQuote) — ohne das kann ein zwischengeschalteter Cache (Safaris
+  // eigener HTTP-Cache oder ein CDN vor Open-Meteo) über die eingestellten
+  // 15 Minuten hinaus eine ältere Antwort ausliefern, ohne dass die
+  // Tafel etwas davon merkt. Erklärt am ehesten, warum die Tafel zeitweise
+  // "anderes" Wetter zeigt als eine frisch geöffnete App auf dem Handy.
   const url = "https://api.open-meteo.com/v1/forecast?latitude=" + CONFIG.weatherLat +
     "&longitude=" + CONFIG.weatherLon +
     "&current=temperature_2m,weather_code,is_day,relative_humidity_2m,apparent_temperature,wind_speed_10m" +
     "&hourly=temperature_2m,weather_code" +
     "&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max" +
-    "&timezone=Europe%2FBerlin";
+    "&timezone=Europe%2FBerlin" +
+    "&_=" + Date.now();
 
-  fetch(url).then(function (res) {
+  fetch(url, { cache: "no-store" }).then(function (res) {
     if (!res.ok) throw new Error("Wetter-Abruf fehlgeschlagen (" + res.status + ")");
     return res.json();
   }).then(function (data) {
