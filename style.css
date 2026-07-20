@@ -1451,10 +1451,26 @@ html, body {
   box-shadow: var(--glass-shadow);
 }
 
+/* ECHTER BUG gefunden: wenn das Kartenbild fehlschlägt (Netzwerk,
+   Kontingent, ungültiger Key), setzt renderCommuteMap() zwar is-empty,
+   aber das kaputte <img> selbst blieb bisher sichtbar — Safari/Browser
+   zeigen dann ihr eigenes hässliches "Bild fehlt"-Icon plus den alt-Text
+   ("Karte Arbeitsweg") mitten im Panel. Jetzt: img in diesem Zustand
+   ausblenden und stattdessen einen ruhigen Text-Hinweis zeigen. */
 .commute-map-wrap.is-empty {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.commute-map-wrap.is-empty .commute-map-img {
+  display: none;
+}
+
+.commute-map-wrap.is-empty::after {
+  content: "Keine Kartenvorschau verfügbar";
+  color: var(--ink-dim);
+  font-size: 16px;
 }
 
 .commute-map-img {
