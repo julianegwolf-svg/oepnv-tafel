@@ -102,39 +102,32 @@ html, body {
   letter-spacing: 0.03em;
 }
 
-.weather {
+.greeting {
   display: flex;
   align-items: center;
+  max-width: 380px;
+  flex: 1;
+  justify-content: center;
+  padding: 0 20px;
+  min-width: 0;
+}
+
+.greeting-text {
+  font-size: 18px;
+  font-weight: 600;
+  font-style: italic;
   color: var(--steel-ink);
+  letter-spacing: 0.01em;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.7s ease, transform 0.7s ease;
 }
 
-.weather > * + * {
-  margin-left: 14px;
-}
-
-.weather-icon {
-  font-size: 38px;
-  line-height: 1;
-}
-
-.weather-temp-block {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.15;
-}
-
-.weather-temp {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 30px;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.weather-minmax {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--ink-dim);
+.greeting-text.swap-out {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
 .clock {
@@ -169,8 +162,11 @@ html, body {
 
 .progress-fill {
   height: 100%;
-  width: 0%;
-  background: var(--brass);
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: var(--accent, var(--brass));
+  will-change: transform;
 }
 
 /* ---------- Stage / Karussell ---------- */
@@ -382,6 +378,34 @@ html, body {
 /* Dezente Wetter-Effekte: liegen per z-index:-1 hinter Icon/Temperatur/
    Text (siehe Stacking-Reihenfolge negativer z-index innerhalb eines
    position:relative-Containers), werden nur per Klasse ein-/ausgeblendet. */
+.weather-photo {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: -2;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+.weather-photo.loaded {
+  opacity: 1;
+}
+
+/* Textfarbe/Schatten umschalten, sobald ein Foto hinter dem Panel liegt —
+   sonst wäre die normale dunkle Schrift je nach Fotohelligkeit schlecht
+   lesbar. text-shadow statt Kontrastberechnung, damit es bei jedem Foto
+   funktioniert statt nur bei den getesteten. */
+.weather-big.has-photo .weather-big-temp,
+.weather-big.has-photo .weather-big-desc {
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.weather-big.has-photo .weather-big-icon {
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+}
+
 .weather-fx-layer {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -413,6 +437,7 @@ html, body {
   border-radius: 2px;
   background: linear-gradient(180deg, rgba(60, 126, 168, 0), rgba(60, 126, 168, 0.55));
   animation: fxRainFall 1.6s linear infinite;
+  will-change: transform, opacity;
 }
 
 @keyframes fxCloudDrift {
@@ -423,11 +448,11 @@ html, body {
 .fx-cloud-shape {
   position: absolute;
   border-radius: 50px;
-  background: rgba(255, 255, 255, 0.6);
-  filter: blur(1px);
+  background: rgba(255, 255, 255, 0.55);
   animation-name: fxCloudDrift;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
+  will-change: transform;
 }
 
 @keyframes fxSnowFall {
@@ -445,6 +470,7 @@ html, body {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.85);
   animation: fxSnowFall 4.5s linear infinite;
+  will-change: transform, opacity;
 }
 
 .weather-big-icon {

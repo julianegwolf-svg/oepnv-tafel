@@ -15,9 +15,7 @@ const els = {
   lastUpdate: document.getElementById("lastUpdate"),
   clockTime: document.getElementById("clockTime"),
   clockDate: document.getElementById("clockDate"),
-  weatherIcon: document.getElementById("weatherIcon"),
-  weatherTemp: document.getElementById("weatherTemp"),
-  weatherMinMax: document.getElementById("weatherMinMax"),
+  greetingText: document.getElementById("greetingText"),
   weatherBig: document.getElementById("weatherBig"),
   weatherBigIcon: document.getElementById("weatherBigIcon"),
   weatherBigTemp: document.getElementById("weatherBigTemp"),
@@ -48,6 +46,135 @@ function tickClock() {
     day: "2-digit",
     month: "long",
   });
+}
+
+// ---------- Begrüßung (ersetzt das Mini-Wetter im Header) ----------
+// Statt Icon+Temperatur oben (steht eh groß im Wetter-Panel) läuft hier
+// ein witziger, zur Tageszeit passender Spruch. Wechselt alle paar
+// Minuten und beim Wechsel der Tageszeit-Phase, mit sanftem Crossfade.
+const GREETINGS = {
+  night: [
+    "Immer noch wach? Respekt.",
+    "Schlaf ist auch nur eine Empfehlung.",
+    "Moin schon mal auf Vorrat.",
+    "Netflix hat wieder gewonnen, oder?",
+    "Die Nacht ist jung, du auch (hoffentlich).",
+    "Gute Nacht — falls du doch noch schlafen gehst.",
+    "Nachteule meldet sich zurück.",
+    "Wer schläft, verpasst die besten Memes.",
+    "Kein Ende in Sicht, was?",
+    "Psst, alle schlafen. Fast alle.",
+    "Mitternachtssnack-Alarm.",
+    "Träum was Schönes, wenn's soweit ist.",
+  ],
+  earlyMorning: [
+    "GuMo!",
+    "Guten Morgen, du Frühaufsteher-Legende.",
+    "Kaffee wartet auf dich. Beeil dich.",
+    "Der frühe Vogel nervt trotzdem.",
+    "Moin! Noch vor dem Wecker wach?",
+    "5-Uhr-Club, Respekt.",
+    "GuMo mit Ei.",
+    "Aufstehen, die Bahn wartet nicht.",
+    "Frühschicht-Energie, spürst du sie?",
+    "Moin Moin, Bremen ruft.",
+    "Sonne noch nicht wach, du schon.",
+  ],
+  morning: [
+    "Guten Morgen!",
+    "Moin, wie war die Nacht?",
+    "Kaffee Nummer zwei, oder?",
+    "Der Tag hat gerade erst angefangen, entspann dich.",
+    "Frühstück nicht vergessen!",
+    "Moin! Alter Postweg meldet sich.",
+    "Guten Morgen, Champion.",
+    "Zeit für den ersten Blick auf die Abfahrten.",
+    "Der Tag kann kommen.",
+    "Moin, lauf los oder chill weiter — du hast noch Zeit.",
+  ],
+  midday: [
+    "Mahlzeit!",
+    "Schon Hunger? Ist ok.",
+    "Halbzeit des Tages.",
+    "Mittagspause verdient, oder?",
+    "Moin, äh Mahlzeit.",
+    "Der Vormittag ist geschafft, stolz auf dich.",
+    "Zeit für was Warmes zu essen.",
+    "Mittagstief incoming, halt durch.",
+    "Guten Appetit, falls zutreffend.",
+    "Die Sonne steht hoch, du hoffentlich auch.",
+  ],
+  afternoon: [
+    "Guten Nachmittag!",
+    "Kaffee Nummer drei ist erlaubt.",
+    "Nachmittagstief? Kenn ich.",
+    "Feierabend rückt näher, halt durch.",
+    "Der Nachmittag zieht sich, was?",
+    "Noch ein paar Stunden, dann ist Ruhe.",
+    "Zeit für einen kurzen Motivationsschub.",
+    "Schon ans Wochenende gedacht?",
+    "Der Tag läuft, du auch (hoffentlich).",
+    "Kleine Pause gefällig?",
+  ],
+  evening: [
+    "Guten Abend!",
+    "Feierabend, na endlich.",
+    "Zeit zum Entspannen, verdient.",
+    "Der Tag ist geschafft, gut gemacht.",
+    "Abendrunde: Sofa oder noch was vor?",
+    "Moin — äh, Abend natürlich.",
+    "Zeit für was Gutes zum Essen.",
+    "Der Abend gehört dir.",
+    "Bildschirmzeit oder frische Luft? Deine Wahl.",
+    "Gemütlicher Abend gewünscht.",
+  ],
+};
+
+let lastGreetingBucket = null;
+let lastGreetingText = null;
+let lastGreetingSwapAt = 0;
+const GREETING_ROTATE_MS = 10 * 60 * 1000;
+
+function greetingBucket(hour) {
+  if (hour >= 22 || hour < 5) return "night";
+  if (hour < 8) return "earlyMorning";
+  if (hour < 11) return "morning";
+  if (hour < 14) return "midday";
+  if (hour < 18) return "afternoon";
+  return "evening";
+}
+
+function pickGreeting(bucket) {
+  const list = GREETINGS[bucket] || GREETINGS.morning;
+  if (list.length === 1) return list[0];
+  let pick = list[Math.floor(Math.random() * list.length)];
+  let tries = 0;
+  while (pick === lastGreetingText && tries < 5) {
+    pick = list[Math.floor(Math.random() * list.length)];
+    tries++;
+  }
+  return pick;
+}
+
+function updateGreeting() {
+  if (!els.greetingText) return;
+  const now = Date.now();
+  const bucket = greetingBucket(new Date().getHours());
+  const bucketChanged = bucket !== lastGreetingBucket;
+  const dueForRotation = (now - lastGreetingSwapAt) > GREETING_ROTATE_MS;
+  if (!bucketChanged && !dueForRotation && lastGreetingText) return;
+
+  const text = pickGreeting(bucket);
+  lastGreetingBucket = bucket;
+  lastGreetingText = text;
+  lastGreetingSwapAt = now;
+
+  const el = els.greetingText;
+  el.classList.add("swap-out");
+  setTimeout(function () {
+    el.textContent = text;
+    el.classList.remove("swap-out");
+  }, 350);
 }
 
 // ---------- Haltestellen auflösen ----------
@@ -426,6 +553,111 @@ function ensureWeatherFxLayers() {
   els.weatherBig.insertBefore(rainLayer, els.weatherBig.firstChild);
 }
 
+// ---------- Wetter-Panel: Bremen-Fotohintergrund ----------
+// Da es keine kostenlose Live-Wetterfoto-API gibt, wird stattdessen ein
+// bekanntes Bremer Wahrzeichen als Hintergrund geladen (über die
+// Wikipedia-REST-API, kostenlos/kein Key) und farblich per Verlauf zur
+// aktuellen Wetterlage/Tageszeit getönt — kein echtes Live-Wetterfoto,
+// aber deutlich "wohnlicher" als reines Icon+Text. Schlägt der Abruf
+// fehl (Artikel/Bild nicht da, Netzwerkfehler), bleibt einfach der
+// bisherige Verlaufshintergrund + die Animationen — nichts bricht.
+const BREMEN_PHOTO_TITLES = [
+  "Bremer Rathaus",
+  "Bremer Roland",
+  "Bremer Stadtmusikanten",
+  "Böttcherstraße",
+  "Schlachte (Bremen)",
+  "Bremer Dom",
+  "Weserstadion",
+  "Universum Bremen",
+];
+
+let weatherPhotoEl = null;
+let lastWeatherPhotoTitle = null;
+let weatherPhotoFetchedAt = 0;
+
+function ensureWeatherPhotoLayer() {
+  if (weatherPhotoEl || !els.weatherBig) return;
+  weatherPhotoEl = document.createElement("div");
+  weatherPhotoEl.className = "weather-photo";
+  els.weatherBig.insertBefore(weatherPhotoEl, els.weatherBig.firstChild);
+}
+
+function pickPhotoTitle() {
+  let title = BREMEN_PHOTO_TITLES[Math.floor(Math.random() * BREMEN_PHOTO_TITLES.length)];
+  let tries = 0;
+  while (title === lastWeatherPhotoTitle && tries < 5) {
+    title = BREMEN_PHOTO_TITLES[Math.floor(Math.random() * BREMEN_PHOTO_TITLES.length)];
+    tries++;
+  }
+  return title;
+}
+
+// Wikipedia liefert die Thumb-URL standardmäßig recht klein
+// (.../320px-Datei.jpg) — Breite im Pfad einfach hochsetzen, spart einen
+// zweiten Request.
+function upsizeThumb(url) {
+  return url.replace(/\/\d+px-/, "/900px-");
+}
+
+function weatherPhotoTint(code) {
+  const hour = new Date().getHours();
+  if (hour >= 21 || hour < 6) return "rgba(8,12,22,0.68)";
+  const cat = weatherFxCategory(code);
+  if (cat === "rain") return "rgba(32,52,72,0.55)";
+  if (cat === "snow") return "rgba(190,204,216,0.5)";
+  if (cat === "cloud") return "rgba(54,58,64,0.55)";
+  return "rgba(198,146,58,0.42)"; // klar/sonnig — warmer Ton
+}
+
+function applyWeatherPhotoTint(code) {
+  if (!weatherPhotoEl) return;
+  const bgUrl = weatherPhotoEl.getAttribute("data-bg-url");
+  if (!bgUrl) return;
+  const tint = weatherPhotoTint(code);
+  weatherPhotoEl.style.backgroundImage = "linear-gradient(" + tint + "," + tint + "), " + bgUrl;
+  // Textfarbe/Schatten ans Foto anpassen — className von updateWeather()
+  // wird bei jedem Refresh neu gesetzt, deshalb hier statt einmalig beim
+  // Laden, damit es auch nach dem Cache-Pfad (kein neuer Fetch) stimmt.
+  if (els.weatherBig) els.weatherBig.classList.add("has-photo");
+}
+
+function fetchWeatherPhoto(code) {
+  if (!els.weatherBig) return;
+  ensureWeatherPhotoLayer();
+
+  const now = Date.now();
+  if (weatherPhotoEl.getAttribute("data-loaded") === "1" &&
+      (now - weatherPhotoFetchedAt) < CONFIG.refreshWeatherMs) {
+    // Foto ist noch frisch genug — nur Tönung an Wetter/Tageszeit anpassen.
+    applyWeatherPhotoTint(code);
+    return;
+  }
+
+  const title = pickPhotoTitle();
+  const url = "https://de.wikipedia.org/api/rest_v1/page/summary/" +
+    encodeURIComponent(title) + "?redirect=true";
+
+  fetch(url).then(function (res) {
+    if (!res.ok) throw new Error("Foto-Abruf fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const src = data && data.thumbnail && data.thumbnail.source;
+    if (!src || !weatherPhotoEl) return;
+
+    const bigSrc = "url('" + upsizeThumb(src) + "')";
+    weatherPhotoEl.setAttribute("data-bg-url", bigSrc);
+    weatherPhotoEl.setAttribute("data-loaded", "1");
+    lastWeatherPhotoTitle = title;
+    weatherPhotoFetchedAt = now;
+    applyWeatherPhotoTint(code);
+    weatherPhotoEl.classList.add("loaded");
+  }).catch(function (err) {
+    // Kein Foto? Kein Beinbruch — Verlaufshintergrund/Animation bleiben.
+    console.error(err);
+  });
+}
+
 function updateWeather() {
   const url = "https://api.open-meteo.com/v1/forecast?latitude=" + CONFIG.weatherLat +
     "&longitude=" + CONFIG.weatherLon +
@@ -442,15 +674,6 @@ function updateWeather() {
     const code = data.current.weather_code;
     const entry = WEATHER_CODES[code] || ["🌡️", ""];
 
-    els.weatherIcon.textContent = entry[0];
-    els.weatherTemp.textContent = temp + "°";
-
-    if (els.weatherMinMax && data.daily && data.daily.temperature_2m_max) {
-      const max = Math.round(data.daily.temperature_2m_max[0]);
-      const min = Math.round(data.daily.temperature_2m_min[0]);
-      els.weatherMinMax.textContent = min + "° / " + max + "°";
-    }
-
     if (els.weatherBigIcon) {
       els.weatherBigIcon.textContent = entry[0];
       els.weatherBigTemp.textContent = temp + "°";
@@ -461,6 +684,7 @@ function updateWeather() {
       ensureWeatherFxLayers();
       const fxCategory = weatherFxCategory(code);
       els.weatherBig.className = "weather-big" + (fxCategory ? " fx-" + fxCategory : "");
+      fetchWeatherPhoto(code);
     }
 
     if (els.weatherHours && data.hourly && data.hourly.time) {
@@ -1505,13 +1729,16 @@ function durationForPanel(name) {
 
 function resetProgressBar(durationMs) {
   if (!progressFillEl) return;
+  // transform: scaleX statt width — läuft komplett auf dem Compositor
+  // (GPU), löst kein Layout/Reflow pro Frame aus. Auf dem iPad Air 1
+  // ist das der Unterschied zwischen ruckelfrei und Frame-Drops.
   progressFillEl.style.transition = "none";
-  progressFillEl.style.width = "0%";
+  progressFillEl.style.transform = "scaleX(0)";
   // Reflow erzwingen, damit der Browser die Reset-Breite wirklich anwendet,
   // bevor die neue Transition startet.
   void progressFillEl.offsetWidth;
-  progressFillEl.style.transition = "width " + durationMs + "ms linear";
-  progressFillEl.style.width = "100%";
+  progressFillEl.style.transition = "transform " + durationMs + "ms linear";
+  progressFillEl.style.transform = "scaleX(1)";
 }
 
 function pickNextAvailablePanel() {
@@ -1547,6 +1774,9 @@ function scheduleCarousel() {
 function init() {
   tickClock();
   setInterval(tickClock, CONFIG.refreshClockMs);
+
+  updateGreeting();
+  setInterval(updateGreeting, 60 * 1000);
 
   updateDepartures();
   setInterval(updateDepartures, CONFIG.refreshDeparturesMs);
