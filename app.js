@@ -1167,6 +1167,14 @@ function showNewsSlide(index) {
     slides[i].className = slides[i].className.replace(" active", "");
     if (i === index) slides[i].className += " active";
   }
+
+  // Fortschritts-Punkte — bisher war völlig unsichtbar, wie viele
+  // Meldungen insgesamt kommen bzw. wie weit man schon durch ist.
+  const dots = els.newsList ? els.newsList.querySelectorAll(".news-progress-dot") : [];
+  for (let i = 0; i < dots.length; i++) {
+    dots[i].className = "news-progress-dot" + (i === index ? " active" : "");
+  }
+
   newsSlideIndex = index;
 }
 
@@ -1254,6 +1262,19 @@ function updateNews() {
     entries.forEach(function (entry, index) {
       els.newsList.appendChild(buildNewsSlide(entry, index));
     });
+
+    // Fortschritts-Punkte, ein Punkt pro Meldung — sonst nicht erkennbar,
+    // wie viele Slides insgesamt in dieser Runde kommen.
+    if (entries.length > 1) {
+      const progress = document.createElement("div");
+      progress.className = "news-progress";
+      entries.forEach(function () {
+        const dot = document.createElement("span");
+        dot.className = "news-progress-dot";
+        progress.appendChild(dot);
+      });
+      els.newsList.appendChild(progress);
+    }
 
     // Panel könnte gerade schon aktiv sein (z.B. nach einem manuellen
     // Reload mitten im News-Slide) — dann die Diashow direkt starten.
@@ -2173,7 +2194,7 @@ function fastestCommuteMode(results) {
     const res = results[m.key];
     if (!res || res.minutes == null) return;
     if (!best || res.minutes < best.minutes) {
-      best = { key: m.key, icon: m.icon, label: m.label, minutes: res.minutes, estimated: res.estimated };
+      best = { key: m.key, icon: m.icon, label: m.label, minutes: res.minutes, estimated: res.estimated, source: res.source };
     }
   });
   return best;
@@ -2213,11 +2234,20 @@ function renderCommuteHero(results) {
   const big = document.createElement("span");
   big.className = "commute-hero-big";
   big.textContent = winner.minutes + " Min";
+  // Bisher unsichtbar, obwohl das Panel im Hintergrund längst zwischen
+  // echten TomTom-Verkehrsdaten und grober Schätzung unterscheidet
+  // (results[mode].source) — nur der "geschätzt"-Fall hatte eine Anzeige,
+  // der Normalfall (echte Live-Daten) keine. Jetzt beide sichtbar.
   if (winner.estimated) {
     const est = document.createElement("span");
     est.className = "commute-hero-estimated";
     est.textContent = "geschätzt";
     big.appendChild(est);
+  } else if (winner.source === "tomtom") {
+    const live = document.createElement("span");
+    live.className = "commute-hero-live";
+    live.textContent = "Live-Verkehr";
+    big.appendChild(live);
   }
   textWrap.appendChild(big);
 

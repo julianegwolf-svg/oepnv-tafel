@@ -1061,6 +1061,36 @@ html, body {
   color: #ffffff;
 }
 
+/* Fortschritts-Punkte: bisher war unsichtbar, wie viele Meldungen
+   insgesamt kommen bzw. wie weit man schon durch die Diashow ist. Dunkle
+   Pille als Untergrund, damit die Punkte unabhängig von der jeweiligen
+   Slide-Hintergrundfarbe (helle no-media-Karte vs. dunkles Foto-Scrim)
+   immer gut lesbar bleiben. */
+.news-progress {
+  position: absolute;
+  bottom: 16px;
+  right: 22px;
+  z-index: 3;
+  display: flex;
+  gap: 7px;
+  background: rgba(0, 0, 0, 0.38);
+  padding: 7px 11px;
+  border-radius: 999px;
+}
+
+.news-progress-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.news-progress-dot.active {
+  background: #ffffff;
+  transform: scale(1.4);
+}
+
 .news-slide-badge {
   display: inline-block;
   font-size: 12px;
@@ -1379,6 +1409,24 @@ html, body {
   letter-spacing: 0.04em;
   color: var(--ink-dim);
   background: var(--panel-edge);
+  border-radius: 8px;
+  padding: 3px 8px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+/* Gegenstück zu .commute-hero-estimated: macht sichtbar, wenn die Zeit
+   auf echten TomTom-Verkehrsdaten beruht statt einer groben Schätzung —
+   vorher war das für den Betrachter unsichtbar, obwohl es das Panel im
+   Hintergrund längst unterscheidet (results[mode].source). */
+.commute-hero-live {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+  background: var(--ok);
   border-radius: 8px;
   padding: 3px 8px;
   margin-left: 10px;
