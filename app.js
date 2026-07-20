@@ -685,12 +685,16 @@ function ensureWeatherFxLayers() {
   // Runde 2: vorher praktisch unsichtbar (zu dünn, zu dunkel vor dem
   // dunklen Himmel) — mehr Tropfen, heller, dicker (siehe .fx-drop in
   // style.css für die eigentliche Farb-/Breiten-Anpassung).
+  // Runde 3 (Performance): Anzahl wieder spürbar runter — jeder Tropfen
+  // ist ein eigenes animiertes Element, auf dem alten iPad summiert sich
+  // das. Weniger, aber dafür (siehe style.css) heller/dicker, damit der
+  // Regen trotzdem gut sichtbar bleibt.
   const rainLayer = document.createElement("div");
   rainLayer.className = "weather-fx-layer weather-fx-rain";
   [
-    { cls: "layer-far", positions: [3, 16, 29, 42, 55, 68, 81, 94], duration: 1.7 },
-    { cls: "layer-mid", positions: [8, 24, 40, 56, 72, 88], duration: 1.25 },
-    { cls: "layer-near", positions: [6, 22, 38, 54, 70, 86], duration: 0.9 },
+    { cls: "layer-far", positions: [10, 34, 58, 82], duration: 1.7 },
+    { cls: "layer-mid", positions: [20, 46, 72], duration: 1.25 },
+    { cls: "layer-near", positions: [14, 40, 66, 90], duration: 0.9 },
   ].forEach(function (depth) {
     depth.positions.forEach(function (left, i) {
       const drop = document.createElement("span");
@@ -701,7 +705,7 @@ function ensureWeatherFxLayers() {
       rainLayer.appendChild(drop);
     });
   });
-  [6, 18, 30, 42, 54, 66, 78, 90].forEach(function (left, i) {
+  [15, 40, 65, 88].forEach(function (left, i) {
     const splash = document.createElement("span");
     splash.className = "fx-splash";
     splash.style.left = left + "%";

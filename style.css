@@ -21,7 +21,15 @@
      typische Glas-/Lack-Reflex-Trick — macht aus flachen Karten spürbar
      hochwertigere, fast wie poliert wirkende Flächen. Kaskadiert automatisch
      auf jede Karte, die var(--glass-shadow) nutzt. */
-  --glass-bg: rgba(255, 255, 255, 0.7);
+  /* Runde 2: backdrop-filter (Live-Weichzeichnen von allem dahinter) ist
+     eines der teuersten CSS-Features überhaupt für die GPU, und wir hatten
+     es auf bis zu 7 gleichzeitig im DOM befindlichen Elementen (Zeilen,
+     News-Slides, Musik-Einträge …) — auf einem A7-Chip schlicht zu viel.
+     Komplett entfernt (siehe die einzelnen Regeln weiter unten), Opazität
+     hier dafür etwas höher, damit die Karten ohne den Weichzeichner-Effekt
+     dahinter trotzdem klar lesbar bleiben statt leicht "schmutzig"
+     durchsichtig zu wirken. */
+  --glass-bg: rgba(255, 255, 255, 0.86);
   --glass-shadow: 0 18px 40px rgba(28, 29, 31, 0.10), 0 4px 10px rgba(28, 29, 31, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 
   /* Radius-Skala statt überall verstreuter Einzelwerte — konsistent
@@ -162,8 +170,6 @@ html, body {
   padding: 8px 20px;
   border-radius: var(--radius-m);
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(11px);
-  backdrop-filter: blur(11px);
   border: 1px solid var(--panel-edge);
   box-shadow: var(--glass-shadow);
 }
@@ -226,11 +232,6 @@ html, body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.7s ease;
-  /* Stabile eigene Compositing-Ebene erzwingen — hilft gegen das unten
-     beschriebene "Ecken poppen eckig"-Problem, siehe .panel-view etc.
-     weiter unten. */
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
 }
 
 .panel-view.active {
@@ -238,40 +239,38 @@ html, body {
   pointer-events: auto;
 }
 
-/* PERFORMANCE: der größte Hebel gegen "laggy". Sechs von sieben Panels
-   sind IMMER unsichtbar (opacity:0), aber ohne diese Regel liefen ihre
-   CSS-Animationen (Regen/Wolken-Partikel, Icon-Wippen, Sport-Wappen-Glow,
-   Cursor-Blinken, Puls-Punkte …) die ganze Zeit im Hintergrund einfach
-   weiter — auf einem alten iPad Air 1 (A7-Chip von 2013) summiert sich
-   das spürbar. animation-play-state:paused für alles innerhalb eines
-   nicht-aktiven Panels friert die Animationen ein, sobald sie nicht zu
-   sehen sind, und läuft beim Wechsel zurück zur "active"-Klasse einfach
-   wieder normal weiter. Seit Safari 9 unterstützt, also auch hier sicher. */
-.panel-view:not(.active) * {
-  animation-play-state: paused !important;
+/* PERFORMANCE (Runde 2 — die letzte Runde hat es schlimmer gemacht, siehe
+   unten): sechs von sieben Panels sind immer unsichtbar, ihre Animationen
+   sollen dort pausieren. Der Universalselektor "*" von vorher musste dafür
+   JEDES Element im DOM prüfen, bei jedem Refresh neu — auf einem A7-Chip
+   selbst nicht gratis. Jetzt eine explizite Liste der tatsächlich
+   animierten Klassen statt Wildcard — trifft exakt dieselben Elemente,
+   kostet aber beim Style-Matching so gut wie nichts. */
+.panel-view:not(.active) .fx-drop,
+.panel-view:not(.active) .fx-splash,
+.panel-view:not(.active) .fx-cloud-shape,
+.panel-view:not(.active) .fx-flake,
+.panel-view:not(.active) .fx-fog-band,
+.panel-view:not(.active) .fx-sun-glow,
+.panel-view:not(.active) .fx-star,
+.panel-view:not(.active) .weather-big-icon,
+.panel-view:not(.active) .weather-hour-icon,
+.panel-view:not(.active) .commute-chip-icon,
+.panel-view:not(.active) .commute-pin-pulse,
+.panel-view:not(.active) .typewriter-cursor,
+.panel-view:not(.active) .sport-slide-crest {
+  animation-play-state: paused;
 }
 
-/* BUG gefunden ("Ecken erst rund, dann poppen sie eckig"): bekannter alter
-   WebKit-Bug — ein Element mit border-radius + overflow:hidden (teils
-   kombiniert mit -webkit-backdrop-filter) "vergisst" die Rundung manchmal
-   kurz, sobald sich seine Compositing-Ebene ändert (genau das passiert
-   hier laufend: Opacity-Übergang beim Karussell-Wechsel, Backdrop-Blur,
-   neu eingefügte Kind-Elemente). Ergebnis: die Ecken blitzen für einen
-   Frame eckig auf, bevor die Rundung "nachzieht". Klassischer, folgenloser
-   Fix seit Jahren in der Web-Community: ein Mask-Image erzwingt den
-   korrekten Rundungs-Renderpfad, ohne optisch etwas zu verändern. */
-.panel-view,
-.row,
-.clock,
-.weather-bottom-sheet,
-.news-slideshow,
-.sport-block,
-.music-item,
-.commute-chip,
-.commute-map-wrap,
-.quote-block {
-  -webkit-mask-image: -webkit-radial-gradient(white, black);
-}
+/* Rücknahme aus der letzten Runde: -webkit-transform: translateZ(0) auf
+   allen 7 Panels UND ein -webkit-mask-image auf ~10 Elementen gleichzeitig
+   waren beide als Fix für das kosmetische "Ecken poppen eckig"-Problem
+   gedacht — aber Layer-Erzwingung UND Masken sind selbst teuer, und auf
+   einem Gerät mit sehr wenig GPU-Speicher (iPad Air 1, 1GB RAM insgesamt)
+   war das schlicht der falsche Tausch: kosmetischer Kanten-Blitzer gegen
+   spürbares Ruckeln. Komplett entfernt. Die Kanten-Sache ist unschön, aber
+   Performance hat jetzt klar Vorrang — kommt erst zurück, wenn die Seite
+   nachweislich flüssig läuft. */
 
 .view-label {
   display: flex;
@@ -338,14 +337,11 @@ html, body {
   grid-template-columns: 100px 1fr 130px;
   align-items: center;
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(11px);
-  backdrop-filter: blur(11px);
   border: 1px solid var(--panel-edge);
   border-left: 6px solid transparent;
   border-radius: var(--radius-m);
   padding: 18px 22px;
   box-shadow: var(--glass-shadow);
-  transition: transform 0.3s ease;
 }
 
 .row.placeholder {
@@ -568,7 +564,6 @@ html, body {
   animation-name: fxRainFall;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
-  will-change: transform, opacity;
 }
 
 .fx-drop.layer-far { height: 20px; width: 2px; --drop-opacity: 0.5; --drop-drift: 8px; }
@@ -590,7 +585,6 @@ html, body {
   border-radius: 50%;
   border: 1.5px solid rgba(210, 232, 250, 0.85);
   animation: fxSplashRing 1.5s ease-out infinite;
-  will-change: transform, opacity;
 }
 
 /* Gewitter: nutzt die Regen-Ebene oben + dieses Blitz-Overlay obendrauf,
@@ -635,7 +629,6 @@ html, body {
   animation-name: fxCloudDrift;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
-  will-change: transform;
 }
 
 /* Gleicher Bug wie bei fxRainFall (translateY(%) bezieht sich auf die
@@ -656,7 +649,6 @@ html, body {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.85);
   animation: fxSnowFall 4.5s linear infinite;
-  will-change: transform, opacity;
 }
 
 /* Nebel: träge seitwärts driftende, weiche Streifen. */
@@ -676,7 +668,6 @@ html, body {
   animation-name: fxFogDrift;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
-  will-change: transform;
 }
 
 /* Sonne: sanft pulsierender warmer Glow hinterm Icon. */
@@ -695,7 +686,6 @@ html, body {
   transform: translate(-50%, -50%);
   background: radial-gradient(circle, rgba(255, 214, 120, 0.55), rgba(255, 214, 120, 0) 70%);
   animation: fxSunPulse 4.5s ease-in-out infinite;
-  will-change: transform, opacity;
 }
 
 /* Klare Nacht: leise funkelnde Sterne, zufällig verteilt (siehe app.js). */
@@ -711,7 +701,6 @@ html, body {
   border-radius: 50%;
   background: #ffffff;
   animation: fxStarTwinkle 2.6s ease-in-out infinite;
-  will-change: opacity;
 }
 
 /* Text ist immer über dem dynamischen Himmel-Verlauf (siehe
@@ -754,9 +743,7 @@ html, body {
    Bedien-/Info-Panel statt verstreuter Einzel-Kacheln. */
 .weather-bottom-sheet {
   margin-top: auto;
-  background: rgba(8, 12, 18, 0.32);
-  -webkit-backdrop-filter: blur(13px);
-  backdrop-filter: blur(13px);
+  background: rgba(8, 12, 18, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: var(--radius-l);
   padding: 18px 18px 20px;
@@ -879,8 +866,6 @@ html, body {
   pointer-events: none;
   transition: opacity 0.9s ease;
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
   border: 1px solid var(--panel-edge);
 }
 
@@ -984,8 +969,6 @@ html, body {
 
 .music-item {
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(11px);
-  backdrop-filter: blur(11px);
   border: 1px solid var(--panel-edge);
   border-radius: var(--radius-m);
   padding: 12px 20px;
@@ -1053,8 +1036,6 @@ html, body {
   display: flex;
   align-items: center;
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(11px);
-  backdrop-filter: blur(11px);
   border: 1px solid var(--panel-edge);
   border-radius: 999px;
   padding: 12px 22px 12px 16px;
@@ -1197,8 +1178,6 @@ html, body {
   align-items: flex-start;
   padding: 48px 56px;
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(11px);
-  backdrop-filter: blur(11px);
   border: 1px solid var(--panel-edge);
   border-radius: var(--radius-l);
   box-shadow: var(--glass-shadow);
