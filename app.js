@@ -1415,36 +1415,80 @@ function updateNews() {
 // größere Schrift, Kronen-Badge) statt in der Liste unterzugehen — dieselbe
 // "ein Gewinner sticht heraus"-Idee wie beim Pendel-Panel. Plätze 2+
 // bleiben die kompakte Listenansicht von vorher.
+// JSONP-Hilfsfunktion: lädt eine URL über ein dynamisch eingefügtes
+// <script>-Tag statt fetch()/XHR — CORS greift grundsätzlich nur bei
+// fetch/XHR, nicht bei Script-Tags, deshalb umgeht das jede CORS-Sperre
+// komplett. Uralte Technik (seit IE-Zeiten), aber auf Safari 12
+// zuverlässig unterstützt. Jeder Aufruf bekommt einen eigenen, einmaligen
+// Callback-Namen, damit sich überlappende Anfragen nicht in die Quere
+// kommen; Script-Tag und Callback werden danach wieder aufgeräumt.
+let jsonpCounter = 0;
+function fetchJsonp(url, timeoutMs) {
+  return new Promise(function (resolve, reject) {
+    const cbName = "__jsonp_cb_" + (jsonpCounter++) + "_" + Date.now();
+    const script = document.createElement("script");
+    let settled = false;
+
+    function cleanup() {
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    const timer = setTimeout(function () {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error("JSONP-Anfrage: Zeitüberschreitung"));
+    }, timeoutMs || 8000);
+
+    window[cbName] = function (data) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanup();
+      resolve(data);
+    };
+
+    script.onerror = function () {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanup();
+      reject(new Error("JSONP-Anfrage fehlgeschlagen"));
+    };
+
+    script.src = url + (url.indexOf("?") === -1 ? "?" : "&") +
+      "output=jsonp&callback=" + cbName + "&_=" + Date.now();
+    document.body.appendChild(script);
+  });
+}
+
 function updateMusic() {
   if (!els.musicList) return;
 
-  // ECHTER BUG gefunden (per curl gegen die echte API verifiziert, nicht
-  // nur Sandbox-Netzwerk): rss.marketingtools.apple.com liefert KEINEN
-  // Access-Control-Allow-Origin-Header — ein fetch() von einer fremden
-  // Domain (wie unserer GitHub-Pages-Seite) wird von JEDEM Browser wegen
-  // CORS blockiert, dauerhaft, unabhängig von Cache-Buster oder
-  // Retry-Logik. Deshalb blieb das Panel bisher für immer bei "Lädt…"
-  // hängen. itunes.apple.com/.../rss/topsongs liefert dieselben Charts
-  // (Apples älteres RSS-Feed-Format), aber MIT offenem CORS
-  // (access-control-allow-origin: *) — funktioniert nachweislich.
-  const url = "https://itunes.apple.com/de/rss/topsongs/limit=" +
-    CONFIG.musicCount + "/json?_=" + Date.now();
+  // ECHTER BUG, zweiter Anlauf: itunes.apple.com/.../topsongs (voriger
+  // Fix) ist der iTunes-Store-KAUF-Chart, nicht die tatsächliche
+  // Popularität — deshalb wirkten die Titel seltsam/unbekannt statt wie
+  // echte aktuelle Hits. Deezers "Top Germany"-Redaktions-Playlist (von
+  // Deezer selbst kuratiert, laufend aktualisiert) bildet echte
+  // Popularität ab — hat aber KEIN Access-Control-Allow-Origin (per
+  // echtem Browser-fetch()-Test verifiziert, nicht nur curl: "Failed to
+  // fetch"). JSONP (siehe fetchJsonp oben) umgeht das vollständig.
+  const url = "https://api.deezer.com/playlist/" + CONFIG.musicPlaylistId +
+    "/tracks?limit=" + CONFIG.musicCount;
 
-  fetch(url, { cache: "no-store" }).then(function (res) {
-    if (!res.ok) throw new Error("Musik-Abruf fehlgeschlagen (" + res.status + ")");
-    return res.json();
-  }).then(function (data) {
-    const entries = (data && data.feed && Array.isArray(data.feed.entry)) ? data.feed.entry : [];
-    // Altes RSS-Feed-Format (im:name/im:artist/im:image) auf dieselbe
-    // {name, artistName, artworkUrl100}-Form bringen wie zuvor — der Rest
-    // der Rendering-Logik unten bleibt dadurch unverändert.
-    const results = entries.map(function (e) {
-      const images = Array.isArray(e["im:image"]) ? e["im:image"] : [];
-      const bestImage = images.length ? images[images.length - 1] : null;
+  fetchJsonp(url).then(function (data) {
+    if (data && data.error) throw new Error("Deezer-Fehler: " + (data.error.message || data.error.type));
+    const entries = (data && Array.isArray(data.data)) ? data.data : [];
+    // Deezer-Feld-Namen auf dieselbe {name, artistName, artworkUrl100}-Form
+    // bringen wie zuvor — der Rest der Rendering-Logik unten bleibt dadurch
+    // unverändert.
+    const results = entries.map(function (t) {
+      const album = t.album || {};
       return {
-        name: e["im:name"] && e["im:name"].label,
-        artistName: e["im:artist"] && e["im:artist"].label,
-        artworkUrl100: bestImage && bestImage.label,
+        name: t.title,
+        artistName: t.artist && t.artist.name,
+        artworkUrl100: album.cover_medium || album.cover_big || album.cover,
       };
     });
     if (!results.length) throw new Error("Keine Musikdaten erhalten");

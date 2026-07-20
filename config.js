@@ -138,7 +138,14 @@ const CONFIG = {
   // bevor automatisch zum nächsten gewechselt wird.
   newsSlideIntervalMs: 6 * 1000,
 
-  // Musik-Panel: Apple-Music-Charts Deutschland
+  // Musik-Panel: Deezers offizielle "Top Germany"-Redaktions-Playlist
+  // (von Deezer selbst kuratiert und laufend aktualisiert, echte
+  // Popularitäts-Charts statt Kauf-Charts — siehe ausführlicher
+  // Kommentar bei updateMusic() in app.js für die Historie dahinter).
+  // Playlist-ID über die Deezer-Suche/-Website ermittelbar, falls sie
+  // sich mal ändert: deezer.com nach "Top Germany" durchsuchen, ID steht
+  // in der URL der Playlist.
+  musicPlaylistId: "1111143121",
   musicCount: 5,
   refreshMusicMs: 60 * 60 * 1000,
 
