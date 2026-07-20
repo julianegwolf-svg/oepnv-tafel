@@ -2057,6 +2057,84 @@ function buildSportSlide(entry, index) {
   return slide;
 }
 
+// Fußball-News-Karte (Transfers/Berichte, ressort=sport) — nutzt bewusst
+// dasselbe Bild+Scrim+Text-Muster wie die News-Diashow (.news-slide-*
+// Klassen), nur innerhalb eines .sport-slide-Containers, damit
+// showSportSlide() (das nach ".sport-slide" sucht) sie normal mitzählt.
+function buildSportNewsSlide(item, index) {
+  const imageUrl = extractNewsImageUrl(item);
+
+  const slide = document.createElement("div");
+  slide.className = "sport-slide sport-slide-news" + (index === 0 ? " active" : "");
+
+  if (imageUrl) {
+    const media = document.createElement("div");
+    media.className = "news-slide-media";
+    media.style.backgroundImage = 'url("' + imageUrl + '")';
+    slide.appendChild(media);
+
+    const scrim = document.createElement("div");
+    scrim.className = "news-slide-scrim";
+    slide.appendChild(scrim);
+  }
+
+  const content = document.createElement("div");
+  content.className = "news-slide-content";
+
+  const badge = document.createElement("span");
+  badge.className = "news-slide-badge badge-sportnews";
+  badge.textContent = "Fußball News";
+  content.appendChild(badge);
+
+  if (item.topline) {
+    const top = document.createElement("div");
+    top.className = "news-slide-topline";
+    top.textContent = item.topline;
+    content.appendChild(top);
+  }
+
+  const title = document.createElement("div");
+  title.className = "news-slide-title";
+  title.textContent = item.title || "";
+  content.appendChild(title);
+
+  if (item.firstSentence) {
+    const bodyEl = document.createElement("div");
+    bodyEl.className = "news-slide-body";
+    bodyEl.innerHTML = "<p>" + item.firstSentence + "</p>";
+    content.appendChild(bodyEl);
+  }
+
+  slide.appendChild(content);
+  return slide;
+}
+
+// Kein kostenloses "nur Fußball-Transfers"-Feed (Kicker o.ä.) ohne API-Key
+// auffindbar bzw. CORS-freundlich nutzbar. Tagesschau bietet aber denselben
+// ressort-Filter-Mechanismus, den diese Tafel schon für die Welt-News
+// (ressort=ausland) nutzt — mit ressort=sport kommen allgemeine Sport-
+// meldungen (Fußball ist da redaktionell klar dominant, aber nicht
+// exklusiv). Bewährte, garantiert erreichbare Quelle statt eines
+// ungetesteten Fremd-Feeds, der am CORS-Header scheitern könnte.
+function fetchFootballNews() {
+  const count = CONFIG.sportNewsCount || 4;
+  const url = "https://www.tagesschau.de/api2u/news/?ressort=sport&pageSize=" + count;
+  return fetchNewsPool(url, "Sport", count);
+}
+
+// Vereins-Karten und News-Karten abwechselnd mischen statt erst alle
+// Ergebnisse und danach erst alle News zu zeigen — sorgt für Abwechslung
+// über die ganze Diashow statt eines langweiligen zweiten Teils.
+function interleaveArrays(a, b) {
+  const result = [];
+  const max = Math.max(a.length, b.length);
+  for (let i = 0; i < max; i++) {
+    if (i < a.length) result.push(a[i]);
+    if (i < b.length) result.push(b[i]);
+  }
+  return result;
+}
+
 function showSportSlide(index) {
   const slides = els.sportBlock ? els.sportBlock.querySelectorAll(".sport-slide") : [];
   for (let i = 0; i < slides.length; i++) {
@@ -2097,7 +2175,10 @@ function renderSport(entries) {
   }
 
   entries.forEach(function (entry, index) {
-    els.sportBlock.appendChild(buildSportSlide(entry, index));
+    const slideEl = entry.type === "news"
+      ? buildSportNewsSlide(entry.item, index)
+      : buildSportSlide(entry, index);
+    els.sportBlock.appendChild(slideEl);
   });
 
   // Panel könnte gerade schon aktiv sein (z.B. nach einem manuellen
@@ -2114,9 +2195,15 @@ function updateSport() {
   const teams = CONFIG.sportTeams || [];
   if (!teams.length) return;
 
-  Promise.all(teams.map(fetchTeamMatches)).then(function (results) {
-    const entries = results.filter(function (r) { return !!r; });
-    renderSport(entries);
+  Promise.all([
+    Promise.all(teams.map(fetchTeamMatches)),
+    fetchFootballNews(),
+  ]).then(function (results) {
+    const matchEntries = results[0].filter(function (r) { return !!r; });
+    const newsEntries = (results[1] || []).map(function (item) {
+      return { type: "news", item: item };
+    });
+    renderSport(interleaveArrays(matchEntries, newsEntries));
   }).catch(function (err) {
     console.error(err);
     sportAvailable = false;

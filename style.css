@@ -420,6 +420,11 @@ html, body {
   position: absolute;
   z-index: 0;
   overflow: hidden;
+  /* Bug gefunden: overflow:hidden war schon da, aber nie ein border-radius
+     dazu — dadurch hatte der Himmel-Verlauf als einziges Panel scharfe
+     90°-Ecken, während News/Sport/Zitat längst abgerundet sind (die haben
+     ihre eigene Karte mit --radius-l). Jetzt konsistent mit dem Rest. */
+  border-radius: var(--radius-l);
 }
 
 .weather-sky {
@@ -889,6 +894,7 @@ html, body {
 .badge-bremen { background: var(--brass); }
 .badge-welt { background: var(--steel); }
 .badge-de { background: #8a8578; }
+.badge-sportnews { background: var(--ok); }
 
 .news-slide-topline {
   font-size: 14px;

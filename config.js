@@ -61,7 +61,7 @@ const CONFIG = {
     weather: 15 * 1000,
     news: 40 * 1000, // bis zu 7 Slides (Bremen+Deutschland+Welt) à 6s
     music: 15 * 1000,
-    sport: 30 * 1000, // bis zu 6 Vereine à 5s Diashow
+    sport: 50 * 1000, // bis zu 6 Vereine + 4 News à 5s Diashow
     quote: 12 * 1000,
   },
   panelDurationMs: 18 * 1000,
@@ -162,4 +162,13 @@ const CONFIG = {
   },
   // Wie lange jede Spiel-Karte in der Sport-Diashow einzeln zu sehen ist.
   sportSlideIntervalMs: 5 * 1000,
+
+  // Zusätzlich zu den Vereins-Karten: allgemeine Fußball-/Sportnachrichten
+  // (Transfers, Berichte) über Tagesschau ressort=sport — dieselbe bereits
+  // bewährte, garantiert CORS-freundliche Quelle wie der Rest der Nach-
+  // richten hier, nur mit anderem Ressort-Filter (wie schon bei
+  // ressort=ausland für Welt-News). Kein reines "nur Fußball"-Feed (Tages-
+  // schau mischt auch andere Sportarten rein), aber die zuverlässigste
+  // kostenlose Option ohne API-Key.
+  sportNewsCount: 4,
 };
