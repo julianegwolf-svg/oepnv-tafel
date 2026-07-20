@@ -181,17 +181,37 @@ function updateGreeting() {
 }
 
 // ---------- Haltestellen auflösen ----------
+// BUG gefunden ("jedes Mal eine andere Verbindung beim Aktualisieren"):
+// die Freitext-Suche nach CONFIG.stopQuery lieferte die Treffer in der
+// Reihenfolge, in der Transitous sie zurückgibt — die ist nicht garantiert
+// stabil, und es kann mehr als die erwarteten zwei "Föhrenstraße"-Treffer
+// geben (z.B. andere Straßen mit ähnlichem Namen). Bisher wurden einfach
+// "die ersten zwei" genommen, ungeprüft — bei jedem Neuladen konnten so
+// andere, teils falsche/weiter entfernte Haltestellen ausgewählt werden,
+// wodurch komplett andere Linien auftauchten. Fix: sobald die echte
+// Zuhause-Adresse geokodiert ist (dieselbe wie im Pendel-Panel), nach
+// Luftlinien-Entfernung dorthin sortieren (haversineMeters, schon fürs
+// Gehzeit-Feature vorhanden) und die nächstgelegenen Treffer nehmen —
+// deterministisch UND tatsächlich die richtigen Haltestellen vor der Tür.
 function resolveStopIds() {
   if (resolvedStopIds) return Promise.resolve(resolvedStopIds);
 
   const url = API_BASE + "/v1/geocode?text=" + encodeURIComponent(CONFIG.stopQuery) +
     "&type=STOP&numResults=10";
 
-  return fetch(url).then(function (res) {
-    if (!res.ok) throw new Error("Haltestellensuche fehlgeschlagen (" + res.status + ")");
-    return res.json();
-  }).then(function (data) {
-    const stops = (Array.isArray(data) ? data : []).filter(function (loc) {
+  return Promise.all([
+    fetch(url).then(function (res) {
+      if (!res.ok) throw new Error("Haltestellensuche fehlgeschlagen (" + res.status + ")");
+      return res.json();
+    }),
+    // Kein hartes Scheitern, falls die Adress-Geokodierung mal ausfällt —
+    // dann eben ohne Entfernungssortierung, wie bisher.
+    resolveCommuteCoords().catch(function () { return null; }),
+  ]).then(function (results) {
+    const data = results[0];
+    const home = results[1] && results[1].home;
+
+    let stops = (Array.isArray(data) ? data : []).filter(function (loc) {
       return loc && loc.id;
     });
 
@@ -199,13 +219,24 @@ function resolveStopIds() {
       throw new Error('Keine Haltestelle für "' + CONFIG.stopQuery + '" gefunden');
     }
 
+    if (home) {
+      stops = stops.slice().sort(function (a, b) {
+        const aHasCoord = typeof a.lat === "number" && typeof a.lon === "number";
+        const bHasCoord = typeof b.lat === "number" && typeof b.lon === "number";
+        if (!aHasCoord) return 1;
+        if (!bHasCoord) return -1;
+        const da = haversineMeters(home, { lat: a.lat, lon: a.lon });
+        const db = haversineMeters(home, { lat: b.lat, lon: b.lon });
+        return da - db;
+      });
+    }
+
     resolvedStopIds = stops.slice(0, CONFIG.stopLimit).map(function (s) {
       return s.id;
     });
 
-    // Koordinaten der ersten gefundenen Haltestelle merken (für die
-    // Gehzeit-Berechnung — beide Föhrenstraße-Halte liegen direkt
-    // gegenüber, die kleine Differenz spielt für die Gehzeit keine Rolle).
+    // Koordinaten der (jetzt nächstgelegenen) ersten Haltestelle merken
+    // für die Gehzeit-Berechnung.
     const first = stops[0];
     if (typeof first.lat === "number" && typeof first.lon === "number") {
       resolvedStopCoord = { lat: first.lat, lon: first.lon };
