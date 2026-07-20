@@ -134,7 +134,7 @@ const GREETINGS = {
 let lastGreetingBucket = null;
 let lastGreetingText = null;
 let lastGreetingSwapAt = 0;
-const GREETING_ROTATE_MS = 10 * 60 * 1000;
+const GREETING_ROTATE_MS = 3 * 60 * 1000;
 
 function greetingBucket(hour) {
   if (hour >= 22 || hour < 5) return "night";
@@ -216,7 +216,7 @@ function resolveStopIds() {
 // ---------- Abfahrten laden ----------
 function fetchDeparturesForStop(stopId) {
   const url = API_BASE + "/v6/stoptimes?stopId=" + encodeURIComponent(stopId) +
-    "&n=" + (CONFIG.maxRows * 3) + "&arriveBy=false";
+    "&n=" + (CONFIG.maxRows * 6) + "&arriveBy=false";
 
   return fetch(url).then(function (res) {
     if (!res.ok) throw new Error("Abfahrten-Abruf fehlgeschlagen (" + res.status + ")");
@@ -346,7 +346,33 @@ function renderDepartures(departures) {
 
   const now = Date.now();
 
-  departures.slice(0, CONFIG.maxRows).forEach(function (dep) {
+  // Ist die Gehzeit bekannt: Abfahrten rausfiltern, die eh nicht mehr zu
+  // schaffen sind (mehr als 1 Minute "zu spät los"). Sonst steht die Tafel
+  // voller Verbindungen, die man ohnehin schon verpasst hat, und die
+  // tatsächlich planbaren gehen darin unter — genau das Problem, das die
+  // Tafel eigentlich lösen soll.
+  let visible = departures;
+  if (walkMinutesToStop != null) {
+    visible = departures.filter(function (dep) {
+      if (dep.cancelled || dep.tripCancelled) return true; // Ausfälle immer anzeigen
+      const place = dep.place || {};
+      const when = place.departure || place.scheduledDeparture;
+      if (!when) return true;
+      const leaveByMs = new Date(when).getTime() - walkMinutesToStop * 60000;
+      const minutesUntilLeave = Math.round((leaveByMs - now) / 60000);
+      return minutesUntilLeave > -1;
+    });
+  }
+
+  if (!visible.length) {
+    const div = document.createElement("div");
+    div.className = "row placeholder";
+    div.textContent = "Gerade keine erreichbare Abfahrt — nächste in Kürze";
+    els.rows.appendChild(div);
+    return;
+  }
+
+  visible.slice(0, CONFIG.maxRows).forEach(function (dep) {
     const place = dep.place || {};
     const when = place.departure || place.scheduledDeparture;
     const scheduled = place.scheduledDeparture;

@@ -24,7 +24,11 @@ const CONFIG = {
   // eintragen (z.B. ["Hauptbahnhof", "Domsheide", "Am Brill"]).
   onlyDestinations: [],
 
-  maxRows: 6,
+  // Bewusst klein gehalten: die Tafel filtert Abfahrten raus, die man mit
+  // der Gehzeit eh nicht mehr schafft (siehe renderDepartures) — weniger,
+  // aber tatsächlich planbare Zeilen statt einer langen Liste voller
+  // "eigentlich schon zu spät".
+  maxRows: 4,
 
   // Koordinaten für die Wetteranzeige (Alter Postweg, Bremen-Hemelingen)
   weatherLat: 53.073,
