@@ -21,6 +21,7 @@ const els = {
   weatherBigTemp: document.getElementById("weatherBigTemp"),
   weatherBigDesc: document.getElementById("weatherBigDesc"),
   weatherHours: document.getElementById("weatherHours"),
+  weatherDetails: document.getElementById("weatherDetails"),
   newsList: document.getElementById("newsList"),
   musicList: document.getElementById("musicList"),
   quoteBlock: document.getElementById("quoteBlock"),
@@ -500,10 +501,16 @@ const WEATHER_CODES = {
 // .weather-big ein-/ausgeblendet (kein DOM-Neubau bei jedem Update).
 let weatherFxBuilt = false;
 
-function weatherFxCategory(code) {
-  if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].indexOf(code) !== -1) return "rain";
+// isDay kommt von Open-Meteos "is_day"-Feld (0/1) — nur für Codes 0/1
+// relevant, die sowohl tagsüber ("sonnig") als auch nachts ("klar")
+// auftreten können.
+function weatherFxCategory(code, isDay) {
+  if ([95, 96, 99].indexOf(code) !== -1) return "storm";
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].indexOf(code) !== -1) return "rain";
   if ([71, 73, 75].indexOf(code) !== -1) return "snow";
-  if ([2, 3, 45, 48].indexOf(code) !== -1) return "cloud";
+  if ([45, 48].indexOf(code) !== -1) return "fog";
+  if ([2, 3].indexOf(code) !== -1) return "cloud";
+  if ([0, 1].indexOf(code) !== -1) return isDay === false ? "night" : "sun";
   return null;
 }
 
@@ -511,15 +518,38 @@ function ensureWeatherFxLayers() {
   if (weatherFxBuilt || !els.weatherBig) return;
   weatherFxBuilt = true;
 
+  // Regen: drei Tiefenebenen (fern/mittel/nah) mit eigener Geschwindigkeit,
+  // Deckkraft und leichtem Wind-Drift (via CSS-Var, siehe style.css),
+  // plus ein paar Spritzer-Ringe am unteren Rand — dem Lottie-Referenz-
+  // Regen nachempfunden, aber als reine Transform/Opacity-Animation.
   const rainLayer = document.createElement("div");
   rainLayer.className = "weather-fx-layer weather-fx-rain";
-  [8, 22, 38, 54, 70, 86].forEach(function (left, i) {
-    const drop = document.createElement("span");
-    drop.className = "fx-drop";
-    drop.style.left = left + "%";
-    drop.style.animationDelay = (i * 0.25) + "s";
-    rainLayer.appendChild(drop);
+  [
+    { cls: "layer-far", positions: [4, 22, 40, 58, 76, 94], duration: 1.9 },
+    { cls: "layer-mid", positions: [12, 30, 48, 66, 84], duration: 1.4 },
+    { cls: "layer-near", positions: [8, 34, 60, 88], duration: 1.0 },
+  ].forEach(function (depth) {
+    depth.positions.forEach(function (left, i) {
+      const drop = document.createElement("span");
+      drop.className = "fx-drop " + depth.cls;
+      drop.style.left = left + "%";
+      drop.style.animationDuration = depth.duration + "s";
+      drop.style.animationDelay = ((i * depth.duration) / depth.positions.length) + "s";
+      rainLayer.appendChild(drop);
+    });
   });
+  [10, 32, 54, 76, 92].forEach(function (left, i) {
+    const splash = document.createElement("span");
+    splash.className = "fx-splash";
+    splash.style.left = left + "%";
+    splash.style.animationDelay = (i * 0.28) + "s";
+    rainLayer.appendChild(splash);
+  });
+
+  // Gewitter nutzt dieselbe Regenebene (s.o.) + ein Blitz-Overlay, das
+  // per Klasse auf .weather-big nur bei "fx-storm" überhaupt aktiv wird.
+  const lightningLayer = document.createElement("div");
+  lightningLayer.className = "fx-lightning";
 
   const cloudLayer = document.createElement("div");
   cloudLayer.className = "weather-fx-layer weather-fx-cloud";
@@ -548,9 +578,42 @@ function ensureWeatherFxLayers() {
     snowLayer.appendChild(flake);
   });
 
-  els.weatherBig.insertBefore(snowLayer, els.weatherBig.firstChild);
-  els.weatherBig.insertBefore(cloudLayer, els.weatherBig.firstChild);
-  els.weatherBig.insertBefore(rainLayer, els.weatherBig.firstChild);
+  const fogLayer = document.createElement("div");
+  fogLayer.className = "weather-fx-layer weather-fx-fog";
+  [
+    { top: 22, duration: 15, delay: 0, opacity: 0.28 },
+    { top: 46, duration: 19, delay: 4, opacity: 0.38 },
+    { top: 70, duration: 23, delay: 8, opacity: 0.3 },
+  ].forEach(function (spec) {
+    const band = document.createElement("span");
+    band.className = "fx-fog-band";
+    band.style.top = spec.top + "%";
+    band.style.animationDuration = spec.duration + "s";
+    band.style.animationDelay = spec.delay + "s";
+    band.style.opacity = spec.opacity;
+    fogLayer.appendChild(band);
+  });
+
+  const sunLayer = document.createElement("div");
+  sunLayer.className = "weather-fx-layer weather-fx-sun";
+  const sunGlow = document.createElement("span");
+  sunGlow.className = "fx-sun-glow";
+  sunLayer.appendChild(sunGlow);
+
+  const nightLayer = document.createElement("div");
+  nightLayer.className = "weather-fx-layer weather-fx-night";
+  for (let i = 0; i < 10; i++) {
+    const star = document.createElement("span");
+    star.className = "fx-star";
+    star.style.left = Math.round(6 + Math.random() * 88) + "%";
+    star.style.top = Math.round(8 + Math.random() * 60) + "%";
+    star.style.animationDelay = (Math.random() * 2.6).toFixed(2) + "s";
+    nightLayer.appendChild(star);
+  }
+
+  [nightLayer, sunLayer, fogLayer, snowLayer, cloudLayer, lightningLayer, rainLayer].forEach(function (layer) {
+    els.weatherBig.insertBefore(layer, els.weatherBig.firstChild);
+  });
 }
 
 // ---------- Wetter-Panel: Bremen-Fotohintergrund ----------
@@ -600,21 +663,23 @@ function upsizeThumb(url) {
   return url.replace(/\/\d+px-/, "/900px-");
 }
 
-function weatherPhotoTint(code) {
+function weatherPhotoTint(code, isDay) {
   const hour = new Date().getHours();
   if (hour >= 21 || hour < 6) return "rgba(8,12,22,0.68)";
-  const cat = weatherFxCategory(code);
+  const cat = weatherFxCategory(code, isDay);
+  if (cat === "storm") return "rgba(24,28,42,0.62)";
   if (cat === "rain") return "rgba(32,52,72,0.55)";
   if (cat === "snow") return "rgba(190,204,216,0.5)";
+  if (cat === "fog") return "rgba(120,124,128,0.5)";
   if (cat === "cloud") return "rgba(54,58,64,0.55)";
   return "rgba(198,146,58,0.42)"; // klar/sonnig — warmer Ton
 }
 
-function applyWeatherPhotoTint(code) {
+function applyWeatherPhotoTint(code, isDay) {
   if (!weatherPhotoEl) return;
   const bgUrl = weatherPhotoEl.getAttribute("data-bg-url");
   if (!bgUrl) return;
-  const tint = weatherPhotoTint(code);
+  const tint = weatherPhotoTint(code, isDay);
   weatherPhotoEl.style.backgroundImage = "linear-gradient(" + tint + "," + tint + "), " + bgUrl;
   // Textfarbe/Schatten ans Foto anpassen — className von updateWeather()
   // wird bei jedem Refresh neu gesetzt, deshalb hier statt einmalig beim
@@ -622,7 +687,7 @@ function applyWeatherPhotoTint(code) {
   if (els.weatherBig) els.weatherBig.classList.add("has-photo");
 }
 
-function fetchWeatherPhoto(code) {
+function fetchWeatherPhoto(code, isDay) {
   if (!els.weatherBig) return;
   ensureWeatherPhotoLayer();
 
@@ -630,7 +695,7 @@ function fetchWeatherPhoto(code) {
   if (weatherPhotoEl.getAttribute("data-loaded") === "1" &&
       (now - weatherPhotoFetchedAt) < CONFIG.refreshWeatherMs) {
     // Foto ist noch frisch genug — nur Tönung an Wetter/Tageszeit anpassen.
-    applyWeatherPhotoTint(code);
+    applyWeatherPhotoTint(code, isDay);
     return;
   }
 
@@ -650,7 +715,7 @@ function fetchWeatherPhoto(code) {
     weatherPhotoEl.setAttribute("data-loaded", "1");
     lastWeatherPhotoTitle = title;
     weatherPhotoFetchedAt = now;
-    applyWeatherPhotoTint(code);
+    applyWeatherPhotoTint(code, isDay);
     weatherPhotoEl.classList.add("loaded");
   }).catch(function (err) {
     // Kein Foto? Kein Beinbruch — Verlaufshintergrund/Animation bleiben.
@@ -658,12 +723,77 @@ function fetchWeatherPhoto(code) {
   });
 }
 
+// Kleine Zusatz-Daten unterm Wetter-Panel (Wind, Luftfeuchte, gefühlte
+// Temperatur, Regenwahrscheinlichkeit, Sonnenauf-/-untergang) — fehlt ein
+// Feld in der API-Antwort mal, wird die jeweilige Kachel einfach
+// weggelassen statt "undefined" anzuzeigen.
+function renderWeatherDetails(data) {
+  if (!els.weatherDetails) return;
+  const c = data.current || {};
+  const d = data.daily || {};
+  const chips = [];
+
+  if (c.apparent_temperature != null) {
+    chips.push({ icon: "🌡️", value: Math.round(c.apparent_temperature) + "°", label: "Gefühlt" });
+  }
+  if (c.wind_speed_10m != null) {
+    chips.push({ icon: "💨", value: Math.round(c.wind_speed_10m) + " km/h", label: "Wind" });
+  }
+  if (c.relative_humidity_2m != null) {
+    chips.push({ icon: "💦", value: Math.round(c.relative_humidity_2m) + "%", label: "Luftfeuchte" });
+  }
+  if (d.precipitation_probability_max && d.precipitation_probability_max[0] != null) {
+    chips.push({ icon: "☔", value: Math.round(d.precipitation_probability_max[0]) + "%", label: "Regen" });
+  }
+  if (d.sunrise && d.sunrise[0]) {
+    chips.push({
+      icon: "🌅",
+      value: new Date(d.sunrise[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
+      label: "Aufgang",
+    });
+  }
+  if (d.sunset && d.sunset[0]) {
+    chips.push({
+      icon: "🌇",
+      value: new Date(d.sunset[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
+      label: "Untergang",
+    });
+  }
+
+  els.weatherDetails.innerHTML = "";
+  chips.forEach(function (c2) {
+    const chip = document.createElement("div");
+    chip.className = "weather-detail-chip";
+
+    const iconEl = document.createElement("span");
+    iconEl.className = "weather-detail-icon";
+    iconEl.textContent = c2.icon;
+    chip.appendChild(iconEl);
+
+    const textEl = document.createElement("span");
+    textEl.className = "weather-detail-text";
+
+    const valueEl = document.createElement("span");
+    valueEl.className = "weather-detail-value";
+    valueEl.textContent = c2.value;
+    textEl.appendChild(valueEl);
+
+    const labelEl = document.createElement("span");
+    labelEl.className = "weather-detail-label";
+    labelEl.textContent = c2.label;
+    textEl.appendChild(labelEl);
+
+    chip.appendChild(textEl);
+    els.weatherDetails.appendChild(chip);
+  });
+}
+
 function updateWeather() {
   const url = "https://api.open-meteo.com/v1/forecast?latitude=" + CONFIG.weatherLat +
     "&longitude=" + CONFIG.weatherLon +
-    "&current=temperature_2m,weather_code" +
+    "&current=temperature_2m,weather_code,is_day,relative_humidity_2m,apparent_temperature,wind_speed_10m" +
     "&hourly=temperature_2m,weather_code" +
-    "&daily=temperature_2m_max,temperature_2m_min" +
+    "&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max" +
     "&timezone=Europe%2FBerlin";
 
   fetch(url).then(function (res) {
@@ -672,6 +802,7 @@ function updateWeather() {
   }).then(function (data) {
     const temp = Math.round(data.current.temperature_2m);
     const code = data.current.weather_code;
+    const isDay = data.current.is_day !== 0;
     const entry = WEATHER_CODES[code] || ["🌡️", ""];
 
     if (els.weatherBigIcon) {
@@ -682,10 +813,12 @@ function updateWeather() {
 
     if (els.weatherBig) {
       ensureWeatherFxLayers();
-      const fxCategory = weatherFxCategory(code);
+      const fxCategory = weatherFxCategory(code, isDay);
       els.weatherBig.className = "weather-big" + (fxCategory ? " fx-" + fxCategory : "");
-      fetchWeatherPhoto(code);
+      fetchWeatherPhoto(code, isDay);
     }
+
+    renderWeatherDetails(data);
 
     if (els.weatherHours && data.hourly && data.hourly.time) {
       const nowIso = data.current.time;

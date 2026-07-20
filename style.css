@@ -417,16 +417,27 @@ html, body {
 }
 
 .weather-big.fx-rain .weather-fx-rain,
+.weather-big.fx-storm .weather-fx-rain,
 .weather-big.fx-cloud .weather-fx-cloud,
-.weather-big.fx-snow .weather-fx-snow {
+.weather-big.fx-snow .weather-fx-snow,
+.weather-big.fx-fog .weather-fx-fog,
+.weather-big.fx-sun .weather-fx-sun,
+.weather-big.fx-night .weather-fx-night {
   opacity: 1;
 }
 
+/* Regen: drei Tiefenebenen (fern/mittel/nah) via CSS-Variablen für
+   Deckkraft + Wind-Drift, damit eine Animation für alle Tropfen reicht
+   statt pro Tiefe eigene @keyframes zu brauchen. Dazu Spritzer-Ringe am
+   unteren Rand — an die verlinkte LottieFiles-Regenanimation angelehnt,
+   aber komplett selbst gebaut (reines Transform/Opacity, kein Lottie-
+   Player/JSON-Import nötig — spart Ladezeit + eine weitere Abhängigkeit
+   auf dem alten iPad). */
 @keyframes fxRainFall {
-  0% { transform: translateY(-20%); opacity: 0; }
-  12% { opacity: 0.55; }
-  85% { opacity: 0.55; }
-  100% { transform: translateY(320%); opacity: 0; }
+  0% { transform: translate(0, -20%); opacity: 0; }
+  12% { opacity: var(--drop-opacity, 0.55); }
+  85% { opacity: var(--drop-opacity, 0.55); }
+  100% { transform: translate(var(--drop-drift, 14px), 320%); opacity: 0; }
 }
 
 .fx-drop {
@@ -435,9 +446,59 @@ html, body {
   width: 2px;
   height: 22px;
   border-radius: 2px;
-  background: linear-gradient(180deg, rgba(60, 126, 168, 0), rgba(60, 126, 168, 0.55));
-  animation: fxRainFall 1.6s linear infinite;
+  background: linear-gradient(180deg, rgba(60, 126, 168, 0), rgba(60, 126, 168, 0.6));
+  animation-name: fxRainFall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
   will-change: transform, opacity;
+}
+
+.fx-drop.layer-far { height: 16px; width: 1.5px; --drop-opacity: 0.3; --drop-drift: 8px; }
+.fx-drop.layer-mid { height: 20px; width: 2px; --drop-opacity: 0.48; --drop-drift: 14px; }
+.fx-drop.layer-near { height: 26px; width: 2.6px; --drop-opacity: 0.78; --drop-drift: 22px; }
+
+@keyframes fxSplashRing {
+  0% { transform: scale(0.3); opacity: 0; }
+  15% { opacity: 0.55; }
+  60% { transform: scale(1.6); opacity: 0.15; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+.fx-splash {
+  position: absolute;
+  bottom: 6%;
+  width: 12px;
+  height: 5px;
+  border-radius: 50%;
+  border: 1px solid rgba(150, 190, 215, 0.6);
+  animation: fxSplashRing 1.5s ease-out infinite;
+  will-change: transform, opacity;
+}
+
+/* Gewitter: nutzt die Regen-Ebene oben + dieses Blitz-Overlay obendrauf,
+   das nur existiert (display:block), wenn .fx-storm aktiv ist — spart
+   der Animation unnötige Arbeit, solange kein Gewitter gemeldet ist. */
+@keyframes fxLightningFlash {
+  0%, 90%, 100% { opacity: 0; }
+  91% { opacity: 0.5; }
+  92.5% { opacity: 0.05; }
+  94% { opacity: 0.38; }
+  96% { opacity: 0; }
+}
+
+.fx-lightning {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: -1;
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+  display: none;
+}
+
+.weather-big.fx-storm .fx-lightning {
+  display: block;
+  animation: fxLightningFlash 6.5s ease-in-out infinite;
 }
 
 @keyframes fxCloudDrift {
@@ -471,6 +532,61 @@ html, body {
   background: rgba(255, 255, 255, 0.85);
   animation: fxSnowFall 4.5s linear infinite;
   will-change: transform, opacity;
+}
+
+/* Nebel: träge seitwärts driftende, weiche Streifen. */
+@keyframes fxFogDrift {
+  0% { transform: translateX(-6%); }
+  50% { transform: translateX(6%); }
+  100% { transform: translateX(-6%); }
+}
+
+.fx-fog-band {
+  position: absolute;
+  left: -20%;
+  width: 140%;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  animation-name: fxFogDrift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+/* Sonne: sanft pulsierender warmer Glow hinterm Icon. */
+@keyframes fxSunPulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.65; }
+  50% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+}
+
+.fx-sun-glow {
+  position: absolute;
+  top: 32%;
+  left: 16%;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(255, 214, 120, 0.55), rgba(255, 214, 120, 0) 70%);
+  animation: fxSunPulse 4.5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* Klare Nacht: leise funkelnde Sterne, zufällig verteilt (siehe app.js). */
+@keyframes fxStarTwinkle {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.95; }
+}
+
+.fx-star {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ffffff;
+  animation: fxStarTwinkle 2.6s ease-in-out infinite;
+  will-change: opacity;
 }
 
 .weather-big-icon {
@@ -538,6 +654,55 @@ html, body {
   font-size: 20px;
   font-weight: 700;
   color: var(--ink);
+}
+
+/* Zusatz-Daten: Wind, Luftfeuchte, gefühlte Temperatur, Regenwahr-
+   scheinlichkeit, Sonnenauf-/-untergang — kleine Chip-Reihe unter den
+   Stunden-Kacheln, gleiche Glas-Optik wie der Rest des Panels. */
+.weather-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.weather-detail-chip {
+  flex: 1 1 auto;
+  min-width: 92px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.weather-detail-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.weather-detail-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.weather-detail-value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.weather-detail-label {
+  font-size: 11px;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 /* ---------- News-Panel: Bild-Diashow ---------- */
