@@ -450,11 +450,20 @@ html, body {
    Verlauf hatte kaum Kontrast. Jetzt helles Blau-Weiß, deutlich breiter,
    höhere Deckkraft + leichter Glow (box-shadow), klar erkennbare Streifen
    statt kaum sichtbarer Haarlinien. */
+/* ECHTER BUG gefunden (nicht nur Geschmack): transform: translateY(320%)
+   bezieht sich bei CSS-Transforms auf die Höhe des Elements SELBST (hier
+   ~20-34px), nicht auf den Panel-Container — ein Tropfen ist dadurch nur
+   ca. 320% * 30px ≈ 100px unterwegs und stirbt direkt unter dem Label,
+   nie tiefer im Panel. Deshalb sah der "Regen" wie ein paar Striche knapp
+   unter der Überschrift aus statt wie fallender Regen übers ganze Panel.
+   Fix: vh-Einheiten (beziehen sich auf die Viewport-Höhe, nicht auf das
+   Element) mit großzügigem Overshoot, damit jeder Tropfen garantiert quer
+   durchs ganze Panel fällt, unabhängig von Kopf-/Fußzeilen-Höhe. */
 @keyframes fxRainFall {
   0% { transform: translate(0, -20%); opacity: 0; }
   12% { opacity: var(--drop-opacity, 0.7); }
   85% { opacity: var(--drop-opacity, 0.7); }
-  100% { transform: translate(var(--drop-drift, 14px), 320%); opacity: 0; }
+  100% { transform: translate(var(--drop-drift, 14px), 130vh); opacity: 0; }
 }
 
 .fx-drop {
@@ -519,9 +528,13 @@ html, body {
   animation: fxLightningFlash 6.5s ease-in-out infinite;
 }
 
+/* Gleicher Element- statt Panel-relative-%-Bug wie beim Regen — eine Wolke
+   (~100px breit) wäre nur ~340px unterwegs gewesen und dann zurück-
+   geteleportiert, statt übers ganze breite Panel zu driften. vw-Einheiten
+   fixen das genau wie vh beim Regen. */
 @keyframes fxCloudDrift {
-  0% { transform: translateX(-20%); }
-  100% { transform: translateX(340%); }
+  0% { transform: translateX(-20vw); }
+  100% { transform: translateX(120vw); }
 }
 
 .fx-cloud-shape {
@@ -534,11 +547,14 @@ html, body {
   will-change: transform;
 }
 
+/* Gleicher Bug wie bei fxRainFall (translateY(%) bezieht sich auf die
+   Element- statt Panel-Höhe) — hier vorsorglich mit demselben vh-Fix,
+   bevor Schnee mal aktiv ist und dasselbe Problem zeigt. */
 @keyframes fxSnowFall {
   0% { transform: translateY(-20%) translateX(0); opacity: 0; }
   12% { opacity: 0.8; }
   85% { opacity: 0.8; }
-  100% { transform: translateY(320%) translateX(12px); opacity: 0; }
+  100% { transform: translateY(130vh) translateX(12px); opacity: 0; }
 }
 
 .fx-flake {
