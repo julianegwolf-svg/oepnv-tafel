@@ -1451,6 +1451,82 @@ function itineraryRealtimeNote(itinerary) {
   }
 }
 
+// Welche Linie(n) tatsächlich genutzt werden — mehrere bei Umstiegen.
+// Mehrere bekannte Feldpfade probieren (Transitous/MOTIS-Feldnamen von
+// hier aus nicht 1:1 verifizierbar), sonst bleibt die Liste einfach leer
+// statt "undefined" anzuzeigen.
+function itineraryLineNames(itinerary) {
+  try {
+    const legs = itinerary.legs || [];
+    const names = [];
+    legs.forEach(function (leg) {
+      if (!leg || leg.mode === "WALK") return;
+      const name = (leg.route && (leg.route.shortName || leg.route.name)) ||
+        leg.routeShortName || leg.tripShortName || leg.displayName;
+      if (name && names.indexOf(name) === -1) names.push(name);
+    });
+    return names;
+  } catch (e) {
+    console.error(e);
+    return [];
+  }
+}
+
+// Live-Abfahrtszeit des ersten Nicht-Fußweg-Legs — damit die Tafel nicht
+// nur "23 min" zeigt, sondern auch WANN die genutzte Bahn/der Bus wirklich
+// fährt (nutzt dieselben Echtzeit-Felder wie oben).
+function itineraryFirstDeparture(itinerary) {
+  try {
+    const legs = itinerary.legs || [];
+    for (let i = 0; i < legs.length; i++) {
+      const leg = legs[i];
+      if (!leg || leg.mode === "WALK") continue;
+      const when = leg.startTime || leg.departure || leg.scheduledStartTime || leg.scheduledDeparture;
+      if (when) return new Date(when);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+  return null;
+}
+
+// Fahrrad/Auto-Zeiten der Transitous-Direktrouten gegen eine grobe
+// Luftlinien-Schätzung prüfen — dieselbe Idee wie schon bei der Gehzeit
+// (resolveWalkTime): die Direktrouting-Antwort hat schon mal absurde
+// Umwege geliefert (97-Minuten-Bus-Bug, 20-Minuten-Fußweg-Bug), deshalb
+// hier vorsorglich dieselbe Plausibilitätsprüfung statt blind zu
+// vertrauen. Weicht die API-Zeit zu stark ab, wird die Schätzung
+// verwendet und in der UI transparent als "geschätzt" markiert.
+function estimateBikeMinutes(distanceMeters) {
+  // ~15 km/h effektiv (inkl. Ampeln/Kreuzungen), 25% Aufschlag ggü.
+  // Luftlinie für reale Straßenführung.
+  const km = (distanceMeters / 1000) * 1.25;
+  return Math.max(1, Math.round((km / 15) * 60));
+}
+
+function estimateCarMinutes(distanceMeters) {
+  // ~32 km/h effektiv innerstädtisch (inkl. Ampeln), 30% Aufschlag ggü.
+  // Luftlinie für reale Straßenführung.
+  const km = (distanceMeters / 1000) * 1.3;
+  return Math.max(1, Math.round((km / 32) * 60));
+}
+
+function plausibleMinutesOrFallback(apiMinutes, fallbackMinutes, label) {
+  const maxOk = Math.max(fallbackMinutes * 2.2, fallbackMinutes + 10);
+  const minOk = fallbackMinutes * 0.35;
+
+  if (apiMinutes == null || apiMinutes > maxOk || apiMinutes < minOk) {
+    if (apiMinutes != null) {
+      console.warn(
+        label + "-Zeit wirkt unplausibel (" + apiMinutes + " min, erwartet ~" +
+        fallbackMinutes + " min) — nutze Schätzung."
+      );
+    }
+    return { minutes: fallbackMinutes, estimated: true };
+  }
+  return { minutes: apiMinutes, estimated: false };
+}
+
 const COMMUTE_MODES = [
   { key: "bike", icon: "🚲", label: "Fahrrad" },
   { key: "bus", icon: "🚌", label: "Bus / ÖPNV" },
@@ -1564,7 +1640,7 @@ function renderCommuteMap(coords, results) {
   const allPoints = [[coords.home.lat, coords.home.lon], [coords.work.lat, coords.work.lon]];
   const drawnLines = [];
 
-  COMMUTE_MODES.forEach(function (m) {
+  COMMUTE_MODES.forEach(function (m, modeIndex) {
     const res = results[m.key];
     if (!res || !res.itinerary) return;
 
@@ -1575,15 +1651,27 @@ function renderCommuteMap(coords, results) {
       const latlngs = legLatLngs(leg);
       if (!latlngs.length) return;
 
+      // Breite, sehr transparente "Glow"-Linie drunter für etwas Tiefe,
+      // die eigentliche Route obendrauf schön kräftig.
+      const glow = L.polyline(latlngs, {
+        color: color,
+        weight: 12,
+        opacity: 0.18,
+        lineCap: "round",
+      }).addTo(map);
+      commuteLayers.push(glow);
+
       const line = L.polyline(latlngs, {
         color: color,
         weight: 5,
-        opacity: 0.85,
+        opacity: 0.9,
         lineCap: "round",
       }).addTo(map);
 
       commuteLayers.push(line);
-      drawnLines.push(line);
+      // Pro Verkehrsmittel zeitversetzt einzeichnen (Rad zuerst, dann Bus,
+      // dann Auto) statt alle drei Routen gleichzeitig hinzuklatschen.
+      drawnLines.push({ line: line, delayMs: modeIndex * 220 });
       latlngs.forEach(function (p) { allPoints.push(p); });
     });
   });
@@ -1596,16 +1684,16 @@ function renderCommuteMap(coords, results) {
 
   // Routen "einzeichnen" lassen statt sie einfach hinzuklatschen.
   setTimeout(function () {
-    drawnLines.forEach(function (line) {
+    drawnLines.forEach(function (entry) {
       try {
-        const el = line.getElement();
+        const el = entry.line.getElement();
         if (!el || !el.getTotalLength) return;
         const length = el.getTotalLength();
         el.style.transition = "none";
         el.style.strokeDasharray = length + " " + length;
         el.style.strokeDashoffset = String(length);
         void el.getBoundingClientRect();
-        el.style.transition = "stroke-dashoffset 1.3s ease";
+        el.style.transition = "stroke-dashoffset 1.1s ease " + entry.delayMs + "ms";
         el.style.strokeDashoffset = "0";
       } catch (e) {
         console.error(e);
@@ -1622,13 +1710,17 @@ function renderCommuteChips(results) {
 
   COMMUTE_MODES.forEach(function (m) {
     const res = results[m.key];
+    const color = (CONFIG.commuteMapColors && CONFIG.commuteMapColors[m.key]) || "#5b6b78";
 
     const chip = document.createElement("div");
     chip.className = "commute-chip" + (res && res.minutes != null ? "" : " unavailable");
+    // Dezenter Farbring passend zur Kartenfarbe des Verkehrsmittels —
+    // Hex+Alpha statt color-mix()/rgba(var), da auf Safari 12 sicher.
+    chip.style.boxShadow = "var(--glass-shadow), 0 0 0 1.5px " + color + "40";
 
     const dot = document.createElement("span");
     dot.className = "commute-chip-dot";
-    dot.style.background = (CONFIG.commuteMapColors && CONFIG.commuteMapColors[m.key]) || "#5b6b78";
+    dot.style.background = color;
 
     const icon = document.createElement("span");
     icon.className = "commute-chip-icon";
@@ -1640,6 +1732,12 @@ function renderCommuteChips(results) {
     const time = document.createElement("span");
     time.className = "commute-chip-time";
     time.textContent = res && res.minutes != null ? (res.minutes + " min") : "–";
+    if (res && res.estimated) {
+      const estimateTag = document.createElement("span");
+      estimateTag.className = "commute-chip-estimated";
+      estimateTag.textContent = "geschätzt";
+      time.appendChild(estimateTag);
+    }
     text.appendChild(time);
 
     const noteText = res ? (res.note || m.label) : "nicht verfügbar";
@@ -1647,6 +1745,22 @@ function renderCommuteChips(results) {
     note.className = "commute-chip-note";
     note.textContent = noteText;
     text.appendChild(note);
+
+    // Bus/ÖPNV: zusätzlich Linie(n) + wirkliche nächste Abfahrtszeit
+    // zeigen, statt nur einer nackten Minutenzahl — deutlich planbarer.
+    if (m.key === "bus" && res) {
+      const lineText = res.lines && res.lines.length ? "Linie " + res.lines.join("/") : "";
+      const depText = res.departure
+        ? "ab " + res.departure.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+        : "";
+      const extraText = [lineText, depText].filter(function (s) { return !!s; }).join(" · ");
+      if (extraText) {
+        const extra = document.createElement("span");
+        extra.className = "commute-chip-extra";
+        extra.textContent = extraText;
+        text.appendChild(extra);
+      }
+    }
 
     chip.appendChild(dot);
     chip.appendChild(icon);
@@ -1663,18 +1777,42 @@ function updateCommute() {
   if (!els.commuteChips) return;
 
   resolveCommuteCoords().then(function (coords) {
+    const distanceMeters = haversineMeters(coords.home, coords.work);
+
     return Promise.all([
       fetchDirectItinerary(coords.home, coords.work, "BIKE")
-        .then(function (it) { return { itinerary: it, minutes: itineraryDurationMin(it) }; })
-        .catch(function (err) { console.error(err); return null; }),
+        .then(function (it) {
+          const check = plausibleMinutesOrFallback(
+            itineraryDurationMin(it), estimateBikeMinutes(distanceMeters), "Fahrrad"
+          );
+          return { itinerary: it, minutes: check.minutes, estimated: check.estimated };
+        })
+        .catch(function (err) {
+          console.error(err);
+          return { itinerary: null, minutes: estimateBikeMinutes(distanceMeters), estimated: true };
+        }),
       fetchTransitItinerary(coords.home, coords.work)
         .then(function (it) {
-          return { itinerary: it, minutes: itineraryDurationMin(it), note: itineraryRealtimeNote(it) };
+          return {
+            itinerary: it,
+            minutes: itineraryDurationMin(it),
+            note: itineraryRealtimeNote(it),
+            lines: itineraryLineNames(it),
+            departure: itineraryFirstDeparture(it),
+          };
         })
         .catch(function (err) { console.error(err); return null; }),
       fetchDirectItinerary(coords.home, coords.work, "CAR")
-        .then(function (it) { return { itinerary: it, minutes: itineraryDurationMin(it) }; })
-        .catch(function (err) { console.error(err); return null; }),
+        .then(function (it) {
+          const check = plausibleMinutesOrFallback(
+            itineraryDurationMin(it), estimateCarMinutes(distanceMeters), "Auto"
+          );
+          return { itinerary: it, minutes: check.minutes, estimated: check.estimated };
+        })
+        .catch(function (err) {
+          console.error(err);
+          return { itinerary: null, minutes: estimateCarMinutes(distanceMeters), estimated: true };
+        }),
     ]).then(function (all) {
       const results = { bike: all[0], bus: all[1], car: all[2] };
       renderCommuteChips(results);
