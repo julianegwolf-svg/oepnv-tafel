@@ -645,6 +645,21 @@ const WEATHER_CODES = {
 
 const RAIN_CODES = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99];
 
+// WEATHER_CODES kennt pro Code nur EIN Icon — bei Code 0/1 ("klar"/
+// "überwiegend klar") war das immer die Sonne, auch mitten in der Nacht.
+// Open-Meteo unterscheidet Tag/Nacht separat über "is_day", nicht über den
+// weather_code selbst. Gleiche Unterscheidung wie bei weatherFxCategory()
+// (die den Hintergrund schon korrekt auf Sterne/Mond umschaltet) — nur der
+// Emoji-Text im Icon-Feld hat bisher nicht mitgezogen.
+function weatherIconFor(code, isDay) {
+  if (!isDay) {
+    if (code === 0) return "🌕"; // klar bei Nacht: Vollmond statt Sonne
+    if (code === 1) return "🌙"; // überwiegend klar bei Nacht
+  }
+  const entry = WEATHER_CODES[code];
+  return entry ? entry[0] : "🌡️";
+}
+
 // Konkrete Handlungs-Tipps statt bloßer Zahlen — genau das, was einem
 // vorm Rausgehen wirklich hilft. Schaut in die nächsten 12 Stunden nach
 // Regen (Schirm/Auto-Tipp, oder nachts: Fenster zu) und rät sonst bei
@@ -992,7 +1007,7 @@ function updateWeather() {
     const entry = WEATHER_CODES[code] || ["🌡️", ""];
 
     if (els.weatherBigIcon) {
-      els.weatherBigIcon.textContent = entry[0];
+      els.weatherBigIcon.textContent = weatherIconFor(code, isDay);
       els.weatherBigTemp.textContent = temp + "°";
       els.weatherBigDesc.textContent = entry[1] || "";
     }
@@ -1032,6 +1047,14 @@ function updateWeather() {
         }
       }
 
+      // Sonnenauf-/-untergang von heute für die Tag/Nacht-Einordnung der
+      // einzelnen Stunden — bei weatherHourCount=5 liegt der Streifen so gut
+      // wie nie über den Tageswechsel hinaus, "heute" reicht also.
+      const sunriseMs = data.daily && data.daily.sunrise && data.daily.sunrise[0]
+        ? parseOpenMeteoLocal(data.daily.sunrise[0]).getTime() : null;
+      const sunsetMs = data.daily && data.daily.sunset && data.daily.sunset[0]
+        ? parseOpenMeteoLocal(data.daily.sunset[0]).getTime() : null;
+
       els.weatherHours.innerHTML = "";
       for (let i = 0; i < CONFIG.weatherHourCount; i++) {
         const idx = startIdx + i;
@@ -1040,7 +1063,10 @@ function updateWeather() {
         const hTime = parseOpenMeteoLocal(data.hourly.time[idx]);
         const hTemp = Math.round(data.hourly.temperature_2m[idx]);
         const hCode = data.hourly.weather_code[idx];
-        const hEntry = WEATHER_CODES[hCode] || ["🌡️"];
+        const hMs = hTime.getTime();
+        const hIsDay = (sunriseMs != null && sunsetMs != null)
+          ? (hMs >= sunriseMs && hMs < sunsetMs)
+          : (hTime.getHours() >= 6 && hTime.getHours() < 20);
 
         const cell = document.createElement("div");
         cell.className = "weather-hour";
@@ -1051,7 +1077,7 @@ function updateWeather() {
 
         const iconEl = document.createElement("span");
         iconEl.className = "weather-hour-icon";
-        iconEl.textContent = hEntry[0];
+        iconEl.textContent = weatherIconFor(hCode, hIsDay);
 
         const tempEl = document.createElement("span");
         tempEl.className = "weather-hour-temp";
