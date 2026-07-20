@@ -101,6 +101,8 @@ html, body {
 #panel-music { --accent: #7d5ba6; }
 #panel-sport { --accent: var(--ok); }
 #panel-quote { --accent: var(--brass); }
+#panel-trivia { --accent: #a34a6b; }
+#panel-events { --accent: #b1622f; }
 
 /* ---------- Topbar ---------- */
 .topbar {
@@ -125,10 +127,16 @@ html, body {
    sofort ein Gefühl von "das läuft gerade wirklich" vermittelt, statt wie
    ein Icon aus einem Screenshot zu wirken. currentColor statt fester Farbe,
    damit derselbe Puls auf jedem Panel-Label (siehe .view-label::before)
-   automatisch in dessen eigener Akzentfarbe mitläuft. */
+   automatisch in dessen eigener Akzentfarbe mitläuft.
+   PERFORMANCE: lief vorher permanent (2.6s infinite, für die Lebensdauer
+   der Seite) über box-shadow, eine paint-teure Eigenschaft — jeder Tick
+   erzwang eine Neuberechnung des weichen Schatten-Rings. transform+opacity
+   sind reine Compositor-Eigenschaften (GPU skaliert/blendet nur eine
+   bereits gerasterte Ebene), identischer "lebendiger Puls"-Eindruck, aber
+   ohne Dauer-Repaint. */
 @keyframes dotPulse {
-  0%, 100% { box-shadow: 0 0 0 0 currentColor; }
-  50% { box-shadow: 0 0 0 6px transparent; }
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.5; }
 }
 
 .brand-dot {
@@ -282,15 +290,46 @@ html, body {
   animation-play-state: paused;
 }
 
-/* Rücknahme aus der letzten Runde: -webkit-transform: translateZ(0) auf
+/* PERFORMANCE-ERGÄNZUNG: die obige Regel pausiert nur, wenn das GANZE
+   Wetter-Panel unsichtbar ist. Aber alle ~39 Wetter-FX-Elemente (Regen,
+   Wolken, Schnee, Nebel, Sonne, Sterne) werden einmalig gebaut und bleiben
+   permanent im DOM, sobald das Panel aktiv ist — nur die zur aktuellen
+   Wetterlage passende Kategorie ist per Opacity sichtbar (siehe
+   .weather-fx-layer), die anderen ~24 Elemente liefen bisher unsichtbar,
+   aber trotzdem animiert, im Kreis mit. Gleiche explizite-Liste-statt-
+   Wildcard-Technik wie oben, diesmal pro fx-Kategorie statt pro Panel. */
+#panel-weather.weather-scene:not(.fx-rain):not(.fx-storm) .fx-drop,
+#panel-weather.weather-scene:not(.fx-rain):not(.fx-storm) .fx-splash,
+#panel-weather.weather-scene:not(.fx-cloud) .fx-cloud-shape,
+#panel-weather.weather-scene:not(.fx-snow) .fx-flake,
+#panel-weather.weather-scene:not(.fx-fog) .fx-fog-band,
+#panel-weather.weather-scene:not(.fx-sun) .fx-sun-glow,
+#panel-weather.weather-scene:not(.fx-night) .fx-star {
+  animation-play-state: paused;
+}
+
+/* Rücknahme aus einer früheren Runde: -webkit-transform: translateZ(0) auf
    allen 7 Panels UND ein -webkit-mask-image auf ~10 Elementen gleichzeitig
    waren beide als Fix für das kosmetische "Ecken poppen eckig"-Problem
    gedacht — aber Layer-Erzwingung UND Masken sind selbst teuer, und auf
    einem Gerät mit sehr wenig GPU-Speicher (iPad Air 1, 1GB RAM insgesamt)
    war das schlicht der falsche Tausch: kosmetischer Kanten-Blitzer gegen
-   spürbares Ruckeln. Komplett entfernt. Die Kanten-Sache ist unschön, aber
-   Performance hat jetzt klar Vorrang — kommt erst zurück, wenn die Seite
-   nachweislich flüssig läuft. */
+   spürbares Ruckeln. Komplett entfernt.
+
+   NEUER ANLAUF (diesmal gezielt statt pauschal): nur die drei Container,
+   die tatsächlich border-radius + overflow:hidden UND ein animierendes/
+   übergehendes Kind gleichzeitig haben (#panel-weather, .news-slideshow,
+   .sport-block), bekommen die Layer-Promotion — und auch die nur für die
+   ~0.7-0.9s Dauer des jeweiligen Übergangs, per JS-Klasse kurz vor dem
+   Übergang gesetzt und danach wieder entfernt (siehe pulseClipFix in
+   app.js). Kein -webkit-mask-image — das war der eigentlich teure Teil
+   des alten Fixes. Maximal 1-2 Elemente gleichzeitig befördert statt
+   dauerhaft 7+10, dadurch auf dem A7-Chip praktisch kostenlos. */
+.clip-fix-active {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  will-change: opacity;
+}
 
 .view-label {
   display: flex;
@@ -727,12 +766,21 @@ html, body {
    weatherSkyGradient in app.js), der ist immer dunkel genug abgestimmt —
    deshalb Text unconditional hell mit Schatten statt eines has-photo/
    has-video-Sonderfalls wie früher. */
+/* filter auf dem statischen Wrapper statt auf dem animierten Icon selbst —
+   gleiche Begründung wie beim Sport-Wappen (.sport-slide-crest-wrap):
+   filter ist kein reiner Compositor-Effekt, kombiniert mit einer laufenden
+   transform-Animation auf demselben Element würde WebKit den Schatten
+   jeden Frame neu berechnen. */
+.weather-big-icon-wrap {
+  display: inline-block;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.4));
+}
+
 .weather-big-icon {
   font-size: 138px;
   line-height: 1;
   display: inline-block;
   animation: weatherFloat 4.5s ease-in-out infinite;
-  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.4));
 }
 
 .weather-big-temp {
@@ -1095,6 +1143,86 @@ html, body {
   text-overflow: ellipsis;
 }
 
+/* ---------- Veranstaltungen-Panel (Bremen) ---------- */
+/* Gleiches Listen-Grundmuster wie die Musik-Charts (Glas-Zeilen statt
+   Diashow — bei Terminen will man mehrere auf einen Blick vergleichen
+   können, keine Karte pro Termin). */
+.events-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.events-list > * + * {
+  margin-top: 10px;
+}
+
+.event-item {
+  background: var(--glass-bg);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-m);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  box-shadow: var(--glass-shadow);
+}
+
+.event-item > * + * {
+  margin-left: 18px;
+}
+
+.event-date {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-s);
+  background: linear-gradient(165deg, #f4e0e7 0%, #e4bfcd 100%);
+  color: var(--brass-ink);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.event-date-day {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.event-date-month {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+.event-text {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.event-title {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-location {
+  font-size: 14px;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---------- Pendel-Panel (Arbeitsweg) ----------
    Ersetzt die alte Chip-Reihe + Leaflet-Karte komplett. Die Karte war
    sowohl optisch der schwächste Teil der ganzen Tafel als auch eine
@@ -1246,12 +1374,19 @@ html, body {
   overflow: hidden;
 }
 
+/* transform:scaleX statt width — width erzwingt bei jedem Übergangs-Frame
+   ein Layout-Reflow von Track+Fläche, scaleX läuft rein auf dem Compositor
+   (GPU), exakt dieselbe Begründung wie beim Fortschrittsbalken oben
+   (siehe app.js, Kommentar bei resetProgressBar). Der Track hat schon
+   overflow:hidden + border-radius, klippt also weiterhin sauber. */
 .commute-race-fill {
   height: 100%;
-  width: 0;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
   background: var(--mode-color, var(--steel));
   border-radius: 999px;
-  transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .commute-race-time {
@@ -1372,6 +1507,55 @@ html, body {
   display: none;
 }
 
+/* ---------- Trivia-Panel ("Auf den Tag genau") ---------- */
+/* Gleiche Glas-Karten- und Schreibmaschinen-Sprache wie das Zitat-Panel
+   (.quote-block/.typewriter-cursor werden wiederverwendet), nur mit einer
+   zweiten Stufe: erst die Frage tippen, dann nach einer kurzen Denkpause
+   die Jahreszahl auflösen. */
+.trivia-block {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 48px 56px;
+  background: var(--glass-bg);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-l);
+  box-shadow: var(--glass-shadow);
+}
+
+.trivia-mark {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 90px;
+  line-height: 1;
+  color: var(--accent);
+  opacity: 0.32;
+  margin-bottom: -8px;
+}
+
+.trivia-text {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.4;
+  max-width: 900px;
+}
+
+.trivia-answer {
+  margin-top: 22px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.trivia-answer.is-revealed {
+  opacity: 1;
+}
+
 /* ---------- Sport-Ticker (Lieblingsvereine) ---------- */
 /* Diashow statt scrollbarer Liste — eine große Spieltag-Karte pro Verein,
    gleiches Grundmuster wie die News-Diashow (nur je ein Slide gleichzeitig
@@ -1464,11 +1648,19 @@ html, body {
   opacity: 1;
 }
 
+/* filter auf dem statischen Wrapper, nicht auf dem animierten <img> selbst
+   (siehe Kommentar in buildCrestImg, app.js) — Schatten wird einmal
+   berechnet statt bei jedem sportCrestPop-Frame neu. */
+.sport-slide-crest-wrap {
+  display: inline-block;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4));
+}
+
 .sport-slide-crest {
   width: 96px;
   height: 96px;
   object-fit: contain;
-  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4));
+  display: block;
   animation: sportCrestPop 0.55s cubic-bezier(0.22, 0.9, 0.32, 1.2) both;
 }
 

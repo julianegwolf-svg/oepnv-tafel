@@ -62,7 +62,7 @@ const CONFIG = {
   // Panels, deren Datenquelle gerade nicht klappt, werden automatisch
   // übersprungen.
   // ---------------------------------------------------------------
-  panelSequence: ["departures", "commute", "weather", "news", "music", "sport", "quote"],
+  panelSequence: ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "events"],
 
   // Anzeigedauer je Panel in Millisekunden. Fehlt ein Eintrag, gilt
   // panelDurationMs als Standard.
@@ -74,6 +74,8 @@ const CONFIG = {
     music: 15 * 1000,
     sport: 50 * 1000, // bis zu 6 Vereine + 4 News à 5s Diashow
     quote: 12 * 1000,
+    trivia: 18 * 1000, // Tippdauer variiert mit Satzlänge + 2.5s Denkpause vor der Auflösung
+    events: 16 * 1000,
   },
   panelDurationMs: 18 * 1000,
 
@@ -141,6 +143,23 @@ const CONFIG = {
 
   // Zitat-Panel
   refreshQuoteMs: 60 * 60 * 1000,
+
+  // Trivia-Panel ("Auf den Tag genau") — Wikipedia-REST-API, kostenlos,
+  // kein Key. Stündlich neu abgerufen und zufällig aus der Tagesliste
+  // ausgewählt (siehe updateTrivia in app.js), damit sich die Auswahl über
+  // den Tag verteilt abwechselt statt immer dasselbe erste Ereignis zu
+  // zeigen.
+  refreshTriviaMs: 60 * 60 * 1000,
+
+  // Veranstaltungen-Panel (Bremen) — InfraNode (infranode.dev), kostenlos,
+  // kein Key, CORS offen (access-control-allow-origin: *), Daten stammen
+  // von open.destination.one (Lizenz CC0, geprüft per Testabruf). Erste
+  // Recherche nach einer offiziellen bremen.de-Quelle (Transparenzportal,
+  // offizieller Veranstaltungskalender) fand keine öffentliche, keylose
+  // API — InfraNode ist die einzige tatsächlich funktionierende Quelle,
+  // die dabei gefunden wurde.
+  eventsCount: 6,
+  refreshEventsMs: 6 * 60 * 60 * 1000,
 
   // ---------------------------------------------------------------
   // Müllabfuhr — Bremer Abfallkalender für Alter Postweg 110.

@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=45">
+<link rel="stylesheet" href="style.css?v=46">
 </head>
 <body>
   <div class="panel">
@@ -66,7 +66,7 @@
         <div class="weather-sky" id="weatherSky"></div>
         <div class="view-label">Wetter heute</div>
         <div class="weather-big" id="weatherBig">
-          <span class="weather-big-icon" id="weatherBigIcon">—</span>
+          <span class="weather-big-icon-wrap"><span class="weather-big-icon" id="weatherBigIcon">—</span></span>
           <span class="weather-big-temp" id="weatherBigTemp">–°</span>
           <span class="weather-big-desc" id="weatherBigDesc">Lädt…</span>
         </div>
@@ -97,6 +97,20 @@
         </div>
       </section>
 
+      <section class="panel-view" id="panel-trivia">
+        <div class="view-label">Auf den Tag genau</div>
+        <div class="trivia-block" id="triviaBlock">
+          <div class="view-placeholder">Lädt…</div>
+        </div>
+      </section>
+
+      <section class="panel-view" id="panel-events">
+        <div class="view-label">Veranstaltungen — Bremen</div>
+        <div class="events-list" id="eventsList">
+          <div class="view-placeholder">Lädt…</div>
+        </div>
+      </section>
+
       <section class="panel-view" id="panel-sport">
         <div class="view-label">Fußball</div>
         <div class="sport-block" id="sportBlock">
@@ -110,13 +124,13 @@
       <span id="statusText">Verbinde…</span>
       <span id="lastUpdate"></span>
       <span id="wasteLine" class="waste-line"></span>
-      <span>Daten: Transitous, Apple, Advice Slip, Tagesschau</span>
+      <span>Daten: Transitous, Apple, Advice Slip, Tagesschau, Wikipedia, open.destination.one</span>
     </footer>
 
     <div class="night-overlay" id="nightOverlay"></div>
   </div>
 
-  <script src="config.js?v=45"></script>
-  <script src="app.js?v=45"></script>
+  <script src="config.js?v=46"></script>
+  <script src="app.js?v=46"></script>
 </body>
 </html>

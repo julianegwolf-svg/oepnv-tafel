@@ -28,6 +28,8 @@ const els = {
   newsList: document.getElementById("newsList"),
   musicList: document.getElementById("musicList"),
   quoteBlock: document.getElementById("quoteBlock"),
+  triviaBlock: document.getElementById("triviaBlock"),
+  eventsList: document.getElementById("eventsList"),
   commuteHero: document.getElementById("commuteHero"),
   commuteRace: document.getElementById("commuteRace"),
   commuteMapWrap: document.getElementById("commuteMapWrap"),
@@ -1107,6 +1109,9 @@ function showNewsSlide(index) {
     if (i === index) slides[i].className += " active";
   }
   newsSlideIndex = index;
+  // .news-slideshow klippt + Slide-Crossfade läuft 0.9s — Ecken-Bug-
+  // Kandidat wie das Wetter-Panel, siehe pulseClipFix.
+  pulseClipFix(els.newsList, 950);
 }
 
 function startNewsSlideshow() {
@@ -1300,6 +1305,76 @@ function updateMusic() {
   });
 }
 
+// ---------- Veranstaltungen-Panel (Bremen) ----------
+// InfraNode (infranode.dev), kostenlos, kein Key, offener CORS — Daten
+// stammen von open.destination.one (siehe Kommentar bei CONFIG.eventsCount
+// für die Recherche dahinter). Liste statt Diashow (wie Musik-Charts),
+// weil man bei Terminen mehrere auf einen Blick vergleichen will.
+const EVENT_MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+
+function updateEvents() {
+  if (!els.eventsList) return;
+
+  fetch("https://infranode.dev/api/v1/cities/bremen/events?_=" + Date.now(), { cache: "no-store" }).then(function (res) {
+    if (!res.ok) throw new Error("Veranstaltungen-Abruf fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const payload = data && data.data && data.data.payload;
+    const raw = (payload && Array.isArray(payload.events)) ? payload.events : [];
+    const now = Date.now();
+
+    // Nur anstehende Termine, chronologisch, keine bereits vergangenen —
+    // die API liefert auch ältere/laufende Einträge mit.
+    const upcoming = raw
+      .filter(function (e) { return e && e.title && e.date_from && new Date(e.date_from).getTime() >= now; })
+      .sort(function (a, b) { return new Date(a.date_from) - new Date(b.date_from); })
+      .slice(0, CONFIG.eventsCount || 6);
+
+    if (!upcoming.length) throw new Error("Keine anstehenden Veranstaltungen erhalten");
+
+    els.eventsList.innerHTML = "";
+    upcoming.forEach(function (ev) {
+      const d = new Date(ev.date_from);
+
+      const item = document.createElement("div");
+      item.className = "event-item";
+
+      const dateBox = document.createElement("div");
+      dateBox.className = "event-date";
+      const day = document.createElement("span");
+      day.className = "event-date-day";
+      day.textContent = String(d.getDate());
+      const month = document.createElement("span");
+      month.className = "event-date-month";
+      month.textContent = EVENT_MONTHS[d.getMonth()];
+      dateBox.appendChild(day);
+      dateBox.appendChild(month);
+
+      const text = document.createElement("div");
+      text.className = "event-text";
+      const title = document.createElement("span");
+      title.className = "event-title";
+      title.textContent = ev.title;
+      text.appendChild(title);
+      if (ev.location) {
+        const loc = document.createElement("span");
+        loc.className = "event-location";
+        loc.textContent = ev.location;
+        text.appendChild(loc);
+      }
+
+      item.appendChild(dateBox);
+      item.appendChild(text);
+      els.eventsList.appendChild(item);
+    });
+
+    eventsAvailable = true;
+  }).catch(function (err) {
+    console.error(err);
+    eventsAvailable = false;
+  });
+}
+
 // ---------- Spruch des Tages (Advice Slip — bestätigt CORS-freundlich) ----------
 // Wird zeichenweise "eingetippt", sobald das Panel sichtbar wird (siehe
 // startQuoteTypewriter() und der Hook in showPanel()). Lädt die Daten
@@ -1377,6 +1452,117 @@ function updateQuote() {
   }).catch(function (err) {
     console.error(err);
     quoteAvailable = false;
+  });
+}
+
+// ---------- Trivia-Panel ("Auf den Tag genau") ----------
+// Wikipedia-REST-API (de.wikipedia.org/api/rest_v1/...), kostenlos, kein
+// Key, CORS-freundlich. Liefert historische Ereignisse zum heutigen
+// Kalendertag; die Tafel wählt eins zufällig aus und tippt es als Frage
+// ein (gleicher Schreibmaschinen-Mechanismus wie beim Spruch des Tages,
+// startQuoteTypewriter oben), löst die Jahreszahl aber erst nach einer
+// kurzen Denkpause auf statt sie sofort mit anzuzeigen — echtes
+// Quiz-Gefühl statt reiner Fakten-Anzeige.
+let triviaFullText = null;
+let triviaYear = null;
+let triviaTypeTimer = null;
+let triviaRevealTimer = null;
+
+function renderTriviaShell() {
+  if (!els.triviaBlock) return;
+  els.triviaBlock.innerHTML = "";
+
+  const mark = document.createElement("div");
+  mark.className = "trivia-mark";
+  mark.textContent = "?";
+  els.triviaBlock.appendChild(mark);
+
+  const text = document.createElement("div");
+  text.className = "trivia-text";
+
+  const typed = document.createElement("span");
+  typed.id = "triviaTypedText";
+  text.appendChild(typed);
+
+  const cursor = document.createElement("span");
+  cursor.id = "triviaCursor";
+  cursor.className = "typewriter-cursor";
+  text.appendChild(cursor);
+
+  els.triviaBlock.appendChild(text);
+
+  const answer = document.createElement("div");
+  answer.className = "trivia-answer";
+  answer.id = "triviaAnswer";
+  els.triviaBlock.appendChild(answer);
+}
+
+function startTriviaReveal() {
+  if (!triviaFullText) return;
+  const typedEl = document.getElementById("triviaTypedText");
+  const cursorEl = document.getElementById("triviaCursor");
+  const answerEl = document.getElementById("triviaAnswer");
+  if (!typedEl) return;
+
+  if (triviaTypeTimer) clearInterval(triviaTypeTimer);
+  if (triviaRevealTimer) clearTimeout(triviaRevealTimer);
+  typedEl.textContent = "";
+  if (cursorEl) cursorEl.className = "typewriter-cursor";
+  if (answerEl) {
+    answerEl.textContent = "";
+    answerEl.className = "trivia-answer";
+  }
+
+  const full = triviaFullText;
+  let i = 0;
+  triviaTypeTimer = setInterval(function () {
+    i++;
+    typedEl.textContent = full.slice(0, i);
+    if (i >= full.length) {
+      clearInterval(triviaTypeTimer);
+      triviaTypeTimer = null;
+      if (cursorEl) cursorEl.className = "typewriter-cursor done";
+      triviaRevealTimer = setTimeout(function () {
+        if (!answerEl || triviaYear == null) return;
+        const yearsAgo = new Date().getFullYear() - triviaYear;
+        answerEl.textContent = triviaYear + " — vor " + yearsAgo + " Jahren";
+        answerEl.className = "trivia-answer is-revealed";
+      }, 2500);
+    }
+  }, 35);
+}
+
+function updateTrivia() {
+  if (!els.triviaBlock) return;
+
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+
+  // Cache-Buster wie bei allen anderen Feeds hier (siehe Kommentar bei
+  // updateQuote) — sonst liefert ein zwischengeschalteter Cache stur
+  // dieselbe Tagesauswahl über Stunden hinweg aus.
+  fetch("https://de.wikipedia.org/api/rest_v1/feed/onthisday/events/" + mm + "/" + dd + "?_=" + Date.now(), { cache: "no-store" }).then(function (res) {
+    if (!res.ok) throw new Error("Trivia-Abruf fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const events = (data && data.events) || [];
+    const usable = events.filter(function (e) { return e && e.text && e.year; });
+    if (!usable.length) throw new Error("Keine Trivia-Ereignisse erhalten");
+
+    const pick = usable[Math.floor(Math.random() * usable.length)];
+    triviaFullText = pick.text;
+    triviaYear = pick.year;
+    renderTriviaShell();
+
+    const panelEl = document.getElementById("panel-trivia");
+    const isActive = panelEl && panelEl.className.indexOf("active") !== -1;
+    if (isActive) startTriviaReveal();
+
+    triviaAvailable = true;
+  }).catch(function (err) {
+    console.error(err);
+    triviaAvailable = false;
   });
 }
 
@@ -1940,9 +2126,11 @@ function renderCommuteRace(results) {
   // Balken erst NACH dem Einfügen ins DOM auf die Zielbreite setzen (wie
   // schon beim Fortschrittsbalken oben), sonst überspringt der Browser den
   // Übergang und der Balken erscheint einfach fertig statt "einzurennen".
+  // transform:scaleX statt width (siehe CSS-Kommentar bei .commute-race-fill)
+  // — Bruch 0..1 statt Prozentangabe.
   setTimeout(function () {
     fillTargets.forEach(function (entry) {
-      entry.el.style.width = entry.pct + "%";
+      entry.el.style.transform = "scaleX(" + (entry.pct / 100) + ")";
     });
   }, 50);
 
@@ -2285,6 +2473,12 @@ function fetchTeamMatches(teamName) {
 }
 
 function buildCrestImg(team) {
+  // filter:drop-shadow sitzt auf einem statischen Wrapper statt direkt auf
+  // dem animierten <img> — kombiniert mit sportCrestPop würde WebKit den
+  // Schatten sonst bei jedem Animations-Frame neu berechnen (filter ist
+  // anders als transform/opacity kein reiner Compositor-Effekt).
+  const wrap = document.createElement("span");
+  wrap.className = "sport-slide-crest-wrap";
   const img = document.createElement("img");
   img.className = "sport-slide-crest";
   img.src = (team && team.teamIconUrl) || "";
@@ -2292,7 +2486,8 @@ function buildCrestImg(team) {
   // Manche Wappen-URLs sind mal nicht erreichbar/gesperrt — dann das
   // Bild einfach ausblenden statt ein kaputtes Icon anzuzeigen.
   img.onerror = function () { img.style.display = "none"; };
-  return img;
+  wrap.appendChild(img);
+  return wrap;
 }
 
 // Statt einer scrollbaren Liste läuft der Sport-Ticker jetzt als eigene
@@ -2468,6 +2663,9 @@ function showSportSlide(index) {
     if (i === index) slides[i].className += " active";
   }
   sportSlideIndex = index;
+  // .sport-block klippt + Slide-Crossfade (0.8s) + Wappen-Pop (0.55s+0.12s
+  // delay) — gleicher Ecken-Bug-Kandidat, siehe pulseClipFix.
+  pulseClipFix(els.sportBlock, 850);
 }
 
 function startSportSlideshow() {
@@ -2540,6 +2738,8 @@ function updateSport() {
 let newsAvailable = false;
 let musicAvailable = false;
 let quoteAvailable = false;
+let triviaAvailable = false;
+let eventsAvailable = false;
 let panelIndex = 0;
 
 const PANEL_AVAILABILITY = {
@@ -2550,10 +2750,28 @@ const PANEL_AVAILABILITY = {
   music: function () { return musicAvailable; },
   sport: function () { return sportAvailable; },
   quote: function () { return quoteAvailable; },
+  trivia: function () { return triviaAvailable; },
+  events: function () { return eventsAvailable; },
 };
 
+// Ecken-Bug (border-radius + overflow:hidden "poppt eckig" kurz während
+// eines Übergangs): Layer-Promotion nur auf dem betroffenen Element und
+// nur für die Übergangsdauer, siehe .clip-fix-active in style.css für die
+// volle Historie. setTimeout statt transitionend/animationend, weil Safari
+// 12 diese Events bei überlappenden/unterbrochenen Übergängen (z.B.
+// schnelles Weiterschalten) zuverlässig verschluckt — ein simpler Timer
+// mit Sicherheitsmarge ist hier robuster als Event-basiertes Aufräumen.
+function pulseClipFix(el, ms) {
+  if (!el) return;
+  el.classList.add("clip-fix-active");
+  clearTimeout(el._clipFixTimer);
+  el._clipFixTimer = setTimeout(function () {
+    el.classList.remove("clip-fix-active");
+  }, ms);
+}
+
 function showPanel(name) {
-  const ids = ["departures", "commute", "weather", "news", "music", "sport", "quote"];
+  const ids = ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "events"];
   for (let i = 0; i < ids.length; i++) {
     const el = document.getElementById("panel-" + ids[i]);
     if (!el) continue;
@@ -2562,10 +2780,18 @@ function showPanel(name) {
     // has-video), die hier sonst bei JEDEM Karussell-Wechsel überschrieben
     // würden (className = "..." ersetzt IMMER alles).
     el.classList.toggle("active", ids[i] === name);
+    // Wetter-Panel klippt (border-radius + overflow:hidden) und crossfaded
+    // per .panel-view-Opacity-Übergang (0.7s) — genau der Kandidat für den
+    // Ecken-Bug. Bei jedem Wechsel pulsen, egal ob rein oder raus.
+    if (ids[i] === "weather") pulseClipFix(el, 750);
   }
 
   if (name === "quote") {
     startQuoteTypewriter();
+  }
+
+  if (name === "trivia") {
+    startTriviaReveal();
   }
 
   if (name === "news") {
@@ -2666,6 +2892,12 @@ function init() {
 
   updateQuote();
   setInterval(updateQuote, CONFIG.refreshQuoteMs);
+
+  updateTrivia();
+  setInterval(updateTrivia, CONFIG.refreshTriviaMs);
+
+  updateEvents();
+  setInterval(updateEvents, CONFIG.refreshEventsMs);
 
   updateWasteLine();
   if (CONFIG.wasteCollection && CONFIG.wasteCollection.refreshMs) {
