@@ -600,6 +600,22 @@ html, body {
   color: #ffffff;
 }
 
+.news-slide-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 10px;
+  color: #ffffff;
+}
+
+.badge-bremen { background: var(--brass); }
+.badge-welt { background: var(--steel); }
+.badge-de { background: #8a8578; }
+
 .news-slide-topline {
   font-size: 14px;
   font-weight: 700;
@@ -873,98 +889,155 @@ html, body {
 }
 
 /* ---------- Sport-Ticker (Lieblingsvereine) ---------- */
+/* Diashow statt scrollbarer Liste — eine große Spieltag-Karte pro Verein,
+   gleiches Grundmuster wie die News-Diashow (nur je ein Slide gleichzeitig
+   sichtbar, per Klasse "active" umgeschaltet). */
 .sport-block {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  position: relative;
   min-height: 0;
-}
-
-.sport-block > * + * {
-  margin-top: 12px;
-}
-
-.sport-card {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  border: 1px solid var(--panel-edge);
-  border-radius: 16px;
-  padding: 18px 24px;
+  border-radius: 22px;
+  overflow: hidden;
   box-shadow: var(--glass-shadow);
 }
 
-.sport-crests {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  margin-right: 20px;
-}
-
-.sport-crests > * + * {
-  margin-left: 8px;
-}
-
-.sport-crest {
-  width: 34px;
-  height: 34px;
-  object-fit: contain;
-}
-
-.sport-crests-vs {
-  font-size: 13px;
-  color: var(--ink-dim);
-  font-weight: 600;
-}
-
-.sport-text {
+.sport-slide {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
   display: flex;
   flex-direction: column;
-  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+  background: linear-gradient(160deg, #1b2422, #12181a);
+  color: #ffffff;
   overflow: hidden;
 }
 
-.sport-label {
+.sport-slide.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sport-slide-glow {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 0;
+  opacity: 0.6;
+  background: radial-gradient(circle at 18% 25%, var(--team-color, #5b6b78) 0%, transparent 58%);
+}
+
+.sport-slide-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.sport-slide-label {
   font-size: 13px;
-  color: var(--ink-dim);
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
+  color: var(--team-color, var(--accent));
+  background: rgba(255, 255, 255, 0.12);
+  padding: 5px 16px;
+  border-radius: 20px;
+  margin-bottom: 14px;
 }
 
-.sport-teams {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--ink);
-  margin-top: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sport-meta {
+.sport-slide-competition {
   font-size: 14px;
-  color: var(--ink-dim);
-  margin-top: 4px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 26px;
+  text-align: center;
 }
 
-.sport-score {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 32px;
+.sport-slide-matchup {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+}
+
+.sport-slide-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  padding: 0 8px;
+  opacity: 0.72;
+}
+
+.sport-slide-team.is-followed {
+  opacity: 1;
+}
+
+.sport-slide-crest {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4));
+  animation: sportCrestPop 0.55s cubic-bezier(0.22, 0.9, 0.32, 1.2) both;
+}
+
+.sport-slide-team:nth-child(3) .sport-slide-crest {
+  animation-delay: 0.12s;
+}
+
+@keyframes sportCrestPop {
+  0% { transform: scale(0.55); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.sport-slide-team-name {
+  margin-top: 12px;
+  font-size: 16px;
   font-weight: 700;
-  color: var(--ink);
-  margin-left: 20px;
-  white-space: nowrap;
+  text-align: center;
+  line-height: 1.25;
 }
 
-.sport-score.sport-result-win { color: var(--ok); }
-.sport-score.sport-result-loss { color: var(--danger); }
-.sport-score.sport-result-draw { color: var(--ink-dim); }
+.sport-slide-center {
+  flex-shrink: 0;
+  width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 26px;
+}
+
+.sport-slide-score {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+}
+
+.sport-slide.result-win .sport-slide-score { color: #6fd995; }
+.sport-slide.result-loss .sport-slide-score { color: #ff9080; }
+.sport-slide.result-draw .sport-slide-score { color: rgba(255, 255, 255, 0.85); }
+
+.sport-slide-vs {
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.sport-slide-meta {
+  margin-top: 26px;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+}
 
 /* ---------- Statusbar ---------- */
 .statusbar {

@@ -812,6 +812,13 @@ function buildNewsSlide(entry, index) {
   const content = document.createElement("div");
   content.className = "news-slide-content";
 
+  const badgeLabel = item._poolLabel || "Deutschland";
+  const badge = document.createElement("span");
+  badge.className = "news-slide-badge" +
+    (badgeLabel === "Bremen" ? " badge-bremen" : badgeLabel === "Welt" ? " badge-welt" : " badge-de");
+  badge.textContent = badgeLabel;
+  content.appendChild(badge);
+
   if (item.topline) {
     const top = document.createElement("div");
     top.className = "news-slide-topline";
@@ -864,20 +871,52 @@ function stopNewsSlideshow() {
   }
 }
 
+// Ein einzelner Feed-Abruf, der bei Fehlern nicht die anderen Feeds mit
+// runterreißt — kommt ein Pool nicht durch, gibt es halt weniger Slides
+// aus diesem Bereich statt eines komplett leeren News-Panels.
+function fetchNewsPool(url, label, count) {
+  return fetch(url).then(function (res) {
+    if (!res.ok) throw new Error("News-Pool fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    const items = (data && Array.isArray(data.news)) ? data.news.slice(0, count) : [];
+    items.forEach(function (item) { item._poolLabel = label; });
+    return items;
+  }).catch(function (err) {
+    console.error(err);
+    return [];
+  });
+}
+
 function updateNews() {
   if (!els.newsList) return;
 
-  const url = "https://www.tagesschau.de/api2u/news/?regions=" + CONFIG.newsRegion +
-    "&pageSize=" + CONFIG.newsCount;
+  const regionalUrl = "https://www.tagesschau.de/api2u/news/?regions=" + CONFIG.newsRegion +
+    "&pageSize=" + CONFIG.newsRegionCount;
+  const generalUrl = "https://www.tagesschau.de/api2u/news/?pageSize=" + CONFIG.newsGeneralCount;
+  const worldUrl = "https://www.tagesschau.de/api2u/news/?ressort=ausland" +
+    "&pageSize=" + CONFIG.newsWorldCount;
 
-  fetch(url).then(function (res) {
-    if (!res.ok) throw new Error("News-Abruf fehlgeschlagen (" + res.status + ")");
-    return res.json();
-  }).then(function (data) {
-    const items = (data && Array.isArray(data.news)) ? data.news.slice(0, CONFIG.newsCount) : [];
-    if (!items.length) throw new Error("Keine News erhalten");
+  Promise.all([
+    fetchNewsPool(regionalUrl, "Bremen", CONFIG.newsRegionCount),
+    fetchNewsPool(generalUrl, null, CONFIG.newsGeneralCount),
+    fetchNewsPool(worldUrl, "Welt", CONFIG.newsWorldCount),
+  ]).then(function (pools) {
+    let combined = pools[0].concat(pools[1], pools[2]);
 
-    return Promise.all(items.map(function (item, i) {
+    // Dedupe — der allgemeine Feed und der Ausland-Feed können sich
+    // überschneiden, wenn eine Welt-Meldung gerade Top-Thema ist.
+    const seen = {};
+    combined = combined.filter(function (item) {
+      const key = item.sophoraId || item.externalId || item.title;
+      if (!key || seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+
+    if (!combined.length) throw new Error("Keine News erhalten");
+
+    return Promise.all(combined.map(function (item, i) {
       const wantsFullText = i < CONFIG.newsFullCount;
       const bodyPromise = wantsFullText ? fetchArticleBody(item) : Promise.resolve(null);
       return bodyPromise.then(function (body) {
@@ -1505,6 +1544,26 @@ function updateWasteLine() {
 // nächste anstehende Spiel gezeigt, oder — falls gerade keins bekannt
 // ist — das letzte Ergebnis.
 let sportAvailable = false;
+let sportItems = [];
+let sportSlideIndex = 0;
+let sportSlideTimer = null;
+
+const SPORT_LEAGUE_NAMES = {
+  bl1: "Bundesliga",
+  bl2: "2. Bundesliga",
+  bl3: "3. Liga",
+  dfb: "DFB-Pokal",
+};
+
+function isFollowedTeam(team, followedName) {
+  const n = (team && team.teamName) || "";
+  return n.toLowerCase().indexOf((followedName || "").toLowerCase()) !== -1;
+}
+
+function teamColorFor(teamName) {
+  const map = CONFIG.sportTeamColors || {};
+  return map[teamName] || "#5b6b78";
+}
 
 function finalScore(match) {
   if (!match.matchResults || !match.matchResults.length) return null;
@@ -1576,7 +1635,7 @@ function fetchTeamMatches(teamName) {
 
 function buildCrestImg(team) {
   const img = document.createElement("img");
-  img.className = "sport-crest";
+  img.className = "sport-slide-crest";
   img.src = (team && team.teamIconUrl) || "";
   img.alt = "";
   // Manche Wappen-URLs sind mal nicht erreichbar/gesperrt — dann das
@@ -1585,63 +1644,126 @@ function buildCrestImg(team) {
   return img;
 }
 
-function buildSportRow(entry) {
+// Statt einer scrollbaren Liste läuft der Sport-Ticker jetzt als eigene
+// Diashow (gleiches Muster wie die News): eine große "Spieltag-Karte" pro
+// Verein, eigene Vereinsfarbe als Glow hinterm Wappen, Wappen fliegen beim
+// Erscheinen sanft rein. Score/Ergebnis groß und farblich nach Sieg/
+// Niederlage/Unentschieden eingefärbt, bei einem anstehenden Spiel steht
+// dort stattdessen "VS" und unten Datum/Uhrzeit.
+function buildSportSlide(entry, index) {
   const useNext = !!entry.next;
   const match = useNext ? entry.next : entry.last;
+  const followedName = entry.teamName;
+  const color = teamColorFor(followedName);
 
-  const row = document.createElement("div");
-  row.className = "sport-card";
-
-  const crests = document.createElement("span");
-  crests.className = "sport-crests";
-  crests.appendChild(buildCrestImg(match.team1));
-  const vs = document.createElement("span");
-  vs.className = "sport-crests-vs";
-  vs.textContent = "–";
-  crests.appendChild(vs);
-  crests.appendChild(buildCrestImg(match.team2));
-  row.appendChild(crests);
-
-  const text = document.createElement("span");
-  text.className = "sport-text";
-
-  const labelEl = document.createElement("span");
-  labelEl.className = "sport-label";
-  labelEl.textContent = useNext ? "Nächstes Spiel" : "Letztes Spiel";
-  text.appendChild(labelEl);
-
-  const teams = document.createElement("span");
-  teams.className = "sport-teams";
-  const t1 = (match.team1 && (match.team1.shortName || match.team1.teamName)) || "?";
-  const t2 = (match.team2 && (match.team2.shortName || match.team2.teamName)) || "?";
-  teams.textContent = t1 + " – " + t2;
-  text.appendChild(teams);
-
-  const meta = document.createElement("span");
-  meta.className = "sport-meta";
-  const groupName = match.group && match.group.groupName;
-  meta.textContent = formatMatchDate(match.matchDateTime) + (groupName ? " · " + groupName : "");
-  text.appendChild(meta);
-
-  row.appendChild(text);
-
+  let score = null;
+  let outcomeClass = "";
   if (!useNext) {
-    const score = finalScore(match);
-    if (score) {
-      const outcome = matchOutcome(match, score, entry.teamName);
-      const scoreEl = document.createElement("span");
-      scoreEl.className = "sport-score" + (outcome ? " sport-result-" + outcome : "");
-      scoreEl.textContent = score;
-      row.appendChild(scoreEl);
-    }
+    score = finalScore(match);
+    if (score) outcomeClass = " result-" + matchOutcome(match, score, followedName);
   }
 
-  return row;
+  const slide = document.createElement("div");
+  slide.className = "sport-slide" + (index === 0 ? " active" : "") + outcomeClass;
+  slide.style.setProperty("--team-color", color);
+
+  const glow = document.createElement("div");
+  glow.className = "sport-slide-glow";
+  slide.appendChild(glow);
+
+  const content = document.createElement("div");
+  content.className = "sport-slide-content";
+
+  const label = document.createElement("div");
+  label.className = "sport-slide-label";
+  label.textContent = useNext ? "Nächstes Spiel" : "Letztes Ergebnis";
+  content.appendChild(label);
+
+  const groupName = match.group && match.group.groupName;
+  const compText = (SPORT_LEAGUE_NAMES[match.leagueShortcut] || "") +
+    (groupName ? " · " + groupName : "");
+  if (compText.replace(/^\s*·\s*/, "").trim()) {
+    const comp = document.createElement("div");
+    comp.className = "sport-slide-competition";
+    comp.textContent = compText.trim();
+    content.appendChild(comp);
+  }
+
+  const matchup = document.createElement("div");
+  matchup.className = "sport-slide-matchup";
+
+  [match.team1, match.team2].forEach(function (team, i) {
+    if (i === 1) {
+      const center = document.createElement("div");
+      center.className = "sport-slide-center";
+      if (score) {
+        const scoreEl = document.createElement("span");
+        scoreEl.className = "sport-slide-score";
+        scoreEl.textContent = score;
+        center.appendChild(scoreEl);
+      } else {
+        const vsEl = document.createElement("span");
+        vsEl.className = "sport-slide-vs";
+        vsEl.textContent = "VS";
+        center.appendChild(vsEl);
+      }
+      matchup.appendChild(center);
+    }
+
+    const teamEl = document.createElement("div");
+    teamEl.className = "sport-slide-team" +
+      (isFollowedTeam(team, followedName) ? " is-followed" : "");
+    teamEl.appendChild(buildCrestImg(team));
+    const nameEl = document.createElement("span");
+    nameEl.className = "sport-slide-team-name";
+    nameEl.textContent = (team && (team.shortName || team.teamName)) || "?";
+    teamEl.appendChild(nameEl);
+    matchup.appendChild(teamEl);
+  });
+
+  content.appendChild(matchup);
+
+  const meta = document.createElement("div");
+  meta.className = "sport-slide-meta";
+  meta.textContent = formatMatchDate(match.matchDateTime);
+  content.appendChild(meta);
+
+  slide.appendChild(content);
+  return slide;
+}
+
+function showSportSlide(index) {
+  const slides = els.sportBlock ? els.sportBlock.querySelectorAll(".sport-slide") : [];
+  for (let i = 0; i < slides.length; i++) {
+    slides[i].className = slides[i].className.replace(" active", "");
+    if (i === index) slides[i].className += " active";
+  }
+  sportSlideIndex = index;
+}
+
+function startSportSlideshow() {
+  stopSportSlideshow();
+  if (!sportItems.length) return;
+
+  showSportSlide(0);
+  if (sportItems.length < 2) return;
+
+  sportSlideTimer = setInterval(function () {
+    showSportSlide((sportSlideIndex + 1) % sportItems.length);
+  }, CONFIG.sportSlideIntervalMs || 5000);
+}
+
+function stopSportSlideshow() {
+  if (sportSlideTimer) {
+    clearInterval(sportSlideTimer);
+    sportSlideTimer = null;
+  }
 }
 
 function renderSport(entries) {
   if (!els.sportBlock) return;
   els.sportBlock.innerHTML = "";
+  sportItems = entries;
 
   if (!entries.length) {
     els.sportBlock.innerHTML = '<div class="view-placeholder">Keine Spiele gefunden</div>';
@@ -1649,9 +1771,15 @@ function renderSport(entries) {
     return;
   }
 
-  entries.forEach(function (entry) {
-    els.sportBlock.appendChild(buildSportRow(entry));
+  entries.forEach(function (entry, index) {
+    els.sportBlock.appendChild(buildSportSlide(entry, index));
   });
+
+  // Panel könnte gerade schon aktiv sein (z.B. nach einem manuellen
+  // Reload mitten in der Sport-Diashow) — dann direkt starten.
+  const panelEl = document.getElementById("panel-sport");
+  const isActive = panelEl && panelEl.className.indexOf("active") !== -1;
+  if (isActive) startSportSlideshow();
 
   sportAvailable = true;
 }
@@ -1714,6 +1842,12 @@ function showPanel(name) {
     startNewsSlideshow();
   } else {
     stopNewsSlideshow();
+  }
+
+  if (name === "sport") {
+    startSportSlideshow();
+  } else {
+    stopSportSlideshow();
   }
 }
 

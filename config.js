@@ -55,9 +55,9 @@ const CONFIG = {
     departures: 30 * 1000,
     commute: 16 * 1000,
     weather: 15 * 1000,
-    news: 28 * 1000,
+    news: 40 * 1000, // bis zu 7 Slides (Bremen+Deutschland+Welt) à 6s
     music: 15 * 1000,
-    sport: 20 * 1000,
+    sport: 30 * 1000, // bis zu 6 Vereine à 5s Diashow
     quote: 12 * 1000,
   },
   panelDurationMs: 18 * 1000,
@@ -84,12 +84,17 @@ const CONFIG = {
   // Wetter-Panel: wie viele Stunden-Kacheln
   weatherHourCount: 5,
 
-  // News-Panel: Tagesschau-Region (5 = Bremen), wie viele Meldungen
+  // News-Panel: Mischung aus Bremen-Regionalmeldungen (regions=5) und
+  // überregionalen/internationalen Meldungen (allgemeiner Feed + explizit
+  // ressort=ausland), damit nicht nur Lokales läuft.
   newsRegion: 5,
-  newsCount: 4,
-  // Für die ersten X Meldungen wird der volle Artikeltext geladen
-  // (zum Scrollen), der Rest bleibt kurze Headline.
-  newsFullCount: 2,
+  newsRegionCount: 2, // Bremen
+  newsGeneralCount: 2, // Deutschland/Top-Meldungen
+  newsWorldCount: 3, // explizit Ausland/Welt
+  // Für die ersten X Meldungen (in der zusammengeführten Reihenfolge)
+  // wird der volle Artikeltext geladen (zum Scrollen), der Rest bleibt
+  // kurze Headline.
+  newsFullCount: 3,
   refreshNewsMs: 15 * 60 * 1000,
   // Wie lange jeder Artikel in der News-Diashow einzeln zu sehen ist,
   // bevor automatisch zum nächsten gewechselt wird.
@@ -140,4 +145,17 @@ const CONFIG = {
   ],
   sportLeagueWhitelist: ["bl1", "bl2", "bl3", "dfb"],
   refreshSportMs: 30 * 60 * 1000,
+  // Vereinsfarben fürs Sport-Panel (Verlauf/Glow hinterm eigenen Wappen).
+  // Grobe Annäherung an die echten Vereinsfarben, kein Anspruch auf exakten
+  // Markenfarbcode.
+  sportTeamColors: {
+    "Werder Bremen": "#1d9053",
+    "St. Pauli": "#6b4226",
+    "Borussia Dortmund": "#fde100",
+    "Rot-Weiss Essen": "#e2001a",
+    "Schalke": "#004d9d",
+    "Mönchengladbach": "#14532d",
+  },
+  // Wie lange jede Spiel-Karte in der Sport-Diashow einzeln zu sehen ist.
+  sportSlideIntervalMs: 5 * 1000,
 };
