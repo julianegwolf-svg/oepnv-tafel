@@ -17,6 +17,7 @@ const els = {
   clockDate: document.getElementById("clockDate"),
   greetingText: document.getElementById("greetingText"),
   weatherPanel: document.getElementById("panel-weather"),
+  weatherSky: document.getElementById("weatherSky"),
   weatherBig: document.getElementById("weatherBig"),
   weatherBigIcon: document.getElementById("weatherBigIcon"),
   weatherBigTemp: document.getElementById("weatherBigTemp"),
@@ -497,6 +498,23 @@ function updateDepartures() {
 }
 
 // ---------- Wetter ----------
+// Open-Meteo liefert Zeitstempel (hourly.time, daily.sunrise/sunset) mit
+// &timezone=Europe%2FBerlin als lokale Bremer Wanduhrzeit OHNE Zeitzonen-
+// Suffix, z.B. "2026-07-20T05:23" (kein "Z", kein Offset). Safari 12 /
+// altes WebKit parst so einen Date-String beim new Date(...) fälschlich
+// als UTC statt als lokale Zeit (moderne Engines folgen hier korrekt der
+// ES2015-Spec und nehmen lokale Zeit) — Ergebnis war ein konstanter
+// 2-Stunden-Versatz im Sommer (CEST = UTC+2), z.B. Sonnenaufgang
+// "05:23" wurde als "07:23" angezeigt. Fix: Datum/Uhrzeit von Hand aus
+// dem String lesen und über den numerischen Date-Konstruktor bauen
+// (new Date(Jahr, Monat, Tag, Std, Min) wird von JEDER Engine garantiert
+// als lokale Zeit interpretiert, kein Parsing-Spielraum mehr).
+function parseOpenMeteoLocal(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(iso || "");
+  if (!m) return new Date(iso);
+  return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+}
+
 const WEATHER_CODES = {
   0: ["☀️", "Klar"],
   1: ["🌤️", "Überwiegend klar"],
@@ -590,7 +608,13 @@ function setWeatherScene(fxCategory, isDay) {
     els.weatherPanel.classList.remove("fx-" + c);
   });
   if (fxCategory) els.weatherPanel.classList.add("fx-" + fxCategory);
-  els.weatherPanel.style.background = weatherSkyGradient(fxCategory, isDay);
+  // Verlauf sitzt auf dem eigenen .weather-sky-Element (siehe index.html/
+  // style.css), nicht direkt als background auf #panel-weather selbst —
+  // robuster auf altem Safari als background auf einem Flex-Container mit
+  // variabler Inhaltshöhe.
+  if (els.weatherSky) {
+    els.weatherSky.style.background = weatherSkyGradient(fxCategory, isDay);
+  }
 }
 
 function ensureWeatherFxLayers() {
@@ -817,14 +841,14 @@ function renderWeatherDetails(data) {
   if (d.sunrise && d.sunrise[0]) {
     chips.push({
       icon: "🌅",
-      value: new Date(d.sunrise[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
+      value: parseOpenMeteoLocal(d.sunrise[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
       label: "Aufgang",
     });
   }
   if (d.sunset && d.sunset[0]) {
     chips.push({
       icon: "🌇",
-      value: new Date(d.sunset[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
+      value: parseOpenMeteoLocal(d.sunset[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
       label: "Untergang",
     });
   }
@@ -897,11 +921,13 @@ function updateWeather() {
       // hat NIE getroffen, ist immer auf 0 zurückgefallen und hat deshalb
       // dauerhaft die ersten Stunden des Tages (00/01/02 Uhr…) gezeigt,
       // egal wie spät es wirklich war. Jetzt: echter Zeitvergleich statt
-      // Text-Gleichheit, findet die erste Stunde ab jetzt.
+      // Text-Gleichheit, findet die erste Stunde ab jetzt. Nutzt
+      // parseOpenMeteoLocal() statt new Date() direkt — sonst derselbe
+      // 2-Stunden-Safari-Versatz wie beim Sonnenaufgang (siehe dort).
       const nowMs = Date.now();
       let startIdx = data.hourly.time.length - 1;
       for (let j = 0; j < data.hourly.time.length; j++) {
-        if (new Date(data.hourly.time[j]).getTime() >= nowMs) {
+        if (parseOpenMeteoLocal(data.hourly.time[j]).getTime() >= nowMs) {
           startIdx = j;
           break;
         }
@@ -912,7 +938,7 @@ function updateWeather() {
         const idx = startIdx + i;
         if (idx >= data.hourly.time.length) break;
 
-        const hTime = new Date(data.hourly.time[idx]);
+        const hTime = parseOpenMeteoLocal(data.hourly.time[idx]);
         const hTemp = Math.round(data.hourly.temperature_2m[idx]);
         const hCode = data.hourly.weather_code[idx];
         const hEntry = WEATHER_CODES[hCode] || ["🌡️"];

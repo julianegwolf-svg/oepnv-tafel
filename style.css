@@ -353,15 +353,33 @@ html, body {
 
 /* Das ganze Wetter-Panel ist die "Bühne": ein dynamischer Himmel-Verlauf
    (siehe weatherSkyGradient in app.js — nach Wetterlage UND Tag/Nacht,
-   reines CSS, kein Netzwerk, kein Video) als eigener Hintergrund von
-   #panel-weather selbst, plus Bremen-Foto (weich eingeblendet) und
-   CSS-Wettereffekte obendrauf. Alles liegt hinter Kopfzeile, Kachel,
-   Stunden und Details (die sind normal-flow und landen automatisch immer
-   oben). #panel-weather ist als .panel-view bereits position:absolute und
-   füllt die ganze Bühne, die Hintergrund-Layer (position:absolute;
-   inset:0) strecken sich dadurch automatisch über das komplette Panel. */
+   reines CSS, kein Netzwerk, kein Video), Bremen-Foto (weich eingeblendet)
+   und CSS-Wettereffekte liegen als eigene volle Hintergrund-Layer hinter
+   Kopfzeile, Kachel, Stunden und Details.
+   WICHTIGER FIX: #panel-weather ist zwar position:absolute (über
+   .panel-view), bekam aber nie ein eigenes z-index — ohne z-index bildet
+   ein position:absolute-Element KEINEN eigenen Stacking-Context (CSS2.1
+   §9.9). Kinder mit negativem z-index (Foto/Effekte) "entkommen" dadurch
+   nach ganz unten in den Root-Stacking-Context der Seite und landen HINTER
+   dem gesamten Seitenhintergrund — unsichtbar, egal wie oft neu gebaut.
+   Das dürfte der eigentliche Grund gewesen sein, warum die Wetter-
+   Animationen über mehrere Runden hinweg "nicht drin" waren. z-index:0
+   hier erzwingt einen echten eigenen Stacking-Context, in dem die
+   negativen z-index-Layer sicher enthalten bleiben. Der Himmel-Verlauf
+   selbst sitzt jetzt außerdem auf einem eigenen, garantiert vollflächigen
+   .weather-sky-Element (statt direkt als background auf diesem Flex-
+   Container mit Inhalt) — auf altem Safari robuster als ein background
+   direkt auf einem Flex-Container mit variabler Inhaltshöhe. */
 #panel-weather.weather-scene {
+  position: absolute;
+  z-index: 0;
   overflow: hidden;
+}
+
+.weather-sky {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: -5;
   transition: background 1.2s ease;
 }
 
@@ -633,19 +651,23 @@ html, body {
   margin-left: 14px;
 }
 
+/* Dunkles Glas statt dem hellen Standard-Glas (var(--glass-bg)) — die
+   Stunden-Kacheln sitzen jetzt auf dem dunklen Himmel-Verlauf statt auf
+   hellem Seitenhintergrund, helles Glas würde darauf schmutzig-grau statt
+   elegant wirken. */
 .weather-hour {
   flex: 1;
-  background: var(--glass-bg);
+  background: rgba(255, 255, 255, 0.14);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
-  border: 1px solid var(--panel-edge);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 18px 8px;
-  box-shadow: var(--glass-shadow);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
 }
 
 .weather-hour > * + * {
@@ -654,7 +676,7 @@ html, body {
 
 .weather-hour-time {
   font-size: 14px;
-  color: var(--ink-dim);
+  color: rgba(255, 255, 255, 0.75);
   font-weight: 600;
 }
 
@@ -668,7 +690,8 @@ html, body {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 20px;
   font-weight: 700;
-  color: var(--ink);
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 /* Zusatz-Daten: Wind, Luftfeuchte, gefühlte Temperatur, Regenwahr-
@@ -687,10 +710,10 @@ html, body {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--glass-bg);
+  background: rgba(255, 255, 255, 0.14);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
-  border: 1px solid var(--panel-edge);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 12px;
   padding: 8px 12px;
 }
@@ -710,12 +733,13 @@ html, body {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 15px;
   font-weight: 700;
-  color: var(--ink);
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 .weather-detail-label {
   font-size: 11px;
-  color: var(--ink-dim);
+  color: rgba(255, 255, 255, 0.7);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
