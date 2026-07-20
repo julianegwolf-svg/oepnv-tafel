@@ -43,6 +43,17 @@ const CONFIG = {
   // falls Safari nach Tagen im Dauerbetrieb mal zickt.
   fullReloadMs: 3 * 60 * 60 * 1000,
 
+  // Nachtdimmung: die Tafel hängt dauerhaft an der Wand, deshalb nachts
+  // automatisch abdunkeln statt mit voller Helligkeit zu blenden.
+  // startHour/endHour wie bei den Nacht-Begrüßungen (22–5 Uhr), aber
+  // bewusst als eigene Werte, falls die beiden mal auseinanderlaufen
+  // sollen. endHour < startHour bedeutet automatisch "über Mitternacht".
+  nightDim: {
+    startHour: 22,
+    endHour: 5,
+    opacity: 0.65,
+  },
+
   // ---------------------------------------------------------------
   // Karussell: welche Ansichten in welcher Reihenfolge. Läuft einmal
   // komplett durch und fängt dann wieder von vorne an — kein Zurück-

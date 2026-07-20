@@ -60,6 +60,7 @@ html, body {
 }
 
 .panel {
+  position: relative;
   height: 100vh;
   width: 100vw;
   display: flex;
@@ -69,6 +70,27 @@ html, body {
     radial-gradient(circle at 92% 88%, rgba(91, 107, 120, 0.07) 0%, rgba(91, 107, 120, 0) 45%),
     var(--bg);
   padding: 30px;
+}
+
+/* Nachtdimmung: die Tafel hängt dauerhaft an der Wand, nachts blendet
+   volle Helligkeit im Dunkeln. Bewusst eine schlichte, halbtransparente
+   Fläche statt eines CSS-`filter` auf dem ganzen Baum — Filter erzwingen
+   auf altem WebKit eine teure eigene Compositing-Ebene für den kompletten
+   Inhalt, eine einzelne überlagerte Fläche kostet dagegen praktisch
+   nichts. Der Übergang läuft nur einmal beim Phasenwechsel, keine
+   Dauer-Animation. */
+.night-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 3s ease;
+  z-index: 999;
+}
+
+.night-overlay.is-active {
+  opacity: var(--night-dim-opacity, 0.65);
 }
 
 /* ---------- Panel-Akzentfarben ---------- */
@@ -963,6 +985,60 @@ html, body {
 
 .music-list > * + * {
   margin-top: 10px;
+}
+
+.music-hero {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 22px 26px;
+  background: var(--glass-bg);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-l);
+  box-shadow: var(--glass-shadow);
+}
+
+.music-hero-art {
+  flex-shrink: 0;
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius-s);
+  object-fit: cover;
+  background: var(--panel-edge);
+  box-shadow: 0 8px 20px rgba(28, 29, 31, 0.18);
+}
+
+.music-hero-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.music-hero-tag {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.music-hero-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.music-hero-artist {
+  font-size: 16px;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .music-item {

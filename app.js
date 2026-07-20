@@ -15,6 +15,7 @@ const els = {
   lastUpdate: document.getElementById("lastUpdate"),
   clockTime: document.getElementById("clockTime"),
   clockDate: document.getElementById("clockDate"),
+  nightOverlay: document.getElementById("nightOverlay"),
   greetingText: document.getElementById("greetingText"),
   weatherPanel: document.getElementById("panel-weather"),
   weatherSky: document.getElementById("weatherSky"),
@@ -53,6 +54,30 @@ function tickClock() {
     day: "2-digit",
     month: "long",
   });
+  updateNightDim(now.getHours());
+}
+
+// ---------- Nachtdimmung ----------
+// Läuft im selben Sekunden-Takt wie die Uhr mit (kein eigener Timer nötig)
+// — nur ein Zahlenvergleich + ein Klassen-Toggle auf einem einzigen
+// Element, kostet praktisch nichts.
+function isNightHour(hour) {
+  const cfg = CONFIG.nightDim;
+  if (!cfg) return false;
+  const start = cfg.startHour;
+  const end = cfg.endHour;
+  if (start === end) return false;
+  // z.B. 22–5 Uhr: Bereich geht über Mitternacht.
+  if (start > end) return hour >= start || hour < end;
+  return hour >= start && hour < end;
+}
+
+function updateNightDim(hour) {
+  if (!els.nightOverlay) return;
+  const cfg = CONFIG.nightDim;
+  const active = isNightHour(hour);
+  els.nightOverlay.style.setProperty("--night-dim-opacity", (cfg && cfg.opacity != null) ? cfg.opacity : 0.65);
+  els.nightOverlay.classList.toggle("is-active", active);
 }
 
 // ---------- Begrüßung (ersetzt das Mini-Wetter im Header) ----------
@@ -1183,13 +1208,17 @@ function updateNews() {
 }
 
 // ---------- Musik-Charts (Apple) ----------
+// Politur-Runde: Platz 1 bekommt eine große Hero-Kachel (größeres Cover,
+// größere Schrift, Kronen-Badge) statt in der Liste unterzugehen — dieselbe
+// "ein Gewinner sticht heraus"-Idee wie beim Pendel-Panel. Plätze 2+
+// bleiben die kompakte Listenansicht von vorher.
 function updateMusic() {
   if (!els.musicList) return;
 
   const url = "https://rss.marketingtools.apple.com/api/v2/de/music/most-played/" +
-    CONFIG.musicCount + "/songs.json";
+    CONFIG.musicCount + "/songs.json?_=" + Date.now();
 
-  fetch(url).then(function (res) {
+  fetch(url, { cache: "no-store" }).then(function (res) {
     if (!res.ok) throw new Error("Musik-Abruf fehlgeschlagen (" + res.status + ")");
     return res.json();
   }).then(function (data) {
@@ -1197,13 +1226,47 @@ function updateMusic() {
     if (!results.length) throw new Error("Keine Musikdaten erhalten");
 
     els.musicList.innerHTML = "";
-    results.slice(0, CONFIG.musicCount).forEach(function (song, i) {
+    const top = results[0];
+
+    if (top) {
+      const hero = document.createElement("div");
+      hero.className = "music-hero";
+
+      const art = document.createElement("img");
+      art.className = "music-hero-art";
+      art.src = top.artworkUrl100 || "";
+      art.alt = "";
+      hero.appendChild(art);
+
+      const text = document.createElement("div");
+      text.className = "music-hero-text";
+
+      const tag = document.createElement("span");
+      tag.className = "music-hero-tag";
+      tag.textContent = "👑 Nr. 1 in Deutschland";
+      text.appendChild(tag);
+
+      const title = document.createElement("span");
+      title.className = "music-hero-title";
+      title.textContent = top.name || "";
+      text.appendChild(title);
+
+      const artist = document.createElement("span");
+      artist.className = "music-hero-artist";
+      artist.textContent = top.artistName || "";
+      text.appendChild(artist);
+
+      hero.appendChild(text);
+      els.musicList.appendChild(hero);
+    }
+
+    results.slice(1, CONFIG.musicCount).forEach(function (song, i) {
       const row = document.createElement("div");
       row.className = "music-item";
 
       const rank = document.createElement("span");
       rank.className = "music-rank";
-      rank.textContent = (i + 1) + ".";
+      rank.textContent = (i + 2) + ".";
 
       const art = document.createElement("img");
       art.className = "music-art";
