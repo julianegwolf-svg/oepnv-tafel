@@ -208,13 +208,15 @@ html, body {
 }
 
 /* Soll quer durch den Raum ablesbar sein, nicht nur aus der Nähe —
-   deutlich größer als vorher (58px). */
+   deutlich größer als vorher (58px). Breiter statt höher: die Höhe
+   (font-size) bleibt bei 92px, aber deutlich mehr letter-spacing zieht
+   die Ziffern spürbar auseinander, ohne die Zeile höher zu machen. */
 .clock-time {
   display: block;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 92px;
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.12em;
   line-height: 1.05;
   color: var(--ink);
 }
