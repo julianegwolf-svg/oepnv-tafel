@@ -1297,14 +1297,35 @@ function updateNews() {
 function updateMusic() {
   if (!els.musicList) return;
 
-  const url = "https://rss.marketingtools.apple.com/api/v2/de/music/most-played/" +
-    CONFIG.musicCount + "/songs.json?_=" + Date.now();
+  // ECHTER BUG gefunden (per curl gegen die echte API verifiziert, nicht
+  // nur Sandbox-Netzwerk): rss.marketingtools.apple.com liefert KEINEN
+  // Access-Control-Allow-Origin-Header — ein fetch() von einer fremden
+  // Domain (wie unserer GitHub-Pages-Seite) wird von JEDEM Browser wegen
+  // CORS blockiert, dauerhaft, unabhängig von Cache-Buster oder
+  // Retry-Logik. Deshalb blieb das Panel bisher für immer bei "Lädt…"
+  // hängen. itunes.apple.com/.../rss/topsongs liefert dieselben Charts
+  // (Apples älteres RSS-Feed-Format), aber MIT offenem CORS
+  // (access-control-allow-origin: *) — funktioniert nachweislich.
+  const url = "https://itunes.apple.com/de/rss/topsongs/limit=" +
+    CONFIG.musicCount + "/json?_=" + Date.now();
 
   fetch(url, { cache: "no-store" }).then(function (res) {
     if (!res.ok) throw new Error("Musik-Abruf fehlgeschlagen (" + res.status + ")");
     return res.json();
   }).then(function (data) {
-    const results = (data && data.feed && Array.isArray(data.feed.results)) ? data.feed.results : [];
+    const entries = (data && data.feed && Array.isArray(data.feed.entry)) ? data.feed.entry : [];
+    // Altes RSS-Feed-Format (im:name/im:artist/im:image) auf dieselbe
+    // {name, artistName, artworkUrl100}-Form bringen wie zuvor — der Rest
+    // der Rendering-Logik unten bleibt dadurch unverändert.
+    const results = entries.map(function (e) {
+      const images = Array.isArray(e["im:image"]) ? e["im:image"] : [];
+      const bestImage = images.length ? images[images.length - 1] : null;
+      return {
+        name: e["im:name"] && e["im:name"].label,
+        artistName: e["im:artist"] && e["im:artist"].label,
+        artworkUrl100: bestImage && bestImage.label,
+      };
+    });
     if (!results.length) throw new Error("Keine Musikdaten erhalten");
 
     els.musicList.innerHTML = "";
@@ -2974,6 +2995,15 @@ function showSportSlide(index) {
     slides[i].className = slides[i].className.replace(" active", "");
     if (i === index) slides[i].className += " active";
   }
+
+  // Gleiche Fortschritts-Punkte wie bei der News-Diashow (siehe
+  // showNewsSlide) — bisher auch hier nicht erkennbar, wie viele Karten
+  // insgesamt kommen.
+  const dots = els.sportBlock ? els.sportBlock.querySelectorAll(".news-progress-dot") : [];
+  for (let i = 0; i < dots.length; i++) {
+    dots[i].className = "news-progress-dot" + (i === index ? " active" : "");
+  }
+
   sportSlideIndex = index;
 }
 
@@ -3013,6 +3043,18 @@ function renderSport(entries) {
       : buildSportSlide(entry, index);
     els.sportBlock.appendChild(slideEl);
   });
+
+  // Fortschritts-Punkte, gleiches Muster wie bei der News-Diashow.
+  if (entries.length > 1) {
+    const progress = document.createElement("div");
+    progress.className = "news-progress";
+    entries.forEach(function () {
+      const dot = document.createElement("span");
+      dot.className = "news-progress-dot";
+      progress.appendChild(dot);
+    });
+    els.sportBlock.appendChild(progress);
+  }
 
   // Panel könnte gerade schon aktiv sein (z.B. nach einem manuellen
   // Reload mitten in der Sport-Diashow) — dann direkt starten.
