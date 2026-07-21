@@ -3573,11 +3573,31 @@ function showPanel(name) {
 const progressFillEl = document.getElementById("progressFill");
 let carouselTimer = null;
 
-function durationForPanel(name) {
-  if (CONFIG.panelDurations && CONFIG.panelDurations[name]) {
-    return CONFIG.panelDurations[name];
+// Findet die aktuell zutreffende Zeitperiode aus CONFIG.timeBasedPriority
+// (siehe dort für die Begründung) — Perioden dürfen über Mitternacht
+// gehen (z.B. startHour:22, endHour:6).
+function currentPriorityPeriod() {
+  const periods = CONFIG.timeBasedPriority || [];
+  const hour = new Date().getHours();
+  for (let i = 0; i < periods.length; i++) {
+    const p = periods[i];
+    const inRange = p.startHour <= p.endHour
+      ? (hour >= p.startHour && hour < p.endHour)
+      : (hour >= p.startHour || hour < p.endHour);
+    if (inRange) return p;
   }
-  return CONFIG.panelDurationMs;
+  return null;
+}
+
+// Zeitbewusste Dauer: boost-Panels der aktuellen Periode laufen länger,
+// alle anderen kürzer (muteFactor) — ohne passende Periode unverändert.
+function durationForPanel(name) {
+  const base = (CONFIG.panelDurations && CONFIG.panelDurations[name]) || CONFIG.panelDurationMs;
+  const period = currentPriorityPeriod();
+  if (!period) return base;
+  const isBoosted = period.boost && period.boost.indexOf(name) !== -1;
+  const factor = isBoosted ? (period.boostFactor || 1) : (period.muteFactor != null ? period.muteFactor : 1);
+  return Math.round(base * factor);
 }
 
 function resetProgressBar(durationMs) {
@@ -3609,7 +3629,20 @@ function shuffleSequence() {
     const j = Math.floor(Math.random() * (i + 1));
     const tmp = rest[i]; rest[i] = rest[j]; rest[j] = tmp;
   }
-  activeSequence = [anchor].concat(rest);
+
+  // Zeitbewusste Priorität, Teil 2 (siehe durationForPanel für Teil 1 —
+  // die Dauer): boost-Panels der aktuellen Periode nach dem Mischen nach
+  // vorne sortieren, damit sie nicht nur länger, sondern auch früher in
+  // der Runde drankommen. Innerhalb von "boost" und "Rest" bleibt die
+  // zufällige Reihenfolge von oben erhalten — kein starres Muster.
+  const period = currentPriorityPeriod();
+  if (period && period.boost && period.boost.length) {
+    const boosted = rest.filter(function (n) { return period.boost.indexOf(n) !== -1; });
+    const others = rest.filter(function (n) { return period.boost.indexOf(n) === -1; });
+    activeSequence = [anchor].concat(boosted, others);
+  } else {
+    activeSequence = [anchor].concat(rest);
+  }
 }
 
 function pickNextAvailablePanel() {

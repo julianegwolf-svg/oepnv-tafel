@@ -87,6 +87,34 @@ const CONFIG = {
   panelDurationMs: 18 * 1000,
 
   // ---------------------------------------------------------------
+  // Zeitbewusste Panel-Priorität: welche Panels je nach Tageszeit mehr
+  // Aufmerksamkeit bekommen (länger angezeigt UND weiter vorne in der
+  // gemischten Reihenfolge, siehe boostFactor/muteFactor + shuffleSequence
+  // in app.js) und welche kürzer/weiter hinten. "boost" bekommt
+  // boostFactor auf die Dauer aus panelDurations, alle anderen Panels
+  // (nicht "boost") bekommen muteFactor. Perioden dürfen über Mitternacht
+  // gehen (startHour > endHour). Trifft keine Periode zu, bleibt alles
+  // beim Standardwert (Faktor 1).
+  // ---------------------------------------------------------------
+  timeBasedPriority: [
+    { // Vor der Arbeit: raus aus dem Haus zählt am meisten.
+      startHour: 6, endHour: 9,
+      boost: ["departures", "commute", "weather"],
+      boostFactor: 1.6, muteFactor: 0.7,
+    },
+    { // Feierabend: der Weg nach Hause plus, ob man noch trocken ankommt.
+      startHour: 16, endHour: 19,
+      boost: ["departures", "weather"],
+      boostFactor: 1.5, muteFactor: 0.8,
+    },
+    { // Abends zuhause: Unterhaltung/Wissen wichtiger als Pendel-Daten.
+      startHour: 19, endHour: 23,
+      boost: ["news", "music", "quiz", "trivia", "riddle", "events", "sport"],
+      boostFactor: 1.3, muteFactor: 0.75,
+    },
+  ],
+
+  // ---------------------------------------------------------------
   // Pendel-Panel: Arbeitsweg mit Rad/Bus/Auto zu Max Müller GmbH.
   // Adressen werden beim Laden einmalig über Transitous geokodiert
   // (wie schon bei der Haltestellensuche), danach gecacht.
