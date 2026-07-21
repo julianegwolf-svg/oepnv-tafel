@@ -87,13 +87,18 @@ html, body {
    Inhalt, eine einzelne überlagerte Fläche kostet dagegen praktisch
    nichts. Der Übergang läuft nur einmal beim Phasenwechsel, keine
    Dauer-Animation. */
+/* War 3s Übergang — beim Aufwachen aus dem Nacht-Tiefschlaf (siehe
+   nightSleep in config.js) hieße das: im Dunkeln stehen, antippen, und
+   dann 3 weitere Sekunden im Dunkeln warten. 0.6s bleibt sanft für den
+   normalen Dimm-Übergang, ist aber beim Touch-Aufwachen nicht mehr
+   spürbar träge. */
 .night-overlay {
   position: absolute;
   inset: 0;
   background: #000;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 3s ease;
+  transition: opacity 0.6s ease;
   z-index: 999;
 }
 
@@ -327,6 +332,65 @@ html, body {
 .panel-nav-overlay.is-open {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* ---------- Ambient-Modus ---------- */
+/* Nach CONFIG.ambientAfterMs Untätigkeit (siehe armAmbientTimer in app.js)
+   ist wahrscheinlich niemand mehr da, der Pendel-/Abfahrtsdaten braucht —
+   statt stur weiter für ein leeres Zimmer durchzuschalten, ein ruhiger
+   rein dekorativer Anzeigemodus: nur die Uhrzeit + ein langsam
+   driftender Farbverlauf. Jeder Touch beendet ihn sofort wieder (siehe
+   markUserActivity). Die Drift-Animation läuft rein über transform
+   (Compositor, keine Neuberechnung von Layout/Paint pro Frame) — bei
+   einer 70s-Zykluszeit und nur aktiv, wenn ohnehin schon eine Stunde
+   nichts passiert ist, spielt die Kosten hier ohnehin kaum eine Rolle. */
+.ambient-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 950;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0f1830 0%, #1b2846 45%, #2f4a6b 100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.2s ease;
+}
+
+.ambient-overlay.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ambient-overlay::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(169, 121, 63, 0.28), transparent 45%),
+    radial-gradient(circle at 70% 70%, rgba(91, 107, 120, 0.28), transparent 45%);
+  animation: ambientDrift 70s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes ambientDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-6%, 4%) scale(1.08); }
+}
+
+.ambient-clock {
+  position: relative;
+  z-index: 1;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 160px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
 }
 
 .panel-nav-grid {

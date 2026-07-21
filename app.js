@@ -17,6 +17,8 @@ const els = {
   clockTime: document.getElementById("clockTime"),
   clockDate: document.getElementById("clockDate"),
   nightOverlay: document.getElementById("nightOverlay"),
+  ambientOverlay: document.getElementById("ambientOverlay"),
+  ambientClock: document.getElementById("ambientClock"),
   weatherPanel: document.getElementById("panel-weather"),
   weatherSky: document.getElementById("weatherSky"),
   weatherBig: document.getElementById("weatherBig"),
@@ -188,6 +190,9 @@ function tickClock() {
     day: "2-digit",
     month: "long",
   });
+  if (els.ambientClock) {
+    els.ambientClock.textContent = now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  }
   updateNightDim(now.getHours());
 }
 
@@ -195,8 +200,7 @@ function tickClock() {
 // Läuft im selben Sekunden-Takt wie die Uhr mit (kein eigener Timer nötig)
 // — nur ein Zahlenvergleich + ein Klassen-Toggle auf einem einzigen
 // Element, kostet praktisch nichts.
-function isNightHour(hour) {
-  const cfg = CONFIG.nightDim;
+function isInHourRange(hour, cfg) {
   if (!cfg) return false;
   const start = cfg.startHour;
   const end = cfg.endHour;
@@ -206,12 +210,30 @@ function isNightHour(hour) {
   return hour >= start && hour < end;
 }
 
+function isNightHour(hour) {
+  return isInHourRange(hour, CONFIG.nightDim);
+}
+
+// true, solange kürzlich (siehe CAROUSEL_IDLE_RESUME_MS-Fenster) irgendwo
+// getippt wurde — gesetzt in deferCarouselAdvance/pauseCarouselIndefinitely,
+// zurückgesetzt sobald der Leerlauf-Timer dort tatsächlich abläuft. Der
+// Tiefschlaf greift nur, wenn NICHT kürzlich berührt wurde, siehe
+// updateNightDim unten.
+let recentlyTouched = false;
+
 function updateNightDim(hour) {
   if (!els.nightOverlay) return;
   const cfg = CONFIG.nightDim;
-  const active = isNightHour(hour);
-  els.nightOverlay.style.setProperty("--night-dim-opacity", (cfg && cfg.opacity != null) ? cfg.opacity : 0.65);
-  els.nightOverlay.classList.toggle("is-active", active);
+  const sleepCfg = CONFIG.nightSleep;
+  const dimActive = isNightHour(hour);
+  const sleepActive = isInHourRange(hour, sleepCfg) && !recentlyTouched;
+
+  const opacity = sleepActive && sleepCfg && sleepCfg.opacity != null
+    ? sleepCfg.opacity
+    : ((cfg && cfg.opacity != null) ? cfg.opacity : 0.65);
+
+  els.nightOverlay.style.setProperty("--night-dim-opacity", opacity);
+  els.nightOverlay.classList.toggle("is-active", dimActive || sleepActive);
 }
 
 // ---------- Haltestellen auflösen ----------
@@ -3813,6 +3835,7 @@ function pauseSlideshowTimers() {
 }
 
 function pauseCarouselIndefinitely() {
+  recentlyTouched = true;
   if (carouselTimer) { clearTimeout(carouselTimer); carouselTimer = null; }
   if (carouselIdleTimer) { clearTimeout(carouselIdleTimer); carouselIdleTimer = null; }
   freezeProgressBar();
@@ -3845,6 +3868,7 @@ function resumeCarouselFromFraction() {
 }
 
 function deferCarouselAdvance() {
+  markUserActivity();
   if (panelNavOpen) return; // Übersicht offen: pauseCarouselIndefinitely() übernimmt das
   if (!activeSequence || activeSequence.length < 2) return;
 
@@ -3858,8 +3882,43 @@ function deferCarouselAdvance() {
   if (carouselIdleTimer) clearTimeout(carouselIdleTimer);
   carouselIdleTimer = setTimeout(function () {
     carouselIdleTimer = null;
+    recentlyTouched = false;
     resumeCarouselFromFraction();
   }, CAROUSEL_IDLE_RESUME_MS);
+}
+
+// ---------- Ambient-Modus ---------- (siehe CONFIG.ambientAfterMs / .ambient-overlay)
+let ambientTimer = null;
+let ambientActive = false;
+
+function armAmbientTimer() {
+  if (ambientTimer) clearTimeout(ambientTimer);
+  ambientTimer = setTimeout(enterAmbientMode, CONFIG.ambientAfterMs || 60 * 60 * 1000);
+}
+
+function enterAmbientMode() {
+  if (ambientActive) return;
+  ambientActive = true;
+  pauseCarouselIndefinitely();
+  if (els.ambientOverlay) els.ambientOverlay.classList.add("is-active");
+}
+
+function exitAmbientMode() {
+  if (!ambientActive) return;
+  ambientActive = false;
+  if (els.ambientOverlay) els.ambientOverlay.classList.remove("is-active");
+  // Nach einer Stunde+ Stillstand lieber frisch mit voller Anzeigedauer
+  // starten als eine längst bedeutungslose Rest-Fraktion fortzusetzen.
+  scheduleCarousel();
+}
+
+// Zentraler Einstiegspunkt für "hier ist gerade jemand" — hält den
+// Nacht-Tiefschlaf zurück (recentlyTouched), verschiebt den Ambient-
+// Timer und beendet den Ambient-Modus sofort, falls gerade aktiv.
+function markUserActivity() {
+  recentlyTouched = true;
+  armAmbientTimer();
+  if (ambientActive) exitAmbientMode();
 }
 
 function buildPanelNavGrid() {
@@ -3999,6 +4058,7 @@ function init() {
   initRadioBar();
   initPanelNav();
   initStageSwipe();
+  armAmbientTimer();
 
   tickClock();
   setInterval(tickClock, CONFIG.refreshClockMs);

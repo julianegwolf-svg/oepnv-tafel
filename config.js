@@ -54,6 +54,24 @@ const CONFIG = {
     opacity: 0.65,
   },
 
+  // Echter Tiefschlaf mitten in der Nacht (Teilmenge von nightDim oben):
+  // fast schwarz statt nur gedimmt, da um 2 Uhr nachts realistisch niemand
+  // Abfahrten prüfen will. Wacht sofort auf, sobald jemand die Tafel
+  // berührt (siehe recentlyTouched in app.js) — fällt dann auf die normale
+  // nightDim-Helligkeit zurück, nicht auf volle Tageshelligkeit.
+  nightSleep: {
+    startHour: 1,
+    endHour: 5,
+    opacity: 0.94,
+  },
+
+  // Ambient-Modus: nach so langer Untätigkeit ist niemand mehr da, der
+  // Pendel-/Abfahrtsdaten braucht — die Tafel wechselt dann in einen
+  // ruhigen, rein dekorativen Anzeigemodus (nur Uhrzeit + langsamer
+  // Farbverlauf) statt weiter für ein leeres Zimmer durchzuschalten.
+  // Jeder Touch beendet den Modus sofort wieder.
+  ambientAfterMs: 60 * 60 * 1000,
+
   // ---------------------------------------------------------------
   // Karussell: welche Ansichten in welcher Reihenfolge. Läuft einmal
   // komplett durch und fängt dann wieder von vorne an — kein Zurück-
