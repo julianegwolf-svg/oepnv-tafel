@@ -1182,13 +1182,42 @@ html, body {
   padding: 24px 30px 14px;
 }
 
+/* Bremer Skyline (Dom-Türme, Rathaus-Staffelgiebel, Roland) als ganz
+   dezentes Wasserzeichen in der bisher leeren Fläche zwischen der großen
+   Temperatur-Anzeige und der Stunden-/Detail-Karte — füllt den Leerraum
+   UND gibt dem Panel etwas lokale Identität statt eines austauschbaren
+   generischen Wetter-Widgets. flex:1 nimmt genau den Platz ein, der
+   vorher als reine Lücke leer blieb; die eigentliche Silhouette sitzt
+   darin unten bündig (siehe .weather-skyline-svg), damit sie wie ein
+   Horizont direkt über der Bottom-Sheet-Karte wirkt. Bewusst stilisiert,
+   keine architektonisch exakte Nachbildung — als Wiedererkennungs-Silhouette
+   reicht das. */
+.weather-skyline {
+  flex: 1;
+  position: relative;
+  min-height: 50px;
+}
+
+.weather-skyline-svg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 140px;
+  max-height: 100%;
+  color: #000;
+  opacity: 0.16;
+  pointer-events: none;
+}
+
 /* Runde 2: Stunden + Zusatz-Daten stecken jetzt zusammen in einer
-   "Bottom-Sheet"-Fläche statt lose auf dem Verlauf zu schweben — per
-   margin-top:auto sitzt sie immer unten, unabhängig davon wie viel Platz
-   Icon/Temperatur oben brauchen. Wirkt dadurch wie ein eigenständiges
-   Bedien-/Info-Panel statt verstreuter Einzel-Kacheln. */
+   "Bottom-Sheet"-Fläche statt lose auf dem Verlauf zu schweben. Sitzt per
+   .weather-skyline (siehe oben, nimmt den übrigen freien Platz ein) immer
+   unten, unabhängig davon wie viel Platz Icon/Temperatur oben brauchen.
+   Wirkt dadurch wie ein eigenständiges Bedien-/Info-Panel statt
+   verstreuter Einzel-Kacheln. */
 .weather-bottom-sheet {
-  margin-top: auto;
   background: rgba(8, 12, 18, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: var(--radius-l);
