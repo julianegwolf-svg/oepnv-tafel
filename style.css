@@ -557,6 +557,43 @@ html, body {
   min-height: 0;
 }
 
+/* "Sollte ich jetzt los?"-Karte: Synthese aus Gehzeit + nächster
+   erreichbarer Abfahrt + Regen-Hinweis (siehe renderLeaveNowBanner in
+   app.js) statt drei Panels einzeln durchschauen zu müssen. Leer/
+   unsichtbar (kein eigener Platzverbrauch), solange keine Gehzeit oder
+   keine erreichbare Abfahrt bekannt ist. */
+.leave-now-banner {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 18px 24px;
+  border-radius: var(--radius-m);
+  background: rgba(169, 121, 63, 0.14);
+  border: 1px solid rgba(169, 121, 63, 0.3);
+}
+
+.leave-now-banner.is-visible {
+  display: flex;
+}
+
+.leave-now-banner.is-urgent {
+  background: rgba(169, 121, 63, 0.24);
+  border-color: var(--brass);
+}
+
+.leave-now-headline {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--brass-ink);
+}
+
+.leave-now-sub {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-dim);
+}
+
 .board-head {
   display: grid;
   grid-template-columns: 100px 1fr 130px;

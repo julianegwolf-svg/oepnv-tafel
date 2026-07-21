@@ -11,6 +11,7 @@ const API_BASE = "https://api.transitous.org/api";
 
 const els = {
   rows: document.getElementById("departureRows"),
+  leaveNowBanner: document.getElementById("leaveNowBanner"),
   status: document.getElementById("statusText"),
   lastUpdate: document.getElementById("lastUpdate"),
   clockTime: document.getElementById("clockTime"),
@@ -399,18 +400,61 @@ function walkUrgencyClass(minutesUntilLeave) {
   return " walk-ok";
 }
 
+// "Sollte ich jetzt los?"-Kopfzeile überm Abfahrten-Board: statt drei
+// Panels (Wetter/Pendel/Abfahrten) einzeln durchzuschauen und selbst
+// zusammenzurechnen, eine einzige Handlungsempfehlung aus dem, was die
+// Tafel eh schon weiß — nächste erreichbare Abfahrt (samt echter
+// Gehzeit-Berechnung, siehe resolveWalkTime) plus Regen-Hinweis aus dem
+// Wetter-Abruf (siehe rainSoonForLeave). Nur echte Synthese aus bereits
+// vorhandenen Daten, kein zusätzlicher API-Aufruf.
+function renderLeaveNowBanner(soonestDep, now) {
+  if (!els.leaveNowBanner) return;
+  els.leaveNowBanner.innerHTML = "";
+  els.leaveNowBanner.classList.remove("is-visible", "is-urgent");
+
+  if (!soonestDep || walkMinutesToStop == null) return;
+
+  const place = soonestDep.place || {};
+  const when = place.departure || place.scheduledDeparture;
+  if (!when) return;
+
+  const whenDate = new Date(when);
+  const leaveByMs = whenDate.getTime() - walkMinutesToStop * 60000;
+  const minutesUntilLeave = Math.round((leaveByMs - now) / 60000);
+
+  const headline = document.createElement("div");
+  headline.className = "leave-now-headline";
+  headline.textContent = minutesUntilLeave <= 0
+    ? "🚪 Geh jetzt los!"
+    : "🚪 Geh in " + minutesUntilLeave + (minutesUntilLeave === 1 ? " Minute los" : " Minuten los");
+
+  const lineName = soonestDep.routeShortName || soonestDep.tripShortName || soonestDep.displayName || "?";
+  const dest = soonestDep.headsign || "";
+  const timeStr = whenDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+
+  const sub = document.createElement("div");
+  sub.className = "leave-now-sub";
+  sub.textContent = "Linie " + lineName + (dest ? " nach " + dest : "") + " · ab " + timeStr +
+    (rainSoonForLeave ? " · ☔ Schirm mitnehmen" : "");
+
+  els.leaveNowBanner.appendChild(headline);
+  els.leaveNowBanner.appendChild(sub);
+  els.leaveNowBanner.classList.add("is-visible");
+  els.leaveNowBanner.classList.toggle("is-urgent", minutesUntilLeave <= 2);
+}
+
 function renderDepartures(departures) {
   els.rows.innerHTML = "";
+  const now = Date.now();
 
   if (!departures.length) {
     const div = document.createElement("div");
     div.className = "row placeholder";
     div.textContent = "Keine Abfahrten in den nächsten 60 Minuten";
     els.rows.appendChild(div);
+    renderLeaveNowBanner(null, now);
     return;
   }
-
-  const now = Date.now();
 
   // Ist die Gehzeit bekannt: Abfahrten rausfiltern, die eh nicht mehr zu
   // schaffen sind (mehr als 1 Minute "zu spät los"). Sonst steht die Tafel
@@ -435,8 +479,12 @@ function renderDepartures(departures) {
     div.className = "row placeholder";
     div.textContent = "Gerade keine erreichbare Abfahrt — nächste in Kürze";
     els.rows.appendChild(div);
+    renderLeaveNowBanner(null, now);
     return;
   }
+
+  const firstReachable = visible.filter(function (d) { return !d.cancelled && !d.tripCancelled; })[0];
+  renderLeaveNowBanner(firstReachable, now);
 
   visible.slice(0, CONFIG.maxRows).forEach(function (dep) {
     const place = dep.place || {};
@@ -604,6 +652,11 @@ const WEATHER_CODES = {
 };
 
 const RAIN_CODES = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99];
+
+// Wird von updateWeather() gesetzt, vom Abfahrten-Panel gelesen (siehe
+// renderLeaveNowBanner) — regnet es gerade oder in der nächsten Stunde,
+// bekommt die "Sollte ich jetzt los?"-Karte einen Schirm-Hinweis dazu.
+let rainSoonForLeave = false;
 
 // ---------- Wetter-Icons als eigene SVGs statt Emoji ----------
 // Emoji-Wettericons (☀️🌧️🌙 …) rendern je nach Gerät/Systemschriftart
@@ -1191,6 +1244,13 @@ function updateWeather() {
           els.weatherTip.classList.remove("is-visible");
         }
       }
+
+      // Für die "Sollte ich jetzt los?"-Karte im Abfahrten-Panel: reicht ein
+      // einfaches Ja/Nein, ob es gerade oder in der nächsten Stunde regnet —
+      // die ausführliche Formulierung übernimmt weiterhin buildWeatherTip()
+      // fürs Wetter-Panel selbst, hier geht's nur um den Schirm-Hinweis.
+      rainSoonForLeave = RAIN_CODES.indexOf(code) !== -1 ||
+        RAIN_CODES.indexOf(data.hourly.weather_code[startIdx + 1]) !== -1;
     }
   }).catch(function (err) {
     console.error(err);
