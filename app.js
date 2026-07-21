@@ -1391,7 +1391,15 @@ function buildNewsSlide(entry, index) {
   if (imageUrl) {
     const media = document.createElement("div");
     media.className = "news-slide-media";
-    media.style.backgroundImage = 'url("' + imageUrl + '")';
+    // Bild-URL nur als data-Attribut merken, nicht sofort als
+    // background-image setzen (außer beim direkt sichtbaren ersten Slide) —
+    // alle Slides bleiben wegen der Crossfade-Optik dauerhaft im DOM (siehe
+    // .panel-view-Kommentar in style.css), auf einem speicherschwachen
+    // Gerät (iPad Air 1, 1GB RAM) würden sonst alle Diashow-Bilder
+    // gleichzeitig im GPU-Speicher gehalten statt nur das sichtbare.
+    // showNewsSlide() lädt/entlädt die restlichen Bilder bei Bedarf.
+    media.setAttribute("data-bg", imageUrl);
+    if (index === 0) media.style.backgroundImage = 'url("' + imageUrl + '")';
     slide.appendChild(media);
 
     const scrim = document.createElement("div");
@@ -1433,12 +1441,35 @@ function buildNewsSlide(entry, index) {
   return slide;
 }
 
+// Lädt das Bild eines Slides erst, wenn er tatsächlich aktiv wird
+// (data-bg → background-image), und wirft die Bilder aller anderen Slides
+// wieder raus, sobald ihre Ausblend-Transition vorbei ist — Gegenstück zum
+// data-bg-Setup in buildNewsSlide/buildSportNewsSlide (siehe Kommentar
+// dort). delayMs muss zur jeweiligen CSS-Transition-Dauer passen (.news-
+// slide: 0.9s, .sport-slide: 0.8s), sonst verschwindet das Bild mitten in
+// der Überblendung.
+function applySlideMediaSwap(slides, activeIndex, delayMs) {
+  const activeMedia = slides[activeIndex] && slides[activeIndex].querySelector(".news-slide-media");
+  if (activeMedia) {
+    const url = activeMedia.getAttribute("data-bg");
+    if (url) activeMedia.style.backgroundImage = 'url("' + url + '")';
+  }
+  setTimeout(function () {
+    for (let i = 0; i < slides.length; i++) {
+      if (i === activeIndex) continue;
+      const media = slides[i].querySelector(".news-slide-media");
+      if (media) media.style.backgroundImage = "";
+    }
+  }, delayMs);
+}
+
 function showNewsSlide(index) {
   const slides = els.newsList ? els.newsList.querySelectorAll(".news-slide") : [];
   for (let i = 0; i < slides.length; i++) {
     slides[i].className = slides[i].className.replace(" active", "");
     if (i === index) slides[i].className += " active";
   }
+  applySlideMediaSwap(slides, index, 950);
 
   // Fortschritts-Punkte — bisher war völlig unsichtbar, wie viele
   // Meldungen insgesamt kommen bzw. wie weit man schon durch ist.
@@ -3485,7 +3516,10 @@ function buildSportNewsSlide(item, index) {
   if (imageUrl) {
     const media = document.createElement("div");
     media.className = "news-slide-media";
-    media.style.backgroundImage = 'url("' + imageUrl + '")';
+    // Lazy-Load wie bei buildNewsSlide (siehe Kommentar dort) — gilt hier
+    // genauso, das Sport-Panel hält seine News-Karten dauerhaft im DOM.
+    media.setAttribute("data-bg", imageUrl);
+    if (index === 0) media.style.backgroundImage = 'url("' + imageUrl + '")';
     slide.appendChild(media);
 
     const scrim = document.createElement("div");
@@ -3610,6 +3644,7 @@ function showSportSlide(index) {
     slides[i].className = slides[i].className.replace(" active", "");
     if (i === index) slides[i].className += " active";
   }
+  applySlideMediaSwap(slides, index, 850);
 
   // Gleiche Fortschritts-Punkte wie bei der News-Diashow (siehe
   // showNewsSlide) — bisher auch hier nicht erkennbar, wie viele Karten
