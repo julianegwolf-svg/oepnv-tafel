@@ -108,10 +108,15 @@ html, body {
 #panel-news { --accent: #b1622f; }
 #panel-music { --accent: #7d5ba6; }
 #panel-sport { --accent: var(--ok); }
-#panel-quote { --accent: var(--brass); }
-#panel-trivia { --accent: #a34a6b; }
-#panel-quiz { --accent: #3c7ea8; }
-#panel-riddle { --accent: #5b8a5b; }
+/* --accent-rgb (r,g,b-Komponenten separat) nur bei den vier reinen
+   Text-Panels, die dafür Verwendung haben (siehe .quote-block/
+   .trivia-block-Glow weiter unten) — Safari 12 kennt kein color-mix(),
+   ohne die einzelnen Zahlen käme man mit reinem CSS nicht an eine
+   halbtransparente Version von --accent für rgba(). */
+#panel-quote { --accent: var(--brass); --accent-rgb: 169, 121, 63; }
+#panel-trivia { --accent: #a34a6b; --accent-rgb: 163, 74, 107; }
+#panel-quiz { --accent: #3c7ea8; --accent-rgb: 60, 126, 168; }
+#panel-riddle { --accent: #5b8a5b; --accent-rgb: 91, 138, 91; }
 #panel-events { --accent: #b1622f; }
 
 /* ---------- Topbar ---------- */
@@ -1820,29 +1825,68 @@ html, body {
 }
 
 /* ---------- Zitat-Panel ---------- */
-/* Vorher freischwebender Text ohne jede Karten-Fassung — fiel dadurch aus
-   der sonstigen Glas-Karten-Sprache raus. Jetzt dieselbe Behandlung wie
-   News/Musik/Sport: eigene Fläche mit Radius + Schatten. */
-/* War eine frei schwebende, umrandete Karte innerhalb des Panels — jetzt
-   füllt der getönte Hintergrund den kompletten Innenbereich (den gibt
-   .panel-view jetzt selbst vor), kein zusätzlicher Rand/Schatten/Radius
-   mehr, der wie ein zweiter, unnötiger Rahmen wirkt. */
-.quote-block {
+/* Vorher: reines var(--glass-bg) (praktisch weiß) — bei einem Panel, das
+   zu 90% aus leerer Fläche besteht, wirkte das fad und lieblos statt wie
+   ein bewusst gestaltetes Panel (Vergleich: Wetter hat einen ganzen
+   Himmel-Verlauf + Icon + Sterne). Jetzt ein sanfter, zur eigenen
+   --accent-Farbe des Panels passender Verlauf plus ein großes, weiches
+   Glow und eine überdimensionale Anführungszeichen-Wasserzeichen-Form im
+   Hintergrund (::after) — dieselbe Behandlung für quote-block UND
+   trivia-block (Trivia/Quiz/Rätsel teilen sich .trivia-block), jede
+   automatisch in der eigenen Panel-Akzentfarbe (siehe --accent-rgb weiter
+   oben bei den Panel-Akzentfarben). */
+/* ECHTER BUG gefunden (nicht nur Geschmack): das riesige Anführungszeichen
+   im ::after (siehe unten) war komplett unsichtbar, selbst bei voller
+   Deckkraft und knallrotem Debug-Hintergrund. Ursache: position:relative
+   OHNE eigenen z-index erzeugt noch KEINEN neuen Stacking-Context. Das
+   aktive Panel (.panel-view.active hat opacity:1 — die inaktiven mit
+   opacity:0 bekommen dadurch zufällig ihren EIGENEN Stacking-Context,
+   das aktive nicht) hat also selbst keinen eigenen Context, und auch
+   .quote-block/.trivia-block ohne z-index ebenfalls nicht — der
+   negative z-index des ::after ist dadurch bis zum Wurzel-Stacking-
+   Context der ganzen Seite "durchgereicht" worden und landete dort
+   hinter praktisch allem, nicht nur hinter dem eigenen Text. z-index:0
+   hier erzwingt einen echten eigenen Stacking-Context, in dem das
+   ::after sicher enthalten bleibt. */
+.quote-block,
+.trivia-block {
+  position: relative;
+  z-index: 0;
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
   padding: 48px 56px;
-  background: var(--glass-bg);
+  overflow: hidden;
+  border-left: 10px solid var(--accent);
+  background:
+    radial-gradient(620px 620px at 106% 116%, rgba(var(--accent-rgb), 0.4), transparent 65%),
+    linear-gradient(165deg, rgba(var(--accent-rgb), 0.22) 0%, rgba(var(--accent-rgb), 0.04) 45%, var(--glass-bg) 100%);
+}
+
+/* Echtes DOM-Element statt ::after (siehe appendPanelWatermark in app.js
+   für den Bug, der zum Wechsel geführt hat). */
+.panel-watermark {
+  position: absolute;
+  z-index: -1;
+  right: -10px;
+  bottom: -30px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 260px;
+  line-height: 1;
+  color: var(--accent);
+  opacity: 0.22;
+  pointer-events: none;
 }
 
 .quote-mark {
+  position: relative;
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 90px;
   line-height: 1;
   color: var(--accent);
-  opacity: 0.32;
+  opacity: 0.5;
   margin-bottom: -8px;
 }
 
@@ -1882,20 +1926,11 @@ html, body {
 
 /* ---------- Trivia-Panel ("Auf den Tag genau") ---------- */
 /* Gleiche Glas-Karten- und Schreibmaschinen-Sprache wie das Zitat-Panel
-   (.quote-block/.typewriter-cursor werden wiederverwendet). Ablauf: erst
-   das heutige Datum + die Frage tippen, dann drei Jahreszahlen als
+   (.quote-block/.typewriter-cursor werden wiederverwendet, siehe auch
+   die gemeinsame .quote-block/.trivia-block-Regel weiter oben). Ablauf:
+   erst das heutige Datum + die Frage tippen, dann drei Jahreszahlen als
    Multiple-Choice zeigen, nach einer kurzen Denkpause die richtige
    hervorheben statt nur eine nackte Zahl hinzuwerfen. */
-/* Gleiche Begründung wie bei .quote-block oben. */
-.trivia-block {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 48px 56px;
-  background: var(--glass-bg);
-}
 
 .trivia-date {
   font-size: 15px;
@@ -2144,39 +2179,42 @@ html, body {
    Fix: status/Uhrzeit/Müll-Badge dürfen nie schrumpfen (kurz, wichtig),
    nur die Credits-Zeile darf bei Platzmangel mit Ellipsis abgeschnitten
    werden statt umzubrechen. */
+/* War eine volle Fußzeile quer über den ganzen Bildschirm (Live-Status,
+   Uhrzeit des letzten Datenabrufs, Quellen-Credits) — dieselbe Sorte
+   Layout-Element wie der frühere Header, hat unten dieselbe unschöne
+   "Bildschirmrand mit Text zugepflastert"-Wirkung erzeugt. Status/
+   Aktualisiert/Credits sind reine Diagnose-/Attributionsinfo, die eine
+   Dauer-Anzeige an der Wand nicht braucht — bleiben im DOM (damit
+   app.js sie weiter gefahrlos beschreiben kann), sind aber unsichtbar.
+   Nur der Müll-Hinweis ist ein echtes Alltagsfeature — bleibt als
+   kleine schwebende Chip-Notiz unten links, im selben Stil wie die
+   Uhr/Radio-Pille oben rechts. */
 .statusbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding-top: 14px;
-  margin-top: 14px;
-  border-top: 1px solid var(--panel-edge);
-  color: var(--ink-dim);
-  font-size: 13px;
-  letter-spacing: 0.02em;
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  z-index: 80;
 }
 
-.statusbar > * {
-  flex-shrink: 0;
+#statusText,
+#lastUpdate,
+.statusbar-credits {
+  display: none;
 }
 
-.statusbar > .statusbar-credits {
-  flex-shrink: 1;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  text-align: right;
-}
-
-/* Kleine Chip-Fassung statt reinem Fließtext — reiht sich in die
-   Karten-/Chip-Sprache des restlichen Interfaces ein statt wie eine
-   Fußnote unterzugehen. */
 .waste-line {
+  display: block;
+  font-size: 13px;
   font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--steel-ink);
-  background: var(--panel-edge);
-  padding: 3px 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--panel-edge);
+  padding: 8px 16px;
   border-radius: 999px;
+  box-shadow: var(--glass-shadow);
+}
+
+.waste-line:empty {
+  display: none;
 }

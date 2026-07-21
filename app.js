@@ -1690,9 +1690,26 @@ function updateEvents() {
 let quoteFullText = null;
 let quoteTypeTimer = null;
 
+// Großes, blasses Anführungszeichen als Hintergrund-Wasserzeichen für die
+// sonst leeren Text-Panels (Spruch/Trivia/Quiz/Rätsel) — ECHTER BUG bei der
+// ersten Version: als reines CSS ::after mit negativem z-index gebaut, aber
+// ohne dass ein Vorfahre einen eigenen Stacking-Context hatte, ist der
+// negative z-index bis zum Wurzel-Stacking-Context der Seite "durchgereicht"
+// worden und landete dort hinter praktisch allem — komplett unsichtbar,
+// selbst bei voller Deckkraft (im Browser mit einem knallroten Debug-
+// Hintergrund nachgewiesen). Ein echtes DOM-Element statt eines Pseudo-
+// Elements umgeht das Problem zuverlässig.
+function appendPanelWatermark(container) {
+  const mark = document.createElement("div");
+  mark.className = "panel-watermark";
+  mark.textContent = "„";
+  container.appendChild(mark);
+}
+
 function renderQuoteShell() {
   if (!els.quoteBlock) return;
   els.quoteBlock.innerHTML = "";
+  appendPanelWatermark(els.quoteBlock);
 
   const mark = document.createElement("div");
   mark.className = "quote-mark";
@@ -1804,6 +1821,7 @@ function buildTriviaChoices(correctYear) {
 function renderTriviaShell() {
   if (!els.triviaBlock) return;
   els.triviaBlock.innerHTML = "";
+  appendPanelWatermark(els.triviaBlock);
 
   const now = new Date();
   const dateLabel = document.createElement("div");
@@ -1927,6 +1945,7 @@ function decodeHtmlEntities(str) {
 function renderQuizShell() {
   if (!els.quizBlock) return;
   els.quizBlock.innerHTML = "";
+  appendPanelWatermark(els.quizBlock);
 
   const category = document.createElement("div");
   category.className = "trivia-date";
@@ -2084,6 +2103,7 @@ function pickRiddleForToday() {
 function renderRiddleShell() {
   if (!els.riddleBlock) return;
   els.riddleBlock.innerHTML = "";
+  appendPanelWatermark(els.riddleBlock);
 
   const label = document.createElement("div");
   label.className = "trivia-date";
