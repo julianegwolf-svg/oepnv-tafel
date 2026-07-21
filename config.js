@@ -361,12 +361,10 @@ const CONFIG = {
   // Wie lange jede Spiel-Karte in der Sport-Diashow einzeln zu sehen ist.
   sportSlideIntervalMs: 5 * 1000,
 
-  // Zusätzlich zu den Vereins-Karten: allgemeine Fußball-/Sportnachrichten
-  // (Transfers, Berichte) über Tagesschau ressort=sport — dieselbe bereits
-  // bewährte, garantiert CORS-freundliche Quelle wie der Rest der Nach-
-  // richten hier, nur mit anderem Ressort-Filter (wie schon bei
-  // ressort=ausland für Welt-News). Kein reines "nur Fußball"-Feed (Tages-
-  // schau mischt auch andere Sportarten rein), aber die zuverlässigste
-  // kostenlose Option ohne API-Key.
+  // Zusätzlich zu den Vereins-Karten: Fußball-News (Transfers, Berichte) zu
+  // den oben verfolgten Vereinen, über die Tagesschau-Volltextsuche pro
+  // Vereinsname statt eines pauschalen ressort=sport-Feeds — der wurde
+  // während Großereignissen (WM, Tour de France) komplett von diesen
+  // überschwemmt und zeigte praktisch nie etwas zu den eigenen Vereinen.
   sportNewsCount: 6,
 };

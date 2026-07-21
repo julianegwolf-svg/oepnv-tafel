@@ -3518,16 +3518,70 @@ function buildSportNewsSlide(item, index) {
 }
 
 // Kein kostenloses "nur Fußball-Transfers"-Feed (Kicker o.ä.) ohne API-Key
-// auffindbar bzw. CORS-freundlich nutzbar. Tagesschau bietet aber denselben
-// ressort-Filter-Mechanismus, den diese Tafel schon für die Welt-News
-// (ressort=ausland) nutzt — mit ressort=sport kommen allgemeine Sport-
-// meldungen (Fußball ist da redaktionell klar dominant, aber nicht
-// exklusiv). Bewährte, garantiert erreichbare Quelle statt eines
-// ungetesteten Fremd-Feeds, der am CORS-Header scheitern könnte.
+// auffindbar bzw. CORS-freundlich nutzbar. Der bisherige ressort=sport-Feed
+// zeigte aber praktisch nur noch, was gerade das größte Sport-Ereignis ist
+// (WM, Tour de France, Tennis) — verdrängt die eigentlich verfolgten Vereine
+// komplett (per curl gegen die echte API bestätigt: von 10 Meldungen keine
+// einzige zu einem der sportTeams-Vereine). Stattdessen jetzt gezielt über
+// die Tagesschau-Volltextsuche (?searchText=<Verein>) pro Verein aus
+// sportTeams gesucht — dieselbe Quelle, aber themengefiltert statt zeitlich
+// zufällig überschwemmt.
+function fetchTeamNews(teamName, count) {
+  const url = "https://www.tagesschau.de/api2u/search/?searchText=" +
+    encodeURIComponent(teamName) + "&pageSize=" + count;
+  const bustUrl = url + "&_=" + Date.now();
+  return fetch(bustUrl, { cache: "no-store" }).then(function (res) {
+    if (!res.ok) throw new Error("Team-News fehlgeschlagen (" + res.status + ")");
+    return res.json();
+  }).then(function (data) {
+    return (data && Array.isArray(data.searchResults)) ? data.searchResults : [];
+  }).catch(function (err) {
+    console.error(err);
+    return [];
+  });
+}
+
+// Die Volltextsuche matcht auch Fließtext, nicht nur den Titel — bei
+// Vereinsnamen, die zugleich Stadt-/Ortsnamen sind (Mönchengladbach,
+// Dortmund, Essen, ...), kommen dadurch völlig themenfremde Regional-
+// meldungen rein (z.B. "Rotter See in Troisdorf bleibt gesperrt" bei einer
+// "Mönchengladbach"-Suche). Artikel-Treffer aus dem Sport-Ressort tragen
+// aber zuverlässig "/sport" im shareURL/detailsweb-Pfad (bei allen
+// Regionalsendern: hessenschau.de/sport/fussball/…, swr.de/sport/…, etc.,
+// per curl gegen die echte API stichprobenartig bestätigt); Video-Beiträge
+// haben oft gar keine Artikel-URL, sind aber laut item.type="video"
+// erkennbar und in den Stichproben durchweg vereinsbezogen.
+function isFootballRelevant(item) {
+  const url = ((item.shareURL || "") + " " + (item.detailsweb || "")).toLowerCase();
+  return url.indexOf("/sport") !== -1 || item.type === "video";
+}
+
 function fetchFootballNews() {
+  const teams = CONFIG.sportTeams || [];
   const count = CONFIG.sportNewsCount || 4;
-  const url = "https://www.tagesschau.de/api2u/news/?ressort=sport&pageSize=" + count;
-  return fetchNewsPool(url, "Sport", count);
+  if (!teams.length) return Promise.resolve([]);
+  // Höher als count/teams angesetzt, weil isFootballRelevant() danach noch
+  // einen Teil der Treffer rausfiltert (Fließtext-Matches auf Ortsnamen).
+  const perTeam = Math.max(5, Math.ceil((count * 2) / teams.length));
+
+  return Promise.all(teams.map(function (team) {
+    return fetchTeamNews(team, perTeam);
+  })).then(function (pools) {
+    let combined = [].concat.apply([], pools).filter(isFootballRelevant);
+
+    // Dedupe — mehrere Vereinssuchen können dieselbe Meldung treffen
+    // (z.B. ein Transfer zwischen zwei verfolgten Vereinen).
+    const seen = {};
+    combined = combined.filter(function (item) {
+      const key = item.sophoraId || item.externalId || item.title;
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+
+    combined.sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
+    return combined.slice(0, count);
+  });
 }
 
 // Vereins-Karten und News-Karten abwechselnd mischen statt erst alle
