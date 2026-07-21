@@ -426,9 +426,9 @@ function walkUrgencyClass(minutesUntilLeave) {
 // Panels (Wetter/Pendel/Abfahrten) einzeln durchzuschauen und selbst
 // zusammenzurechnen, eine einzige Handlungsempfehlung aus dem, was die
 // Tafel eh schon weiß — nächste erreichbare Abfahrt (samt echter
-// Gehzeit-Berechnung, siehe resolveWalkTime) plus Regen-Hinweis aus dem
-// Wetter-Abruf (siehe rainSoonForLeave). Nur echte Synthese aus bereits
-// vorhandenen Daten, kein zusätzlicher API-Aufruf.
+// Gehzeit-Berechnung, siehe resolveWalkTime) plus minutengenauer Regen-
+// Hinweis aus dem Wetter-Abruf (siehe rainStartMinutes). Nur echte
+// Synthese aus bereits vorhandenen Daten, kein zusätzlicher API-Aufruf.
 function renderLeaveNowBanner(soonestDep, now) {
   if (!els.leaveNowBanner) return;
   els.leaveNowBanner.innerHTML = "";
@@ -454,10 +454,20 @@ function renderLeaveNowBanner(soonestDep, now) {
   const dest = soonestDep.headsign || "";
   const timeStr = whenDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
+  // Regen nur erwähnen, wenn er auch wirklich zum Gehzeitpunkt passt — mit
+  // 15 Minuten Sicherheitsabstand, für den Fall dass man noch etwas
+  // trödelt. Regnet's erst in drei Stunden, ist das für DIESEN Weg
+  // irrelevant und bleibt unerwähnt statt unnötig zu verunsichern.
+  let rainHint = "";
+  if (rainStartMinutes != null && rainStartMinutes <= minutesUntilLeave + walkMinutesToStop + 15) {
+    rainHint = rainStartMinutes <= 0
+      ? " · ☔ Es regnet schon"
+      : " · ☔ In " + rainStartMinutes + " Min fängt's an zu regnen";
+  }
+
   const sub = document.createElement("div");
   sub.className = "leave-now-sub";
-  sub.textContent = "Linie " + lineName + (dest ? " nach " + dest : "") + " · ab " + timeStr +
-    (rainSoonForLeave ? " · ☔ Schirm mitnehmen" : "");
+  sub.textContent = "Linie " + lineName + (dest ? " nach " + dest : "") + " · ab " + timeStr + rainHint;
 
   els.leaveNowBanner.appendChild(headline);
   els.leaveNowBanner.appendChild(sub);
@@ -676,9 +686,11 @@ const WEATHER_CODES = {
 const RAIN_CODES = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99];
 
 // Wird von updateWeather() gesetzt, vom Abfahrten-Panel gelesen (siehe
-// renderLeaveNowBanner) — regnet es gerade oder in der nächsten Stunde,
-// bekommt die "Sollte ich jetzt los?"-Karte einen Schirm-Hinweis dazu.
-let rainSoonForLeave = false;
+// renderLeaveNowBanner) — Minuten bis zum ersten 15-Minuten-Intervall mit
+// Niederschlag (0 oder negativ = regnet schon), null = kein Regen in den
+// nächsten 3 Stunden in Sicht. Minutengenau statt nur stundengenau, damit
+// die "Sollte ich jetzt los?"-Karte einen echten Countdown zeigen kann.
+let rainStartMinutes = null;
 
 // ---------- Wetter-Icons als eigene SVGs statt Emoji ----------
 // Emoji-Wettericons (☀️🌧️🌙 …) rendern je nach Gerät/Systemschriftart
@@ -1156,10 +1168,17 @@ function updateWeather() {
   // 15 Minuten hinaus eine ältere Antwort ausliefern, ohne dass die
   // Tafel etwas davon merkt. Erklärt am ehesten, warum die Tafel zeitweise
   // "anderes" Wetter zeigt als eine frisch geöffnete App auf dem Handy.
+  // minutely_15: dieselbe Genauigkeit, mit der auch Apple Wetter/Regenradar-
+  // Apps arbeiten — 15-Minuten-Auflösung statt nur volle Stunden, siehe
+  // rainStartMinutes weiter unten. forecast_minutely_15=12 deckt die
+  // nächsten 3 Stunden ab, mehr braucht die "Sollte ich jetzt los?"-Karte
+  // nicht.
   const url = "https://api.open-meteo.com/v1/forecast?latitude=" + CONFIG.weatherLat +
     "&longitude=" + CONFIG.weatherLon +
     "&current=temperature_2m,weather_code,is_day,relative_humidity_2m,apparent_temperature,wind_speed_10m" +
     "&hourly=temperature_2m,weather_code" +
+    "&minutely_15=precipitation,weather_code" +
+    "&forecast_minutely_15=12" +
     "&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max" +
     "&timezone=Europe%2FBerlin" +
     "&_=" + Date.now();
@@ -1267,12 +1286,26 @@ function updateWeather() {
         }
       }
 
-      // Für die "Sollte ich jetzt los?"-Karte im Abfahrten-Panel: reicht ein
-      // einfaches Ja/Nein, ob es gerade oder in der nächsten Stunde regnet —
-      // die ausführliche Formulierung übernimmt weiterhin buildWeatherTip()
-      // fürs Wetter-Panel selbst, hier geht's nur um den Schirm-Hinweis.
-      rainSoonForLeave = RAIN_CODES.indexOf(code) !== -1 ||
-        RAIN_CODES.indexOf(data.hourly.weather_code[startIdx + 1]) !== -1;
+      // Für die "Sollte ich jetzt los?"-Karte: minutengenau statt nur
+      // stundengenau, siehe rainStartMinutes/renderLeaveNowBanner in app.js.
+      // Erster 15-Minuten-Schritt ab jetzt mit echtem Niederschlag (>0.1mm,
+      // filtert Mess-/Rundungsrauschen) ODER einem Regen-Code — der Abstand
+      // in Minuten dazu ist die Grundlage für "In X Minuten fängt's an zu
+      // regnen" statt der bisherigen groben "irgendwann diese Stunde".
+      rainStartMinutes = null;
+      if (data.minutely_15 && data.minutely_15.time) {
+        const mTime = data.minutely_15.time;
+        const mPrecip = data.minutely_15.precipitation || [];
+        const mCode = data.minutely_15.weather_code || [];
+        const nowMs = Date.now();
+        for (let mi = 0; mi < mTime.length; mi++) {
+          const isRain = (mPrecip[mi] != null && mPrecip[mi] > 0.1) || RAIN_CODES.indexOf(mCode[mi]) !== -1;
+          if (!isRain) continue;
+          const mMs = parseOpenMeteoLocal(mTime[mi]).getTime();
+          rainStartMinutes = Math.round((mMs - nowMs) / 60000);
+          break;
+        }
+      }
     }
   }).catch(function (err) {
     console.error(err);
