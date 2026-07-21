@@ -1992,15 +1992,23 @@ html, body {
   gap: 14px;
   margin-top: 26px;
   opacity: 0;
+  pointer-events: none;
   transform: translateY(6px);
   transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
+/* pointer-events erst mit is-shown scharf — davor sind die Chips zwar
+   schon im DOM (Aufbau passiert vor dem Eintippen), aber unsichtbar;
+   ohne das könnte ein zu früher Tap unbemerkt eine Antwort auslösen. */
 .trivia-choices.is-shown {
   opacity: 1;
+  pointer-events: auto;
   transform: translateY(0);
 }
 
+/* cursor:pointer + Tap-Highlight aus: sieht jetzt wie ein echter Knopf
+   aus, weil es (siehe attachChoiceInteractivity in app.js) auch einer
+   ist — vorher rein dekorative Chips ohne Funktion dahinter. */
 .trivia-choice {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 22px;
@@ -2010,11 +2018,14 @@ html, body {
   border: 2px solid var(--panel-edge);
   border-radius: var(--radius-m);
   padding: 10px 22px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   transition: background 0.5s ease, border-color 0.5s ease, color 0.5s ease, opacity 0.5s ease;
 }
 
 .trivia-choices.is-revealed .trivia-choice {
   opacity: 0.4;
+  cursor: default;
 }
 
 .trivia-choices.is-revealed .trivia-choice.correct {
@@ -2022,6 +2033,16 @@ html, body {
   color: #ffffff;
   background: var(--ok);
   border-color: var(--ok);
+}
+
+/* Die selbst angetippte, aber falsche Antwort — bewusst von den übrigen
+   (nur gedimmten) falschen Antworten abgesetzt, damit man sofort sieht,
+   was man selbst geraten hatte. */
+.trivia-choices.is-revealed .trivia-choice.is-wrong-pick {
+  opacity: 1;
+  color: #ffffff;
+  background: #b23b3b;
+  border-color: #b23b3b;
 }
 
 /* Allgemeinwissen-Antworten sind ganze Phrasen statt vierstelliger
@@ -2049,6 +2070,25 @@ html, body {
   font-family: 'Inter', -apple-system, system-ui, sans-serif;
   font-size: 17px;
   padding: 12px 18px;
+}
+
+/* Lokale Trefferquote (siehe knowledgeScore in app.js, localStorage,
+   kein Backend) — nur auf Trivia/Quiz, da Rätsel offene Fragen ohne
+   Auswahloptionen sind (siehe Kommentar dort) und sich nicht "antippen"
+   lassen. Ruhige Ecken-Notiz statt Gamification-Trara. */
+.knowledge-score-badge {
+  position: absolute;
+  z-index: 1;
+  top: 24px;
+  right: 32px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--panel-edge);
+  padding: 6px 14px;
+  border-radius: 999px;
 }
 
 /* ---------- Sport-Ticker (Lieblingsvereine) ---------- */

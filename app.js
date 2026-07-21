@@ -1766,6 +1766,78 @@ function appendPanelWatermark(container) {
   container.appendChild(mark);
 }
 
+// ---------- Lokale Trefferquote für Trivia/Quiz ----------
+// Die Multiple-Choice-Chips sahen bisher wie Knöpfe aus, waren aber rein
+// dekorativ — man konnte gar nicht wirklich mitraten, nur zuschauen, wie
+// nach ein paar Sekunden die richtige Antwort aufleuchtet. Jetzt sind sie
+// echt antippbar (siehe attachChoiceInteractivity), und eine simple
+// Trefferquote in localStorage (kein Backend, kein Account, bleibt nur
+// auf diesem einen iPad) macht daraus ein echtes Mitmach-Panel statt
+// eines zweiten Zuschau-Panels. Nur Trivia + Quiz, weil nur die
+// Multiple-Choice-Optionen haben — das Rätsel-Panel ist eine offene
+// Frage ohne Auswahl, da gibt's nichts zum Antippen.
+const KNOWLEDGE_SCORE_KEY = "tafelKnowledgeScore";
+
+function loadKnowledgeScore() {
+  try {
+    const raw = localStorage.getItem(KNOWLEDGE_SCORE_KEY);
+    if (!raw) return { correct: 0, total: 0 };
+    const parsed = JSON.parse(raw);
+    return { correct: parsed.correct || 0, total: parsed.total || 0 };
+  } catch (e) {
+    return { correct: 0, total: 0 };
+  }
+}
+
+let knowledgeScore = loadKnowledgeScore();
+
+function knowledgeScoreText() {
+  return knowledgeScore.total > 0
+    ? (knowledgeScore.correct + "/" + knowledgeScore.total + " richtig")
+    : "Antwort antippen zum Mitraten";
+}
+
+function recordGuess(isCorrect) {
+  knowledgeScore.total++;
+  if (isCorrect) knowledgeScore.correct++;
+  try {
+    localStorage.setItem(KNOWLEDGE_SCORE_KEY, JSON.stringify(knowledgeScore));
+  } catch (e) {
+    console.error(e);
+  }
+  const text = knowledgeScoreText();
+  const badges = document.querySelectorAll(".knowledge-score-badge");
+  for (let i = 0; i < badges.length; i++) badges[i].textContent = text;
+}
+
+function appendKnowledgeScoreBadge(container) {
+  const badge = document.createElement("div");
+  badge.className = "knowledge-score-badge";
+  badge.textContent = knowledgeScoreText();
+  container.appendChild(badge);
+}
+
+// Macht die Multiple-Choice-Chips wirklich antippbar: erster Tap
+// entscheidet, weiterer Tap auf dieselbe Frage tut nichts mehr
+// (choicesEl.is-answered sperrt). clearPendingReveal räumt den
+// eigentlich für später geplanten Auto-Reveal-Timer auf, sonst würde der
+// träge nachträglich nochmal draufklicken — er hat zu dem Zeitpunkt
+// eh nichts mehr zu tun, ist aber sonst noch aktiv im Hintergrund.
+function attachChoiceInteractivity(choicesEl, clearPendingReveal) {
+  const chips = choicesEl.querySelectorAll(".trivia-choice");
+  for (let i = 0; i < chips.length; i++) {
+    chips[i].addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      if (choicesEl.classList.contains("is-answered")) return;
+      clearPendingReveal();
+      const isCorrect = this.classList.contains("correct");
+      if (!isCorrect) this.classList.add("is-wrong-pick");
+      choicesEl.classList.add("is-answered", "is-revealed");
+      recordGuess(isCorrect);
+    });
+  }
+}
+
 function renderQuoteShell() {
   if (!els.quoteBlock) return;
   els.quoteBlock.innerHTML = "";
@@ -1882,6 +1954,7 @@ function renderTriviaShell() {
   if (!els.triviaBlock) return;
   els.triviaBlock.innerHTML = "";
   appendPanelWatermark(els.triviaBlock);
+  appendKnowledgeScoreBadge(els.triviaBlock);
 
   const now = new Date();
   const dateLabel = document.createElement("div");
@@ -1929,6 +2002,9 @@ function startTriviaReveal() {
     chip.className = "trivia-choice" + (year === triviaYear ? " correct" : "");
     chip.textContent = String(year);
     choicesEl.appendChild(chip);
+  });
+  attachChoiceInteractivity(choicesEl, function () {
+    if (triviaRevealTimer) { clearTimeout(triviaRevealTimer); triviaRevealTimer = null; }
   });
 
   const full = triviaFullText;
@@ -2006,6 +2082,7 @@ function renderQuizShell() {
   if (!els.quizBlock) return;
   els.quizBlock.innerHTML = "";
   appendPanelWatermark(els.quizBlock);
+  appendKnowledgeScoreBadge(els.quizBlock);
 
   const category = document.createElement("div");
   category.className = "trivia-date";
@@ -2053,6 +2130,9 @@ function startQuizReveal() {
     chip.className = "trivia-choice text-choice" + (opt === quizChoices.correct ? " correct" : "");
     chip.textContent = opt;
     choicesEl.appendChild(chip);
+  });
+  attachChoiceInteractivity(choicesEl, function () {
+    if (quizRevealTimer) { clearTimeout(quizRevealTimer); quizRevealTimer = null; }
   });
 
   // Auflösung erst zur Hälfte der gesamten Panel-Anzeigezeit statt fix 3s
