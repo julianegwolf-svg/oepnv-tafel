@@ -13,31 +13,27 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=68">
+<link rel="stylesheet" href="style.css?v=69">
 </head>
 <body>
   <div class="panel">
     <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
 
     <header class="topbar">
-      <div class="now-playing" id="nowPlaying"></div>
+      <button type="button" class="panel-nav-toggle" id="panelNavToggle" aria-label="Übersicht">
+        <span class="panel-nav-toggle-icon">▦</span>
+      </button>
 
-      <div class="topbar-right">
-        <button type="button" class="panel-nav-toggle" id="panelNavToggle" aria-label="Übersicht">
-          <span class="panel-nav-toggle-icon">▦</span>
+      <div class="radio-widget" id="radioWidget">
+        <button type="button" class="radio-toggle" id="radioToggle" aria-label="Radio">
+          <span class="radio-toggle-icon">📻</span>
         </button>
+        <div class="radio-menu" id="radioMenu"></div>
+      </div>
 
-        <div class="radio-widget" id="radioWidget">
-          <button type="button" class="radio-toggle" id="radioToggle" aria-label="Radio">
-            <span class="radio-toggle-icon">📻</span>
-          </button>
-          <div class="radio-menu" id="radioMenu"></div>
-        </div>
-
-        <div class="clock">
-          <span class="clock-time" id="clockTime">--:--</span>
-          <span class="clock-date" id="clockDate">--</span>
-        </div>
+      <div class="clock">
+        <span class="clock-time" id="clockTime">--:--</span>
+        <span class="clock-date" id="clockDate">--</span>
       </div>
     </header>
 
@@ -158,7 +154,7 @@
     </div>
   </div>
 
-  <script src="config.js?v=68"></script>
-  <script src="app.js?v=68"></script>
+  <script src="config.js?v=69"></script>
+  <script src="app.js?v=69"></script>
 </body>
 </html>

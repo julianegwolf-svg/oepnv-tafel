@@ -42,7 +42,6 @@ const els = {
   sportBlock: document.getElementById("sportBlock"),
   radioToggle: document.getElementById("radioToggle"),
   radioMenu: document.getElementById("radioMenu"),
-  nowPlaying: document.getElementById("nowPlaying"),
   panelNavToggle: document.getElementById("panelNavToggle"),
   panelNavOverlay: document.getElementById("panelNavOverlay"),
   panelNavGrid: document.getElementById("panelNavGrid"),
@@ -73,49 +72,10 @@ let radioActiveUrl = null;
 let radioMenuOpen = false;
 let radioStationNames = {};
 
-// Songtitel-Anzeige bewusst weggelassen: recherchiert, aber keine der vier
-// Stationen hat eine verlässliche, kostenlose, öffentlich lesbare
-// "jetzt läuft"-API. 80s80s und Sunshine Live laufen über streamABC/
-// QuantumCast — deren Metadaten-API braucht einen Partner-API-Key und
-// einen Channel-Key aus deren Kundenkonsole, beides haben wir nicht. WDR 4
-// und Radio Italia haben keine dokumentierte öffentliche Schnittstelle
-// dafür gefunden. Statt eine fragile HTML-Scraping-Lösung einer fremden
-// Website zu bauen (bricht bei jedem Redesign), zeigen wir ehrlich nur
-// den Sendernamen — verlässlich und stabil, dafür kein Songtitel.
-function updateNowPlaying() {
-  if (!els.nowPlaying) return;
-  const isPlaying = !!(radioActiveUrl && radioAudioEl && !radioAudioEl.paused);
-
-  els.nowPlaying.innerHTML = "";
-  els.nowPlaying.classList.toggle("is-active", isPlaying);
-  if (!isPlaying) {
-    const hint = document.createElement("span");
-    hint.className = "now-playing-hint";
-    hint.textContent = "📻 Radio antippen";
-    els.nowPlaying.appendChild(hint);
-    return;
-  }
-
-  const dot = document.createElement("span");
-  dot.className = "now-playing-dot";
-  els.nowPlaying.appendChild(dot);
-
-  const text = document.createElement("div");
-  text.className = "now-playing-text";
-
-  const station = document.createElement("span");
-  station.className = "now-playing-station";
-  station.textContent = radioStationNames[radioActiveUrl] || "Radio";
-  text.appendChild(station);
-
-  els.nowPlaying.appendChild(text);
-}
-
 function updateRadioButtonStates() {
   const isPlaying = !!(radioActiveUrl && radioAudioEl && !radioAudioEl.paused);
 
   if (els.radioToggle) els.radioToggle.classList.toggle("is-playing", isPlaying);
-  updateNowPlaying();
 
   if (!els.radioMenu) return;
   const items = els.radioMenu.querySelectorAll(".radio-menu-item");
