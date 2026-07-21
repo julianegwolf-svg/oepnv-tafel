@@ -2276,23 +2276,30 @@ function updateQuiz(retryCount) {
 
 // ---------- Rätsel-des-Tages-Panel ----------
 // Keine externe API (siehe CONFIG.riddles-Kommentar in config.js) — eine
-// feste lokale Sammlung, deterministisch nach Tag-des-Jahres ausgewählt,
-// damit an einem Tag immer dasselbe Rätsel gezeigt wird. Gleiche Tipp-
-// und-Warten-Dramaturgie wie Quiz/Trivia, nur ohne Multiple-Choice: die
-// Lösung wird als Text erst zur Hälfte der Panel-Anzeigezeit eingeblendet.
+// feste lokale Sammlung. Früher pro Tag fest (Tag-des-Jahres-Index), das
+// gleiche Rätsel blieb also von morgens bis abends stehen. Jetzt bei jedem
+// Erreichen des Panels neu gewählt (siehe Aufruf von updateRiddle() in
+// showPanel) — bei mehreren Karussell-Runden pro Stunde kommen so viele
+// verschiedene Rätsel am Tag statt nur eines. Gleiche Tipp-und-Warten-
+// Dramaturgie wie Quiz/Trivia, nur ohne Multiple-Choice: die Lösung wird
+// als Text erst zur Hälfte der Panel-Anzeigezeit eingeblendet.
 let riddleQuestion = null;
 let riddleAnswerText = null;
 let riddleTypeTimer = null;
 let riddleRevealTimer = null;
 let riddleAvailable = false;
+let lastRiddleIndex = -1;
 
-function pickRiddleForToday() {
+function pickNextRiddle() {
   const riddles = CONFIG.riddles || [];
   if (!riddles.length) return null;
-  const now = new Date();
-  const startOfYear = new Date(now.getFullYear(), 0, 0);
-  const dayOfYear = Math.floor((now - startOfYear) / 86400000);
-  return riddles[dayOfYear % riddles.length];
+  if (riddles.length === 1) return riddles[0];
+  let idx;
+  do {
+    idx = Math.floor(Math.random() * riddles.length);
+  } while (idx === lastRiddleIndex);
+  lastRiddleIndex = idx;
+  return riddles[idx];
 }
 
 function renderRiddleShell() {
@@ -2366,7 +2373,7 @@ function startRiddleReveal() {
 
 function updateRiddle() {
   if (!els.riddleBlock) return;
-  const pick = pickRiddleForToday();
+  const pick = pickNextRiddle();
   if (!pick) { riddleAvailable = false; return; }
 
   riddleQuestion = pick.q;
@@ -3743,7 +3750,10 @@ function showPanel(name) {
   }
 
   if (name === "riddle") {
-    startRiddleReveal();
+    // updateRiddle() statt direkt startRiddleReveal() — wählt jedes Mal ein
+    // neues Rätsel (siehe pickNextRiddle), statt das immer gleiche
+    // Tages-Rätsel erneut abzuspielen.
+    updateRiddle();
   }
 
   if (name === "news") {

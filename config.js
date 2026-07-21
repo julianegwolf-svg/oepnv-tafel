@@ -222,12 +222,13 @@ const CONFIG = {
 
   // Rätsel-des-Tages-Panel — keine externe API: eine Recherche nach einer
   // kostenlosen, keylosen, deutschsprachigen Rätsel-API mit Lösung blieb
-  // ergebnislos (anders als bei Trivia/Quiz gibt es dafür keine verlässliche
-  // öffentliche Quelle). Stattdessen eine feste, lokale Sammlung klassischer
-  // Rätsel — deterministisch nach Tag-des-Jahres ausgewählt (siehe
-  // pickRiddleForToday in app.js), damit an einem Tag immer dasselbe Rätsel
-  // gezeigt wird, ganz ohne Netzwerkabhängigkeit oder CORS-Risiko. Wiederholt
-  // sich nach riddles.length Tagen (aktuell ca. alle 6-7 Wochen).
+  // ergebnislos (die einzigen brauchbaren Kandidaten, z.B. riddles-api.
+  // vercel.app, liefern nur Englisch — gleiche Lücke wie beim letzten Check).
+  // Stattdessen eine feste, lokale Sammlung klassischer Rätsel, ganz ohne
+  // Netzwerkabhängigkeit oder CORS-Risiko. Wird bei jedem Erreichen des
+  // Panels neu (zufällig, ohne direkte Wiederholung) ausgewählt statt nur
+  // einmal pro Kalendertag (siehe pickNextRiddle in app.js) — bei mehreren
+  // Karussell-Runden am Tag kommen so deutlich mehr als eines zum Einsatz.
   riddles: [
     { q: "Je mehr man davon wegnimmt, desto größer wird es. Was ist es?", a: "Ein Loch" },
     { q: "Was wird nasser, je mehr es trocknet?", a: "Ein Handtuch" },
