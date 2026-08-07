@@ -85,7 +85,7 @@ const CONFIG = {
   // restigen Panels wird bei jedem vollen Durchlauf neu gemischt (siehe
   // shuffleSequence in app.js), damit sich die Reihenfolge nach ein paar
   // Wochen nicht stur auswendig lernen lässt.
-  panelSequence: ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events"],
+  panelSequence: ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events", "calendar"],
 
   // Anzeigedauer je Panel in Millisekunden. Fehlt ein Eintrag, gilt
   // panelDurationMs als Standard.
@@ -310,6 +310,21 @@ const CONFIG = {
   // die dabei gefunden wurde.
   eventsCount: 6,
   refreshEventsMs: 6 * 60 * 60 * 1000,
+
+  // Termine-Panel — privater Apple-Kalender (iCloud "Öffentlichen Kalender
+  // teilen"). Apple liefert dabei keinen CORS-Header, ein Browser darf den
+  // Link deshalb nicht direkt abrufen (per echtem Browser-fetch bestätigt,
+  // nicht nur per curl — gleiches Problem wie beim Radio-Metadaten-Versuch
+  // an anderer Stelle im Code). Deshalb ruft ein selbst betriebener,
+  // kostenloser Cloudflare Worker den Kalender serverseitig ab und reicht
+  // ihn mit passendem CORS-Header weiter — der eigentliche Kalender-Link
+  // liegt nur als Secret im Worker, nirgends in diesem (öffentlichen!)
+  // Repo. Kein Passwortschutz nötig: die Worker-URL selbst ist öffentlich
+  // einsehbar (sie steht ja hier im Code), aber ohne das Secret im Worker
+  // kommt niemand an die echten Kalenderdaten.
+  calendarWorkerUrl: "https://kalender-worker.julian-e-g-wolf.workers.dev/",
+  calendarCount: 6,
+  refreshCalendarMs: 30 * 60 * 1000,
 
   // ---------------------------------------------------------------
   // Müllabfuhr — Bremer Abfallkalender für Alter Postweg 110.

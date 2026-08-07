@@ -73,6 +73,7 @@ const els = {
   quizBlock: document.getElementById("quizBlock"),
   riddleBlock: document.getElementById("riddleBlock"),
   eventsList: document.getElementById("eventsList"),
+  calendarList: document.getElementById("calendarList"),
   commuteHero: document.getElementById("commuteHero"),
   commuteRace: document.getElementById("commuteRace"),
   commuteMapWrap: document.getElementById("commuteMapWrap"),
@@ -1906,6 +1907,135 @@ function updateEvents() {
   }).catch(function (err) {
     console.error(err);
     eventsAvailable = false;
+  });
+}
+
+// ---------- Termine (privater Kalender über Cloudflare-Worker-Proxy) ----------
+// Siehe CONFIG.calendarWorkerUrl für den Grund, warum der Umweg über einen
+// eigenen Worker nötig ist (Apple liefert keinen CORS-Header).
+//
+// Minimaler ICS-Parser statt einer Bibliothek — deckt nur ab, was für
+// diese Anzeige gebraucht wird (SUMMARY/DTSTART/DTEND/LOCATION). KEINE
+// RRULE-Expansion: wiederkehrende Termine erscheinen nur mit ihrem
+// ursprünglichen ersten Termin, nicht mit allen künftigen Wiederholungen
+// — für eine spätere Runde, falls das gebraucht wird.
+function unescapeIcsText(s) {
+  return s
+    .replace(/\\n/gi, "\n")
+    .replace(/\\,/g, ",")
+    .replace(/\\;/g, ";")
+    .replace(/\\\\/g, "\\");
+}
+
+function parseIcsDate(value, rawKey) {
+  // Ganztägig: DTSTART;VALUE=DATE:YYYYMMDD
+  if (rawKey.indexOf("VALUE=DATE") !== -1 && value.length === 8) {
+    return {
+      date: new Date(value.slice(0, 4) + "-" + value.slice(4, 6) + "-" + value.slice(6, 8) + "T00:00:00"),
+      allDay: true,
+    };
+  }
+  // YYYYMMDDTHHMMSSZ (UTC) oder ohne Z (lokal — TZID wird ignoriert, für
+  // eine fest an einem Ort hängende Tafel reicht das).
+  const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/.exec(value);
+  if (!m) return null;
+  const iso = m[1] + "-" + m[2] + "-" + m[3] + "T" + m[4] + ":" + m[5] + ":" + m[6] + (m[7] ? "Z" : "");
+  return { date: new Date(iso), allDay: false };
+}
+
+function parseIcsEvents(icsText) {
+  // Zeilenumbrüche vereinheitlichen + gefaltete Zeilen (Fortsetzungszeile
+  // mit führendem Leerzeichen/Tab) wieder zu einer Zeile zusammenziehen —
+  // beides Teil des ICS-Formats (RFC 5545), sonst reißt z.B. eine lange
+  // LOCATION mitten im Wert ab.
+  const unfolded = icsText.replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
+  const lines = unfolded.split("\n");
+
+  const events = [];
+  let current = null;
+
+  lines.forEach(function (line) {
+    if (line === "BEGIN:VEVENT") { current = {}; return; }
+    if (line === "END:VEVENT") { if (current) events.push(current); current = null; return; }
+    if (!current) return;
+
+    const colonIdx = line.indexOf(":");
+    if (colonIdx === -1) return;
+    const rawKey = line.slice(0, colonIdx);
+    const value = line.slice(colonIdx + 1);
+    const key = rawKey.split(";")[0];
+
+    if (key === "SUMMARY") current.summary = unescapeIcsText(value);
+    else if (key === "LOCATION") current.location = unescapeIcsText(value);
+    else if (key === "DTSTART") current.start = parseIcsDate(value, rawKey);
+  });
+
+  return events;
+}
+
+function updateCalendar() {
+  if (!els.calendarList || !CONFIG.calendarWorkerUrl) return;
+
+  const bustUrl = CONFIG.calendarWorkerUrl +
+    (CONFIG.calendarWorkerUrl.indexOf("?") === -1 ? "?" : "&") + "_=" + Date.now();
+
+  fetch(bustUrl, { cache: "no-store" }).then(function (res) {
+    if (!res.ok) throw new Error("Kalender-Abruf fehlgeschlagen (" + res.status + ")");
+    return res.text();
+  }).then(function (text) {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const upcoming = parseIcsEvents(text)
+      .filter(function (ev) { return ev.summary && ev.start && ev.start.date.getTime() >= startOfToday.getTime(); })
+      .sort(function (a, b) { return a.start.date.getTime() - b.start.date.getTime(); })
+      .slice(0, CONFIG.calendarCount || 6);
+
+    if (!upcoming.length) throw new Error("Keine anstehenden Termine gefunden");
+
+    els.calendarList.innerHTML = "";
+    upcoming.forEach(function (ev) {
+      const d = ev.start.date;
+
+      const item = document.createElement("div");
+      item.className = "event-item";
+
+      const dateBox = document.createElement("div");
+      dateBox.className = "event-date";
+      const day = document.createElement("span");
+      day.className = "event-date-day";
+      day.textContent = String(d.getDate());
+      const month = document.createElement("span");
+      month.className = "event-date-month";
+      month.textContent = EVENT_MONTHS[d.getMonth()];
+      dateBox.appendChild(day);
+      dateBox.appendChild(month);
+
+      const text = document.createElement("div");
+      text.className = "event-text";
+      const title = document.createElement("span");
+      title.className = "event-title";
+      title.textContent = ev.summary;
+      text.appendChild(title);
+
+      const timeStr = ev.start.allDay
+        ? "Ganztägig"
+        : d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr";
+      const locLine = [timeStr, ev.location].filter(function (s) { return !!s; }).join(" · ");
+      const loc = document.createElement("span");
+      loc.className = "event-location";
+      loc.textContent = locLine;
+      text.appendChild(loc);
+
+      item.appendChild(dateBox);
+      item.appendChild(text);
+      els.calendarList.appendChild(item);
+    });
+
+    calendarAvailable = true;
+  }).catch(function (err) {
+    console.error(err);
+    calendarAvailable = false;
   });
 }
 
@@ -3825,6 +3955,7 @@ let quoteAvailable = false;
 let triviaAvailable = false;
 let quizAvailable = false;
 let eventsAvailable = false;
+let calendarAvailable = false;
 let panelIndex = 0;
 
 const PANEL_AVAILABILITY = {
@@ -3839,9 +3970,10 @@ const PANEL_AVAILABILITY = {
   quiz: function () { return quizAvailable; },
   riddle: function () { return riddleAvailable; },
   events: function () { return eventsAvailable; },
+  calendar: function () { return calendarAvailable; },
 };
 
-const PANEL_IDS = ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events"];
+const PANEL_IDS = ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events", "calendar"];
 
 // Alle 11 Panels bleiben wegen der Crossfade-Optik dauerhaft im DOM (nur
 // opacity:0 + pointer-events:none statt display:none, siehe .panel-view-
@@ -4037,6 +4169,7 @@ const PANEL_NAV_META = {
   quiz: { icon: "❓", label: "Allgemeinwissen" },
   riddle: { icon: "🧩", label: "Rätsel des Tages" },
   events: { icon: "🎉", label: "Veranstaltungen" },
+  calendar: { icon: "🗓️", label: "Termine" },
 };
 
 let panelNavOpen = false;
@@ -4349,6 +4482,9 @@ function init() {
 
   updateEvents();
   setInterval(updateEvents, CONFIG.refreshEventsMs);
+
+  updateCalendar();
+  setInterval(updateCalendar, CONFIG.refreshCalendarMs);
 
   updateWasteLine();
   if (CONFIG.wasteCollection && CONFIG.wasteCollection.refreshMs) {
