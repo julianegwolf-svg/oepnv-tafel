@@ -7,6 +7,43 @@
 // damit das auch auf Safari 12 (iPad Air 1 / iOS 12.5.x) läuft.
 // ---------------------------------------------------------------
 
+// ---------- Kiosk-Resilience: wach aus einer langen Pause ----------
+// Nach Wochen ausgeschaltet meldete der Nutzer "News etc. komplett
+// verschwunden" — die Tafel läuft als "Web-App" (siehe apple-mobile-
+// web-app-capable-Meta-Tag in index.html), und Safari kann so eine Seite
+// beim Wiedereinschalten aus dem bfcache (Back-Forward-Cache) zurückholen
+// statt sie wirklich neu über das Netz zu laden. Der bestehende
+// fullReloadMs-Reload (siehe init()) greift nur, solange die Seite
+// durchgehend am Laufen ist — nach einem echten Aus/An kommt der nie zum
+// Zug, weil dessen setTimeout mit der eingefrorenen Seite mit-eingefroren
+// wurde. Deshalb zwei zusätzliche, von init() unabhängige Wecksignale:
+// "pageshow" mit persisted=true feuert IMMER, wenn die Seite aus dem
+// bfcache kommt (dokumentiertes Browser-Verhalten) — dann sofort hart neu
+// laden. Und falls die Seite länger als STALE_RESUME_MS unsichtbar war
+// (Display aus, App im Hintergrund pausiert), beim Sichtbarwerden
+// ebenfalls neu laden statt zu versuchen, mit möglicherweise wochenalten
+// Timer-/Fetch-Zuständen weiterzumachen.
+const STALE_RESUME_MS = 20 * 60 * 1000;
+let lastVisibleAt = Date.now();
+
+function hardReload() {
+  // Gleicher Trick wie beim bestehenden fullReloadMs-Reload: eine neue
+  // URL mit Zeitstempel, garantiert weder im Browser- noch im CDN-Cache.
+  window.location.href = window.location.pathname + "?_=" + Date.now();
+}
+
+window.addEventListener("pageshow", function (e) {
+  if (e.persisted) hardReload();
+});
+
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState === "visible") {
+    if (Date.now() - lastVisibleAt > STALE_RESUME_MS) hardReload();
+  } else {
+    lastVisibleAt = Date.now();
+  }
+});
+
 const API_BASE = "https://api.transitous.org/api";
 
 const els = {
