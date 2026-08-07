@@ -142,6 +142,12 @@ const CONFIG = {
   workLabel: "Max Müller GmbH",
   refreshCommuteMs: 10 * 60 * 1000,
 
+  // Uhrzeit, zu der man werktags bei der Arbeit sein muss — für die
+  // Ankunfts-Einschätzung in der "Sollte ich jetzt los?"-Karte (siehe
+  // workArrivalEstimate/renderLeaveNowBanner in app.js). Nur Mo-Fr
+  // relevant, am Wochenende wird sie ignoriert.
+  workArrivalTarget: "08:00",
+
   // TomTom-API-Key für echte Live-Verkehrsdaten bei der Auto-Zeit (Stau,
   // aktuelle Verkehrslage — nicht nur freie Fahrt wie bei der bisherigen
   // Schätzung). Kostenloses Freemium-Konto, keine Kreditkarte nötig,

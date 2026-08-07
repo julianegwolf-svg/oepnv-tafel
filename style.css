@@ -658,6 +658,17 @@ html, body {
   color: var(--ink-dim);
 }
 
+.leave-now-arrival {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brass-ink);
+  margin-top: 2px;
+}
+
+.leave-now-arrival.is-late {
+  color: var(--danger);
+}
+
 .board-head {
   display: grid;
   grid-template-columns: 100px 1fr 130px;

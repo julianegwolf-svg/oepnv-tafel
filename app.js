@@ -394,6 +394,13 @@ function productClass(mode) {
 let walkMinutesToStop = null;
 let walkTimeRequested = false;
 
+// Reisezeit Zuhause→Arbeit inkl. aller Fußwege (nicht nur bis zur
+// Haltestelle) — kommt aus der ÖPNV-Reisekette, die das Pendel-Panel
+// ohnehin schon berechnet (fetchTransitItinerary/itineraryDurationMin),
+// wird hier nur zusätzlich für die Ankunfts-Einschätzung in der "Sollte
+// ich jetzt los?"-Karte zwischengespeichert (siehe workArrivalEstimate).
+let lastCommutePtMinutes = null;
+
 function haversineMeters(a, b) {
   const R = 6371000;
   const toRad = function (deg) { return deg * Math.PI / 180; };
@@ -459,6 +466,28 @@ function walkUrgencyClass(minutesUntilLeave) {
   return " walk-ok";
 }
 
+// Schätzt, ob man mit einer Abfahrt um departureDate rechtzeitig zur
+// Arbeit kommt (departureDate + komplette ÖPNV-Reisezeit inkl. Fußwege,
+// siehe lastCommutePtMinutes) — nur an Werktagen relevant, und nur, wenn
+// die geschätzte Ankunft überhaupt in der Nähe der Zielzeit liegt (±3h),
+// sonst würde z.B. mittags eine "pünktlich für 08:00"-Meldung auftauchen,
+// obwohl das für den aktuellen Weg gar keine Rolle spielt.
+function workArrivalEstimate(departureDate) {
+  if (lastCommutePtMinutes == null || !CONFIG.workArrivalTarget) return null;
+  const day = departureDate.getDay();
+  if (day === 0 || day === 6) return null;
+
+  const parts = CONFIG.workArrivalTarget.split(":");
+  const targetDate = new Date(departureDate);
+  targetDate.setHours(parseInt(parts[0], 10) || 0, parseInt(parts[1], 10) || 0, 0, 0);
+
+  const arrivalDate = new Date(departureDate.getTime() + lastCommutePtMinutes * 60000);
+  const diffMin = Math.round((targetDate.getTime() - arrivalDate.getTime()) / 60000);
+  if (Math.abs(diffMin) > 180) return null;
+
+  return { arrivalDate: arrivalDate, diffMin: diffMin };
+}
+
 // "Sollte ich jetzt los?"-Kopfzeile überm Abfahrten-Board: statt drei
 // Panels (Wetter/Pendel/Abfahrten) einzeln durchzuschauen und selbst
 // zusammenzurechnen, eine einzige Handlungsempfehlung aus dem, was die
@@ -508,6 +537,20 @@ function renderLeaveNowBanner(soonestDep, now) {
 
   els.leaveNowBanner.appendChild(headline);
   els.leaveNowBanner.appendChild(sub);
+
+  const workEstimate = workArrivalEstimate(whenDate);
+  if (workEstimate) {
+    const arrivalStr = workEstimate.arrivalDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    const arrivalLine = document.createElement("div");
+    arrivalLine.className = "leave-now-arrival" + (workEstimate.diffMin < 0 ? " is-late" : "");
+    arrivalLine.textContent = (workEstimate.diffMin < 0 ? "⚠️ Ankunft ca. " : "✅ Ankunft ca. ") +
+      arrivalStr + " bei der Arbeit" +
+      (workEstimate.diffMin < 0
+        ? " · " + Math.abs(workEstimate.diffMin) + " Min zu spät für " + CONFIG.workArrivalTarget
+        : " · rechtzeitig für " + CONFIG.workArrivalTarget);
+    els.leaveNowBanner.appendChild(arrivalLine);
+  }
+
   els.leaveNowBanner.classList.add("is-visible");
   els.leaveNowBanner.classList.toggle("is-urgent", minutesUntilLeave <= 2);
 }
@@ -3217,6 +3260,7 @@ function updateCommute() {
       fetchCarItinerary(coords.home, coords.work, distanceMeters, departDate),
     ]).then(function (all) {
       const results = { bike: all[0], bus: all[1], car: all[2], forecastDate: departDate };
+      lastCommutePtMinutes = (results.bus && typeof results.bus.minutes === "number") ? results.bus.minutes : null;
       renderCommuteHero(results);
 
       // Kartenansicht nur mit TomTom-Key (sonst kein Kartenbild abrufbar
