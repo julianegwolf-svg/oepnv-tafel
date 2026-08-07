@@ -3797,17 +3797,47 @@ const PANEL_AVAILABILITY = {
   events: function () { return eventsAvailable; },
 };
 
+const PANEL_IDS = ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events"];
+
+// Alle 11 Panels bleiben wegen der Crossfade-Optik dauerhaft im DOM (nur
+// opacity:0 + pointer-events:none statt display:none, siehe .panel-view-
+// Kommentar in style.css) — auf einem speicherschwachen Gerät (iPad Air 1,
+// 1GB RAM) heißt das: WebKit hält ALLE Panels mit ihren teils aufwendigen
+// Effekten (Wetter-FX, Verläufe, Kartenbild, Bilder) gleichzeitig im
+// GPU-Speicher, nicht nur das gerade sichtbare — Hauptverdächtiger für die
+// häufigen Abstürze ("schafft nie einen kompletten Durchlauf"). Gleiches
+// Prinzip wie schon beim Bild-Lazy-Load in applySlideMediaSwap: das neue
+// Panel wird sofort sichtbar gemacht, alle anderen erst NACH Ablauf ihrer
+// Crossfade-Transition (siehe .panel-view: 0.7s) per display:none komplett
+// aus dem Renderbaum genommen, statt nur unsichtbar zu bleiben.
+function unmountInactivePanels(activeName) {
+  for (let i = 0; i < PANEL_IDS.length; i++) {
+    if (PANEL_IDS[i] === activeName) continue;
+    const el = document.getElementById("panel-" + PANEL_IDS[i]);
+    if (el) el.style.display = "none";
+  }
+}
+
 function showPanel(name) {
-  const ids = ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events"];
+  const ids = PANEL_IDS;
   for (let i = 0; i < ids.length; i++) {
     const el = document.getElementById("panel-" + ids[i]);
     if (!el) continue;
+    if (ids[i] === name && el.style.display === "none") {
+      // Panel kommt aus dem unmounted-Zustand zurück — display:none muss
+      // weg, BEVOR die active-Klasse (und damit opacity:1) gesetzt wird,
+      // sonst überspringt der Browser die Transition (display:none->
+      // opacity:1 in einem Frame ist kein Übergang, sondern ein Sprung).
+      el.style.display = "";
+      void el.offsetWidth; // Reflow erzwingen, damit der Sprung nicht greift
+    }
     // classList.toggle statt className-Zuweisung — #panel-weather trägt
     // inzwischen eigene Zustandsklassen (weather-scene, fx-*, has-photo,
     // has-video), die hier sonst bei JEDEM Karussell-Wechsel überschrieben
     // würden (className = "..." ersetzt IMMER alles).
     el.classList.toggle("active", ids[i] === name);
   }
+  setTimeout(function () { unmountInactivePanels(name); }, 750);
 
   if (name === "quote") {
     startQuoteTypewriter();
@@ -4224,6 +4254,11 @@ function initStageSwipe() {
 
 // ---------- Start ----------
 function init() {
+  // Sofort beim Start alle Panels außer dem sichtbaren ersten unmounten
+  // (siehe unmountInactivePanels-Kommentar) — sonst stünden bis zum ersten
+  // Karussell-Wechsel alle 11 Panels unnötig lange voll im Speicher.
+  unmountInactivePanels("departures");
+
   initRadioBar();
   initPanelNav();
   initStageSwipe();
