@@ -3637,14 +3637,24 @@ function fetchTeamMatches(teamName) {
       return new Date(a.matchDateTime).getTime() - new Date(b.matchDateTime).getTime();
     });
 
+    // BUG (IDEEN F1): OpenLigaDB setzt matchIsFinished oft erst Stunden
+    // nach Abpfiff — dann stand ein gestriges Spiel als "Nächstes Spiel"
+    // auf der Tafel. Ein Spiel gilt deshalb auch als vorbei, wenn der
+    // Anstoß mehr als 2 h 15 min zurückliegt (90 min + Pause + Nachspielzeit
+    // + Verlängerung/Elfmeter mit Puffer).
+    const overMs = 135 * 60 * 1000;
+    const isOver = function (m) {
+      return m.matchIsFinished || (Date.now() - new Date(m.matchDateTime).getTime() > overMs);
+    };
+
     let next = null;
     for (let i = 0; i < matches.length; i++) {
-      if (!matches[i].matchIsFinished) { next = matches[i]; break; }
+      if (!isOver(matches[i])) { next = matches[i]; break; }
     }
 
     let last = null;
     for (let i = matches.length - 1; i >= 0; i--) {
-      if (matches[i].matchIsFinished) { last = matches[i]; break; }
+      if (isOver(matches[i])) { last = matches[i]; break; }
     }
 
     if (!next && !last) return null;
@@ -3739,6 +3749,12 @@ function buildSportSlide(entry, index) {
         scoreEl.className = "sport-slide-score";
         scoreEl.textContent = score;
         center.appendChild(scoreEl);
+      } else if (!useNext) {
+        // Vorbei, aber OpenLigaDB hat noch kein Endergebnis.
+        const pendingEl = document.createElement("span");
+        pendingEl.className = "sport-slide-vs sport-slide-pending";
+        pendingEl.textContent = "Ergebnis folgt";
+        center.appendChild(pendingEl);
       } else {
         const vsEl = document.createElement("span");
         vsEl.className = "sport-slide-vs";

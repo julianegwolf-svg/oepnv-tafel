@@ -2482,3 +2482,10 @@ html, body {
 .waste-line:empty {
   display: none;
 }
+
+/* Spiel vorbei, Endergebnis von OpenLigaDB steht noch aus (IDEEN F1). */
+.sport-slide-pending {
+  font-size: 18px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
