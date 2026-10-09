@@ -1,0 +1,10 @@
+{
+  "name": "tafel-werkzeuge",
+  "private": true,
+  "description": "Prüf- und Testwerkzeuge für die SmartTafel (nicht Teil der ausgelieferten Seite)",
+  "dependencies": {
+    "es-check": "^9.0.0",
+    "playwright": "^1.56.0",
+    "ws": "^8.18.0"
+  }
+}

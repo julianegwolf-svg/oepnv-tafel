@@ -65,12 +65,15 @@ const CONFIG = {
     opacity: 0.94,
   },
 
-  // Ambient-Modus: nach so langer Untätigkeit ist niemand mehr da, der
-  // Pendel-/Abfahrtsdaten braucht — die Tafel wechselt dann in einen
-  // ruhigen, rein dekorativen Anzeigemodus (nur Uhrzeit + langsamer
-  // Farbverlauf) statt weiter für ein leeres Zimmer durchzuschalten.
-  // Jeder Touch beendet den Modus sofort wieder.
-  ambientAfterMs: 60 * 60 * 1000,
+  // Ambient-Modus (nur Uhrzeit + langsamer Farbverlauf): früher nach so
+  // langer Untätigkeit automatisch — an einer Wandtafel tippt aber fast nie
+  // jemand, die Tafel landete dadurch praktisch immer nach einer Stunde in
+  // der Riesen-Uhr und das Karussell stand (FEEDBACK 10.10.). Jetzt 0 = aus:
+  // Ambient nur noch bei echter Abwesenheit über Home Assistant (siehe
+  // homeAssistant.reaktionen.niemandDaAmbient). Nachtdimmung/Tiefschlaf nach
+  // Uhrzeit bleiben davon unberührt. Ein Wert > 0 (ms) holt den alten
+  // Berührungs-Timeout zurück.
+  ambientAfterMs: 0,
 
   // ---------------------------------------------------------------
   // Karussell: welche Ansichten in welcher Reihenfolge. Läuft einmal

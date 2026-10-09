@@ -1,0 +1,10 @@
+.claude/
+.loop.lock/
+.stop
+.parallel
+tafel-loop.log
+tool/node_modules/
+belege/
+tafel-start.log
+tool/ha-simulator/haushalt.json
+tool/ha-simulator/automations.echt.yaml

@@ -4267,9 +4267,17 @@ function deferCarouselAdvance() {
 let ambientTimer = null;
 let ambientActive = false;
 
+// FEEDBACK 10.10.: An einer Wandtafel tippt fast nie jemand — der
+// Berührungs-Timeout schickte die Tafel deshalb praktisch immer nach einer
+// Stunde in die Riesen-Uhr, und das Karussell stand. Ambient gibt es jetzt
+// nur noch bei echter Abwesenheit (Home Assistant: niemand zu Hause, siehe
+// checkAbsence in ha-panels.js). CONFIG.ambientAfterMs = 0 (Standard)
+// schaltet den Berührungs-Timeout ganz ab; ein Wert > 0 holt ihn zurück.
 function armAmbientTimer() {
   if (ambientTimer) clearTimeout(ambientTimer);
-  ambientTimer = setTimeout(enterAmbientMode, CONFIG.ambientAfterMs || 60 * 60 * 1000);
+  ambientTimer = null;
+  if (!CONFIG.ambientAfterMs) return;
+  ambientTimer = setTimeout(enterAmbientMode, CONFIG.ambientAfterMs);
 }
 
 function enterAmbientMode() {
