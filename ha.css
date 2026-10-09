@@ -2777,3 +2777,7 @@ body.ha-ruhe .ha-dot {
   padding: 0 14px 0 12px;
   font-size: 16px;
 }
+
+.ha-hint.is-more {
+  flex-shrink: 0;
+}

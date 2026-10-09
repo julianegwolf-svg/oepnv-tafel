@@ -1751,8 +1751,8 @@
     const humid = sum.hum != null && sum.hum >= limit;
     const tPts = room.temps[0] ? historyData[room.temps[0]] : null;
     const hPts = room.hums[0] ? historyData[room.hums[0]] : null;
-    const tmm = minMax(tPts);
-    const hmm = minMax(hPts);
+    const tmm = tPts && tPts.length > 1 ? minMax(tPts) : null;
+    const hmm = hPts && hPts.length > 1 ? minMax(hPts) : null;
     const W = wide ? 600 : 280;
     const H = wide ? 190 : 54;
     let spark = "";
@@ -1777,7 +1777,11 @@
         spark += '<div class="ha-spark-axis"><span>vor 24 h</span><span>vor 12 h</span><span>jetzt</span></div>';
       }
     } else {
-      spark = '<div class="ha-spark ha-spark-empty' + (wide ? " is-wide" : "") + '">Verlauf lädt …</div>';
+      // Ohne eigenen Sensor (nur Thermostat) gibt es keinen Verlauf —
+      // dann das ehrlich sagen statt ewig "lädt".
+      const hasSensor = room.temps.length || room.hums.length;
+      const msg = !hasSensor ? "kein Verlauf (nur Thermostat)" : (historyFetchedAt ? "noch kein Verlauf" : "Verlauf lädt …");
+      spark = '<div class="ha-spark ha-spark-empty' + (wide ? " is-wide" : "") + '">' + msg + "</div>";
     }
     let badge = "";
     if (sum.openIds.length && sum.heating) badge = '<span class="ha-chip is-alert">' + icon("alert") + "Fenster offen</span>";
@@ -1805,10 +1809,18 @@
       "</div>";
   }
 
-  function outdoorCardHtml() {
+  function outdoorCardHtml(compact) {
     const out = outdoor();
     if (!out) return "";
     const ah = out.hum != null ? absHumidity(out.temp, out.hum) : null;
+    if (compact) {
+      return '<div class="ha-klima ha-outdoor">' +
+        '<div class="ha-klima-top"><span class="ha-klima-name">Draußen</span><span class="ha-chip">' + esc(CONDITION_DE[out.condition] || out.condition) + "</span></div>" +
+        '<div class="ha-klima-values"><span class="ha-klima-temp num">' + digits(fmtTemp(out.temp)) + "</span>" +
+        (out.hum != null ? '<span class="ha-klima-hum num">' + icon("drop") + Math.round(out.hum) + " %</span>" : "") + "</div>" +
+        (ah != null ? '<div class="ha-outdoor-ah num">' + fmtNum(ah, 1) + " g/m³<span>Wasser in der Luft – Lüften trocknet nur, wenn es drinnen mehr ist</span></div>" : "") +
+        "</div>";
+    }
     return '<div class="ha-klima ha-outdoor">' +
       '<div class="ha-klima-top"><span class="ha-klima-name">Draußen</span><span class="ha-chip">' + esc(CONDITION_DE[out.condition] || out.condition) + "</span></div>" +
       '<div class="ha-klima-values"><span class="ha-klima-temp num">' + fmtTemp(out.temp) + "</span>" +
@@ -1824,7 +1836,11 @@
     const rooms = klimaRooms().slice(0, 8);
     // Wenige Räume: breite Karten mit großer Kurve + Draußen-Karte daneben.
     const wide = rooms.length <= 2;
-    const withOutdoor = wide && !!outdoor();
+    // Draußen-Karte: bei wenigen Räumen immer, sonst wenn im Raster eine
+    // Zelle frei bliebe (z. B. 5 Räume im 3×2-Raster).
+    const r = rooms.length;
+    const freeCell = r > 2 && ((r <= 6 && r % 3 !== 0) || (r > 6 && r % 4 !== 0));
+    const withOutdoor = !!outdoor() && (wide || freeCell);
     const n = rooms.length + (withOutdoor ? 1 : 0);
     let colsCls;
     if (wide && rooms.length === 1 && withOutdoor) colsCls = "cols-wide1";
@@ -1838,7 +1854,7 @@
       els.klimaGrid._haKeys = keys;
     }
     for (let i = 0; i < rooms.length; i++) setHtml(els.klimaGrid.children[i], klimaCardHtml(rooms[i], wide));
-    if (withOutdoor) setHtml(els.klimaGrid.children[rooms.length], outdoorCardHtml());
+    if (withOutdoor) setHtml(els.klimaGrid.children[rooms.length], outdoorCardHtml(!wide));
 
     const klimaHints = hints.filter(function (h) { return h.ziel === "klima"; });
     if (klimaHints.length) {
@@ -2202,9 +2218,11 @@
     if (!usable() || CFG.hinweise === false) { setHtml(els.hints, ""); return; }
     // Info-Hinweise (Prio 4) nur auf dem Zuhause-Panel als Band, sonst ruhig.
     const visible = hints.filter(function (h) { return h.prio <= 3 || currentPanel === "home"; });
-    const shown = visible.slice(0, 3);
+    // Höchstens zwei Chips (plus "+n"), damit sie lesbar bleiben statt
+    // zu "Badezimmer: Fenster offen, Hei…" zusammenzuschrumpfen.
+    const shown = visible.slice(0, 2);
     let html = shown.map(hintChipHtml).join("");
-    if (visible.length > 3) html += '<button type="button" class="ha-hint is-more" data-act="hinweis" data-key="">+' + (visible.length - 3) + "</button>";
+    if (visible.length > 2) html += '<button type="button" class="ha-hint is-more" data-act="hinweis" data-key="">+' + (visible.length - 2) + "</button>";
     setHtml(els.hints, html);
   }
 

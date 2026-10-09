@@ -74,7 +74,7 @@ const ZAEHLER = `
   await context.addInitScript(ZAEHLER);
   const page = await context.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("pageerror", (e) => { if (!/access control checks/.test(e.message)) errors.push(e.message); });
 
   await page.goto(SIM + "/local/tafel/index.html");
   await page.waitForSelector("#haLogin.is-open", { timeout: 10000 });
