@@ -238,6 +238,30 @@ function tickClock() {
     els.ambientClock.textContent = now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
   }
   updateNightDim(now.getHours());
+  applyFarbwelt(now);
+}
+
+// ---------- Farbwelt (IDEEN R1) ----------
+// "dunkel" = immer das dunkle Designsystem (wie die Home-Assistant-
+// Panels), "auto" = tagsüber hell, zwischen Sonnenuntergang und
+// -aufgang dunkel, "hell" = der bisherige Look. Nur eine Klasse auf
+// <body>; die Farben stehen in farbwelt.css.
+function applyFarbwelt(now) {
+  const mode = CONFIG.farbwelt || "hell";
+  let dark = mode === "dunkel";
+  if (mode === "auto") {
+    const w = lastWeatherSnapshot;
+    const t = now.getTime();
+    if (w && w.sunrise && w.sunset) {
+      // Sonnenzeiten gelten für "heute" — außerhalb davon ist es dunkel.
+      dark = t < w.sunrise || t > w.sunset;
+    } else {
+      dark = now.getHours() < 7 || now.getHours() >= 19;
+    }
+  }
+  if (document.body.classList.contains("farbe-dunkel") !== dark) {
+    document.body.classList.toggle("farbe-dunkel", dark);
+  }
 }
 
 // ---------- Nachtdimmung ----------
@@ -1313,6 +1337,8 @@ function updateWeather() {
       desc: entry[1] || "",
       hi: data.daily && data.daily.temperature_2m_max ? Math.round(data.daily.temperature_2m_max[0]) : null,
       lo: data.daily && data.daily.temperature_2m_min ? Math.round(data.daily.temperature_2m_min[0]) : null,
+      sunrise: data.daily && data.daily.sunrise && data.daily.sunrise[0] ? parseOpenMeteoLocal(data.daily.sunrise[0]).getTime() : null,
+      sunset: data.daily && data.daily.sunset && data.daily.sunset[0] ? parseOpenMeteoLocal(data.daily.sunset[0]).getTime() : null,
       at: Date.now(),
     };
 

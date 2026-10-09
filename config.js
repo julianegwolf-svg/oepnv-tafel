@@ -400,6 +400,13 @@ const CONFIG = {
   sportNewsCount: 6,
 
   // ---------------------------------------------------------------
+  // Farbwelt (farbwelt.css): "dunkel" = immer dunkles Blau-Anthrazit wie
+  // die Home-Assistant-Panels, "auto" = tagsüber hell, nach Sonnen-
+  // untergang dunkel, "hell" = der bisherige beige Look.
+  // ---------------------------------------------------------------
+  farbwelt: "dunkel",
+
+  // ---------------------------------------------------------------
   // Bewegte Bilder (clips.js): Regenradar im Wetter-Panel ("auto" = nur
   // wenn es regnet oder in den nächsten 3 Stunden Regen kommt, "immer",
   // "aus") und "tagesschau in 100 Sekunden" als eigenes Panel morgens

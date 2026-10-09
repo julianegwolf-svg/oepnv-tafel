@@ -1,0 +1,116 @@
+/* ---------------------------------------------------------------
+   farbwelt.css — dunkle Farbwelt für die bisherigen Panels (IDEEN R1)
+   Gilt, solange <body> die Klasse "farbe-dunkel" trägt (gesetzt in
+   app.js, siehe CONFIG.farbwelt: "dunkel" | "auto" | "hell").
+   style.css arbeitet fast nur mit Variablen — die werden hier auf die
+   Tokens aus design.css umgelegt; nur wenige Regeln brauchen eigene
+   Überschreibungen. Safari 12: nur Variablen/Farben, kein color-mix.
+   --------------------------------------------------------------- */
+body.farbe-dunkel {
+  --bg: #0d1219;
+  --panel: #18212d;
+  --panel-edge: rgba(239, 233, 223, 0.12);
+  --ink: #efe9df;
+  --ink-dim: #b8b0a3;
+  --brass: #e2a65a;
+  --brass-ink: #f6dcb4;
+  --steel: #8fa6b8;
+  --steel-ink: #dbe4ec;
+  --danger: #e86a5c;
+  --ok: #62c08d;
+  --glass-bg: rgba(24, 33, 45, 0.94);
+  --glass-shadow: 0 12px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --accent: var(--brass);
+  background: #0d1219;
+  color: #efe9df;
+}
+
+body.farbe-dunkel .panel {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(226, 166, 90, 0.07) 0%, rgba(226, 166, 90, 0) 40%),
+    radial-gradient(circle at 92% 88%, rgba(111, 179, 214, 0.06) 0%, rgba(111, 179, 214, 0) 45%),
+    #0d1219;
+}
+
+/* Panel-Akzente: auf Dunkel etwas heller, damit sie leuchten statt
+   abzusaufen. */
+body.farbe-dunkel #panel-departures { --accent: #e2a65a; }
+body.farbe-dunkel #panel-commute { --accent: #8fa6b8; }
+body.farbe-dunkel #panel-news { --accent: #e08a55; }
+body.farbe-dunkel #panel-music { --accent: #b18ee0; }
+body.farbe-dunkel #panel-quote { --accent: #e2a65a; --accent-rgb: 226, 166, 90; }
+body.farbe-dunkel #panel-trivia { --accent: #e07fa3; --accent-rgb: 224, 127, 163; }
+body.farbe-dunkel #panel-quiz { --accent: #6fb3d6; --accent-rgb: 111, 179, 214; }
+body.farbe-dunkel #panel-riddle { --accent: #8cc98c; --accent-rgb: 140, 201, 140; }
+body.farbe-dunkel #panel-events { --accent: #e08a55; }
+body.farbe-dunkel #panel-calendar { --accent: #6fb3d6; }
+
+/* Kopfzeilen-Pille, Knöpfe, Menüs */
+body.farbe-dunkel .topbar,
+body.farbe-dunkel .panel-nav-toggle,
+body.farbe-dunkel .radio-toggle,
+body.farbe-dunkel .ha-house-toggle,
+body.farbe-dunkel .radio-menu,
+body.farbe-dunkel .waste-line,
+body.farbe-dunkel .ha-hint:not(.is-p1):not(.is-p2):not(.is-vorschlag) {
+  background: rgba(24, 33, 45, 0.94);
+  border-color: rgba(239, 233, 223, 0.14);
+  color: #efe9df;
+}
+
+body.farbe-dunkel .ha-dot {
+  border-color: #18212d;
+}
+
+body.farbe-dunkel .ha-radio-target {
+  background: #1f2a38;
+  color: #efe9df;
+  border-color: rgba(239, 233, 223, 0.14);
+}
+
+body.farbe-dunkel .ha-radio-target.is-active {
+  background: #efe9df;
+  color: #0d1219;
+}
+
+body.farbe-dunkel .radio-toggle.is-playing,
+body.farbe-dunkel .radio-toggle.is-playing-ha {
+  background: #e2a65a;
+  border-color: #e2a65a;
+}
+
+body.farbe-dunkel .progress-bar {
+  background: rgba(239, 233, 223, 0.08);
+}
+
+/* Abfahrten: Linien-Plaketten dunkel statt Pastell */
+body.farbe-dunkel .line-badge {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+body.farbe-dunkel .line-badge.tram {
+  background: linear-gradient(165deg, #4a3a22 0%, #3a2d1a 100%);
+  color: #f6dcb4;
+}
+
+body.farbe-dunkel .line-badge.bus {
+  background: linear-gradient(165deg, #2c3b4b 0%, #223040 100%);
+  color: #dbe4ec;
+}
+
+/* Veranstaltungen/Termine: Datumskachel dunkel, Tag in Akzentfarbe */
+body.farbe-dunkel .event-date {
+  background: linear-gradient(165deg, #263244 0%, #1f2a38 100%);
+  border: 1px solid rgba(239, 233, 223, 0.12);
+  color: #b8b0a3;
+}
+
+body.farbe-dunkel .event-date-day {
+  color: var(--accent);
+}
+
+/* Panel-Übersicht deckend (IDEEN Ü1): das Panel dahinter soll nicht
+   durchscheinen und mit den Kacheln konkurrieren. */
+body.farbe-dunkel .panel-nav-overlay {
+  background: rgba(9, 13, 19, 0.92);
+}
