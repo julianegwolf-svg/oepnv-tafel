@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmartTafel – was heute Nacht passiert ist</title>
+<style>
+  :root {
+    --bg: #0d1219; --surface: #18212d; --surface-2: #1f2a38; --line: rgba(239,233,223,.10);
+    --text: #efe9df; --text-2: #b8b0a3; --text-3: #7d8796; --accent: #e2a65a; --accent-2: #6fb3d6;
+    --ok: #62c08d; --warn: #f0a04b; --alert: #e86a5c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.55 -apple-system, "Inter", system-ui, sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 48px 28px 80px; }
+  h1 { font-size: 46px; line-height: 1.05; letter-spacing: -.02em; margin: 6px 0 18px; }
+  h2 { font-size: 30px; letter-spacing: -.01em; margin: 64px 0 8px; }
+  h3 { font-size: 20px; margin: 30px 0 8px; }
+  .eyebrow { color: var(--accent); font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+  .lead { font-size: 20px; color: var(--text-2); max-width: 900px; }
+  .summary { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 22px 28px; margin: 26px 0; }
+  .summary li { margin: 6px 0; }
+  .todo { background: linear-gradient(135deg, rgba(226,166,90,.16), rgba(226,166,90,.04)); border: 1px solid rgba(226,166,90,.45); border-radius: 22px; padding: 22px 28px; }
+  .todo ol { margin: 8px 0 0; padding-left: 22px; }
+  .todo li { margin: 8px 0; }
+  code { background: var(--surface-2); padding: 2px 7px; border-radius: 6px; font-size: 15px; }
+  a { color: var(--accent-2); }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); grid-gap: 18px; margin-top: 14px; }
+  .grid.three { grid-template-columns: repeat(3, 1fr); }
+  figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  figure img, figure video { display: block; width: 100%; height: auto; background: #000; }
+  figcaption { padding: 10px 14px 12px; font-size: 15px; color: var(--text-2); }
+  figcaption b { color: var(--text); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; grid-gap: 14px; margin-top: 12px; }
+  .tag { display: inline-block; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; margin-bottom: 6px; }
+  .tag.vorher { background: rgba(232,106,92,.18); color: #ff9d90; }
+  .tag.nachher { background: rgba(98,192,141,.18); color: var(--ok); }
+  .strip { margin-top: 12px; }
+  .strip img { width: 100%; border-radius: 12px; border: 1px solid var(--line); }
+  .note { color: var(--text-3); font-size: 15px; }
+  .gaps li { margin: 6px 0; color: var(--text-2); }
+  .ok { color: var(--ok); font-weight: 700; }
+  table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 15px; }
+  td, th { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { color: var(--text-3); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code></div>
+<h1>Deine Tafel ist jetzt eine Smart-Home-Zentrale.</h1>
+<p class="lead">Kurz und ehrlich, was diese Nacht entstanden ist – alles gegen einen Home-Assistant-<b>Simulator</b> mit deinem echten Haushalt getestet, nie gegen dein echtes HA. Die Bilder zeigen Desktop-WebKit bei 1024×768 (wie das iPad), nicht das iPad selbst.</p>
+
+<div class="summary">
+<ol>
+  <li><b>Dein dringender Fehler ist weg:</b> Die Tafel springt nicht mehr nach 1 Stunde in die Riesen-Uhr – das Karussell läuft (geprüft nach 2, 6 und 24 h ohne Berührung).</li>
+  <li><b>Home Assistant komplett:</b> Login mit deinem HA-Konto, Räume mit echter Lichtfarbe, Licht/Szenen/Helligkeit mit einem Tipp, deine Automationen als Schnellaktionen mit Countdown + Rückgängig, Einkaufsliste zum Abhaken, Bad-Klima mit echtem Lüftungsrat, HomePod mit Radio.</li>
+  <li><b>Die Tafel denkt mit:</b> Sie lernt deinen Rhythmus aus dem HA-Verlauf („Du gehst werktags meist um 07:32 los – Bahn in 17 Min“, „Wie jeden Abend: Gute Nacht?“), begrüßt dich beim Heimkommen und morgens mit dem einen wichtigen Satz.</li>
+  <li><b>Bewegte Bilder:</b> Regenradar im Wetter-Panel, wenn Regen kommt; „tagesschau in 100 Sekunden“ morgens und abends.</li>
+  <li><b>Auf dem echten iPad waren Nachtdimmung, Ambient und Übersicht kaputt</b> (CSS, das Safari 12 nicht kann) – behoben. Dazu IDEEN.md: jedes Panel kritisch durchgesehen, mit konkreten Maßen.</li>
+</ol>
+</div>
+
+<div class="todo">
+<div class="eyebrow">Was du tun musst, damit es am iPad läuft (≈ 10 Minuten)</div>
+<ol>
+  <li>In HA das Add-on <b>Samba share</b> starten, am Mac <code>smb://homeassistant.local</code> → Freigabe <b>config</b> verbinden.</li>
+  <li>Im Repo: <code>./tool/nach-ha-kopieren.sh /Volumes/config/www/tafel</code> (beim allerersten Mal danach HA einmal neu starten).</li>
+  <li>In HA einen Benutzer <b>tafel</b> anlegen (kein Admin, nur lokal).</li>
+  <li>Am iPad Guided Access beenden, in Safari <code>http://homeassistant.local:8123/local/tafel/index.html</code> → <b>Zum Home-Bildschirm</b> → neue App öffnen → als <b>tafel</b> anmelden → Guided Access wieder starten.</li>
+</ol>
+<p class="note">Alles Schritt für Schritt (und warum GitHub Pages dafür nicht reicht): <a href="HOME_ASSISTANT.md">HOME_ASSISTANT.md</a>. Fragen an dich: <a href="FRAGEN.md">FRAGEN.md</a> – darin auch zwei Fehler, die beim Nachbauen deiner echten Automationen aufgefallen sind.</p>
+</div>
+
+<h2>1 · Der dringende Fehler: Riesen-Uhr nach einer Stunde</h2>
+<p class="note">Playwright spult die Zeit ohne jede Berührung vor. Vorher: Ambient-Modus nach 1 h, Karussell steht. Nachher: Ambient nur noch, wenn laut HA niemand zu Hause ist.</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/dauerlauf/vorher-nach-24h.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Nach 24 h: Riesen-Uhr, Karussell steht.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/dauerlauf/nachher-nach-24h.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Nach 2/6/24 h: Panels wechseln weiter (hier mitten im Übergang).</figcaption></figure>
+</div>
+
+<h2>2 · Home Assistant – alle Ansichten</h2>
+<p class="note">Simulator mit deinem Haushalt (Struktur aus deiner privaten, nicht eingecheckten haushalt.json). Bedienung wirklich durchgespielt: <code>node tool/pruefe-ha.js</code> – alle Prüfungen grün.</p>
+<div class="grid">
+  <figure><img src="belege/2026-10-10/ha/01-login.png" alt=""><figcaption><b>Login</b> mit deinem HA-Konto (offizieller Ablauf, nur Refresh-Token gespeichert, nie das Passwort). Formular oben – die iPad-Tastatur braucht unten Platz.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ha/03-zuhause.png" alt=""><figcaption><b>Zuhause:</b> Lichtschein in der echten Lampenfarbe, ein Tipp schaltet den Raum (Hue-Gruppe + IKEA-Lampen), Einkaufsliste zum Abhaken, deine Automationen unten.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ha/06-raum.png" alt=""><figcaption><b>Raumansicht:</b> jede Lampe mit Helligkeit, Farbtemperatur, Farben; Hue-Szenen (eingedeutscht, Dubletten zusammengefasst).</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ha/12-schnellaktion-countdown.png" alt=""><figcaption><b>Schnellaktion mit Countdown:</b> nochmal tippen bricht ab; danach „Rückgängig“ (stellt die Lichter von vorher wieder her).</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ha/15-klima.png" alt=""><figcaption><b>Raumklima:</b> 24-h-Kurven, Feuchte-Grenze und ein echter Lüftungsrat aus der absoluten Feuchte drinnen/draußen.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ha/16-medien.png" alt=""><figcaption><b>Medien:</b> nur wenn etwas läuft; Play/Pause, Lautstärke, Radio direkt auf dem HomePod.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ha/19-radio-ziele.png" alt=""><figcaption><b>Radio-Knopf oben:</b> „Abspielen auf iPad / HomePod“.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ha/20-hinweise-abfahrten.png" alt=""><figcaption><b>Hinweisband</b> auf allen Panels, Wichtiges zuerst (hier: Batterien).</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ha/21-getrennt.png" alt=""><figcaption><b>Verbindung weg:</b> Punkt atmet, Bedienung gesperrt mit Hinweis – verbindet sich ohne Neuladen wieder.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ha/24-begruessung.png" alt=""><figcaption><b>Heimkommen:</b> Tafel springt aufs Zuhause-Panel und begrüßt dich.</figcaption></figure>
+</div>
+
+<h3>Für Geräte, die du (noch) nicht hast</h3>
+<p class="note">Heizung, Fenster, Waschmaschine, Saugroboter, Steckdosen werden bei dir <b>nicht</b> angezeigt – kommen sie in HA dazu, erscheinen sie automatisch. Getestet mit dem Simulator-Schalter <code>--extras</code>:</p>
+<div class="grid">
+  <figure><img src="belege/2026-10-10/ha-extras/03-zuhause.png" alt=""><figcaption>6 Räume + Einkaufsliste im Raster, Thermostate, Tür/Saugroboter, Warnung „Fenster offen, Heizung an“.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ha-extras/15-klima.png" alt=""><figcaption>Klima mit Thermostaten (−/+), Draußen-Karte in der freien Zelle.</figcaption></figure>
+</div>
+
+<h2>3 · Animationen, die etwas bedeuten</h2>
+<p class="note">Nur über transform/opacity (Safari 12, A7-Chip). Videos aus Playwright-WebKit; darunter je ein Bildstreifen.</p>
+<div class="grid">
+  <figure><video src="belege/2026-10-10/animationen/licht-kachel.webm" controls muted loop playsinline></video><figcaption><b>Licht an/aus:</b> Schein in der echten Lampenfarbe blendet ein, Glühbirne füllt sich von unten.</figcaption></figure>
+  <figure><video src="belege/2026-10-10/animationen/schnellaktion.webm" controls muted loop playsinline></video><figcaption><b>Schnellaktion:</b> Countdown, Kacheln gehen gestaffelt aus, Rückgängig.</figcaption></figure>
+  <figure><video src="belege/2026-10-10/animationen/regler.webm" controls muted loop playsinline></video><figcaption><b>Helligkeitsregler:</b> Füllung folgt dem Finger, Zahl zählt mit, danach Abgleich mit HA.</figcaption></figure>
+  <figure><video src="belege/2026-10-10/animationen/szene.webm" controls muted loop playsinline></video><figcaption><b>Szene:</b> Farbschleier in den Farben der Szene wischt über den Knopf.</figcaption></figure>
+  <figure><video src="belege/2026-10-10/animationen/einkauf.webm" controls muted loop playsinline></video><figcaption><b>Einkaufsliste:</b> Haken, Durchstreichen, Eintrag verschwindet.</figcaption></figure>
+  <figure><video src="belege/2026-10-10/animationen/verbindung.webm" controls muted loop playsinline></video><figcaption><b>Verbindung weg:</b> Punkt atmet, Bedienung graut aus, kommt von selbst zurück.</figcaption></figure>
+  <figure><video src="belege/2026-10-10/animationen/ziffern.webm" controls muted loop playsinline></video><figcaption><b>Zahlenwechsel:</b> nur die geänderte Ziffer rollt.</figcaption></figure>
+  <figure><video src="belege/2026-10-10/animationen/begruessung.webm" controls muted loop playsinline></video><figcaption><b>Heimkommen:</b> Sprung aufs Zuhause-Panel, Begrüßung blendet gestaffelt ein.</figcaption></figure>
+</div>
+<div class="strip"><img src="belege/2026-10-10/animationen/schnellaktion-streifen.png" alt=""></div>
+<div class="strip"><img src="belege/2026-10-10/animationen/licht-kachel-streifen.png" alt=""></div>
+
+<h2>4 · Die Tafel lernt dich kennen</h2>
+<p class="note">Aus 4 Wochen (simuliertem) HA-Verlauf und der Bedienung der Tafel – lokal, ohne Cloud. Erst ab 3 gleichen Situationen, nie automatisch schalten, „×“ lehnt ab und macht den Vorschlag seltener. Geprüft mit <code>node tool/pruefe-lernen.js</code> zu festen Uhrzeiten.</p>
+<div class="grid">
+  <figure><img src="belege/2026-10-10/lernen/werktag-morgens.png" alt=""><figcaption><b>Mo 07:12:</b> „Du gehst werktags meist um 07:32 los – Linie … um 07:37, in 17 Min los“.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/lernen/abends.png" alt=""><figcaption><b>Mo 22:14:</b> „Wie jeden Abend: Gute Nacht?“ – Tippen startet die Aktion mit Countdown.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/lernen/samstag-vormittag.png" alt=""><figcaption><b>Sa 09:51:</b> „Arbeiten? Am Wochenende meist ab 10:05“.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/lernen/einstellungen-gelernt.png" alt=""><figcaption><b>Einstellungen</b> (lange auf die Uhr drücken): „Was die Tafel gelernt hat“ + „Vergessen“.</figcaption></figure>
+</div>
+
+<h2>5 · Regenradar und tagesschau in 100 Sekunden</h2>
+<div class="pair">
+  <figure><img src="belege/vorher/03-wetter.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Wetter: die rechte Hälfte leer.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/clips/v2-01-weather.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Regenradar der letzten ~2 h als Bildfolge, Zuhause markiert – nur wenn Regen relevant ist.</figcaption></figure>
+</div>
+<div class="grid">
+  <figure><img src="belege/2026-10-10/clips/v2-02-tagesschau.png" alt=""><figcaption><b>tagesschau in 100 Sekunden</b> morgens/abends, stumm, Titel im Rand statt über der Bauchbinde. Speicherprobe: 50 Wiedergaben, nie mehr als ein Video, Speicher sinkt (113 → 96 MB).</figcaption></figure>
+</div>
+
+<h2>6 · Was auf dem echten iPad kaputt war</h2>
+<p class="note">Safari 12 kennt <code>inset</code> und Flex-<code>gap</code> nicht. Simulierte iPad-Ansicht (CSS ohne diese Angaben):</p>
+<div class="pair">
+  <figure><img src="belege/vorher/21-ipad-sim-panel-uebersicht.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Panel-Übersicht als kleiner Kasten oben links (Overlay 0×0 px).</figcaption></figure>
+  <figure><img src="belege/2026-10-10/safari12-css/c-ipad-sim-nachher-13-uebersicht.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Übersicht wie gedacht.</figcaption></figure>
+  <figure><img src="belege/vorher/22-ipad-sim-nacht.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Nachtdimmung wirkungslos.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/safari12-css/c-ipad-sim-nachher-15-nacht.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Nachts wirklich gedimmt.</figcaption></figure>
+</div>
+
+<h2>7 · Ideen für alle anderen Panels</h2>
+<p><a href="IDEEN.md">IDEEN.md</a> geht jedes Panel durch – mit Screenshot, konkreten Maßen/Farben und einer Top-10. Die wichtigsten: dunkle Farbwelt überall (die HA-Panels zeigen sie schon), Abfahrten wie eine echte Anzeigetafel (Minuten 60 px, echte Linienfarben), feste Hinweiszeile statt Müll-Chip über Inhalten, größere Uhr. Das ist der nächste Schritt.</p>
+
+<h2>8 · Zur Wahl (FRAGEN.md)</h2>
+<ul class="gaps">
+  <li>Ganze Tafel dunkel? Varianten (a) immer dunkel, (b) tagsüber heller – Bilder folgen in der nächsten Sitzung.</li>
+  <li>Kartenhintergrund Radar (Esri, schlüsselfrei) ok? tagesschau-Zeiten ok? Schnellaktionen-Zuordnung ok?</li>
+</ul>
+
+<h2>9 · Ehrliche Lücken</h2>
+<ul class="gaps">
+  <li>Alles nur im <b>Desktop-WebKit</b> und gegen den <b>Simulator</b> geprüft – nicht auf dem iPad, nicht gegen dein echtes HA. Das erste echte Anmelden ist der eigentliche Test.</li>
+  <li>Schieberegler: Mausziehen ist geprüft; echte Touch-Ereignisse lassen sich im Desktop-WebKit nicht erzeugen. Der Touch-Code (touchstart/move mit preventDefault) ist Safari-12-tauglich geschrieben, aber am iPad unbestätigt.</li>
+  <li>Stumme Autoplay-Videos sollten auf iOS 12 laufen (muted + playsinline) – am Gerät unbestätigt.</li>
+  <li>Die alten Panels (Abfahrten, Musik, Spruch …) sind noch im hellen Look – das dunkle Designsystem dafür ist der nächste Schritt (IDEEN.md).</li>
+  <li>Der Simulator wertet Templates in Automationen nicht aus; deine Automationen hat er so nachgebaut, wie HA sie vermutlich ausführt.</li>
+</ul>
+
+<p class="note" style="margin-top:50px">Ansehen: <code>./vorschau.sh</code> → <code>http://localhost:8765/MORGEN.html</code>. Live ausprobieren ohne dein HA: <code>node tool/ha-simulator/server.js</code> → <code>http://localhost:8124/local/tafel/index.html</code> (Login tafel / tafel-passwort).</p>
+</div>
+</body>
+</html>
