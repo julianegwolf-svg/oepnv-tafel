@@ -88,7 +88,9 @@ const CONFIG = {
   // restigen Panels wird bei jedem vollen Durchlauf neu gemischt (siehe
   // shuffleSequence in app.js), damit sich die Reihenfolge nach ein paar
   // Wochen nicht stur auswendig lernen lässt.
-  panelSequence: ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events", "calendar"],
+  // "home", "klima", "medien" sind die Home-Assistant-Panels — ohne
+  // eingerichtetes HA werden sie automatisch übersprungen.
+  panelSequence: ["departures", "home", "commute", "weather", "klima", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events", "calendar", "medien", "tagesschau"],
 
   // Anzeigedauer je Panel in Millisekunden. Fehlt ein Eintrag, gilt
   // panelDurationMs als Standard.
@@ -104,6 +106,10 @@ const CONFIG = {
     quiz: 22 * 1000,
     riddle: 24 * 1000, // Frage tippen, dann Lösung erst zur Halbzeit auflösen
     events: 16 * 1000,
+    home: 22 * 1000,
+    klima: 16 * 1000,
+    medien: 15 * 1000,
+    tagesschau: 105 * 1000, // Video läuft ~100 s
   },
   panelDurationMs: 18 * 1000,
 
@@ -120,7 +126,7 @@ const CONFIG = {
   timeBasedPriority: [
     { // Vor der Arbeit: raus aus dem Haus zählt am meisten.
       startHour: 6, endHour: 9,
-      boost: ["departures", "commute", "weather"],
+      boost: ["departures", "commute", "weather", "klima"],
       boostFactor: 1.6, muteFactor: 0.7,
     },
     { // Feierabend: der Weg nach Hause plus, ob man noch trocken ankommt.
@@ -130,7 +136,7 @@ const CONFIG = {
     },
     { // Abends zuhause: Unterhaltung/Wissen wichtiger als Pendel-Daten.
       startHour: 19, endHour: 23,
-      boost: ["news", "music", "quiz", "trivia", "riddle", "events", "sport"],
+      boost: ["home", "medien", "news", "music", "quiz", "trivia", "riddle", "events", "sport"],
       boostFactor: 1.3, muteFactor: 0.75,
     },
   ],
@@ -392,4 +398,60 @@ const CONFIG = {
   // während Großereignissen (WM, Tour de France) komplett von diesen
   // überschwemmt und zeigte praktisch nie etwas zu den eigenen Vereinen.
   sportNewsCount: 6,
+
+  // ---------------------------------------------------------------
+  // Bewegte Bilder (clips.js): Regenradar im Wetter-Panel ("auto" = nur
+  // wenn es regnet oder in den nächsten 3 Stunden Regen kommt, "immer",
+  // "aus") und "tagesschau in 100 Sekunden" als eigenes Panel morgens
+  // (6–10 Uhr) und abends (18–23 Uhr), stumm.
+  // ---------------------------------------------------------------
+  clips: {
+    regenradar: "auto",
+    tagesschau: true,
+  },
+
+  // ---------------------------------------------------------------
+  // Home Assistant — Smart-Home-Zentrale an der Wand (ha.js, ha-panels.js,
+  // Anleitung: HOME_ASSISTANT.md). Räume, Lampen, Szenen, Heizungen,
+  // Lautsprecher usw. erkennt die Tafel selbst aus den HA-Bereichen —
+  // hier steht nur optionale Feinsteuerung.
+  //
+  // Der Zugangstoken steht NIE hier (das Repo ist öffentlich!): er wird
+  // einmalig am iPad eingegeben (lange auf die Uhr drücken) und nur dort
+  // im Browser gespeichert. Ohne Token ist alles Home-Assistant-Bezogene
+  // unsichtbar und die Tafel läuft wie bisher.
+  // ---------------------------------------------------------------
+  homeAssistant: {
+    // Leer lassen, wenn die Tafel direkt aus Home Assistant geladen wird
+    // (http://homeassistant.local:8123/local/tafel/index.html) — dann ist
+    // HA die eigene Adresse. Von GitHub Pages (HTTPS) aus blockiert Safari
+    // http://-Adressen im Heimnetz ohnehin (Mixed Content).
+    url: "",
+    // Entitäten, die nie auf der Tafel erscheinen sollen, z. B.
+    // ["light.flur_nachtlicht", "switch.server"].
+    ausblenden: [],
+    // Raum-Reihenfolge (Namen oder area_ids); fehlende Räume folgen in der
+    // Reihenfolge aus Home Assistant.
+    raumReihenfolge: [],
+    // Schnellaktionen (Haus-Knopf oben rechts + Zuhause-Panel). Leer =
+    // automatisch: Skripte/Szenen, deren Name nach "Ich geh raus",
+    // "Gute Nacht" bzw. "Ich bin da" klingt. Eigene Liste z. B.:
+    // [{ name: "Ich geh raus", ziel: "script.ich_geh_raus", icon: "out" }]
+    // (icon: out, moon, home, sparkle, bulb, lightsoff).
+    schnellaktionen: [],
+    alleLichterAus: true, // zusätzlich "Alle Lichter aus" anbieten
+    bestaetigungSek: 4, // so lange kann man eine Schnellaktion noch abbrechen
+    // Hinweisband unten links (Fenster offen + Heizung, Waschmaschine
+    // fertig, Batterie leer, nicht erreichbar …).
+    hinweise: true,
+    feuchteGrenze: 65, // % Luftfeuchte → "lüften" (Bad/Küche +10)
+    batterieGrenze: 20, // % → "Batterie fast leer"
+    stromWarnungW: 3000, // Gesamtverbrauch, ab dem ein Hinweis kommt
+    reaktionen: {
+      bewegungWeckt: true, // Bewegung im Flur weckt aus Ambient/Tiefschlaf
+      weckSensoren: [], // leer = Bewegungsmelder in Flur/Diele/Eingang
+      niemandDaAmbient: true, // alle person.* weg → Ambient-Modus
+      ereignisSprung: true, // Waschmaschine fertig / Tür offen → Zuhause-Panel
+    },
+  },
 };

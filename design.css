@@ -1,0 +1,107 @@
+/* ---------------------------------------------------------------
+   design.css — Designsystem der SmartTafel (AUSBAU A3)
+   Gemeinsame Grundlage für alles Neue (zuerst die Home-Assistant-
+   Panels, später schrittweise alle übrigen): dunkles Blau-Anthrazit
+   statt Schwarz, warmes Off-White als Schrift, zwei Akzentfarben,
+   feste Zustandsfarben. Nur Safari-12-taugliche Mittel: CSS-Variablen
+   ja, color-mix()/inset/aspect-ratio/Flex-gap nein.
+   --------------------------------------------------------------- */
+:root {
+  /* Flächen: vom Hintergrund zur angehobenen Karte in kleinen Schritten,
+     alle mit leichtem Blaustich — wirkt auf dem alten iPad-Display
+     ruhiger und "teurer" als reines Schwarz/Grau. */
+  --c-bg: #0d1219;
+  --c-bg-2: #121923;
+  --c-surface: #18212d;
+  --c-surface-2: #1f2a38;
+  --c-surface-3: #283546;
+  --c-line: rgba(239, 233, 223, 0.09);
+  --c-line-2: rgba(239, 233, 223, 0.16);
+
+  /* Schrift: warmes Off-White, zwei gedämpfte Stufen. */
+  --c-text: #efe9df;
+  --c-text-2: #b8b0a3;
+  --c-text-3: #7d8796;
+
+  /* Akzente: warmes Messing/Bernstein (Wiedererkennung zur bisherigen
+     Tafel) und ein kühles Himmelblau für Wasser/Kälte/Info. */
+  --c-accent: #e2a65a;
+  --c-accent-rgb: 226, 166, 90;
+  --c-accent-2: #6fb3d6;
+  --c-accent-2-rgb: 111, 179, 214;
+
+  /* Zustandsfarben — überall dieselbe Bedeutung. */
+  --c-on: #f4c879;          /* Licht an, Gerät aktiv */
+  --c-on-rgb: 244, 200, 121;
+  --c-off: #3a4657;         /* aus / inaktiv */
+  --c-ok: #62c08d;          /* alles gut, verbunden, zu Hause */
+  --c-ok-rgb: 98, 192, 141;
+  --c-warn: #f0a04b;        /* Hinweis, Aufmerksamkeit */
+  --c-warn-rgb: 240, 160, 75;
+  --c-alert: #e86a5c;       /* Warnung, Fehler, getrennt */
+  --c-alert-rgb: 232, 106, 92;
+  --c-heat: #ef8d5d;        /* Heizung heizt */
+  --c-cool: #6fb3d6;        /* kühl, Feuchte, Wasser */
+
+  /* Abstands-Skala (4er-Raster). */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+
+  /* Radien. */
+  --r-s: 10px;
+  --r-m: 16px;
+  --r-l: 24px;
+  --r-pill: 999px;
+
+  /* Schrift-Skala (aus 3–4 m lesbar ab --f-l). */
+  --f-xs: 13px;
+  --f-s: 16px;
+  --f-m: 20px;
+  --f-l: 28px;
+  --f-xl: 40px;
+  --f-xxl: 60px;
+  --f-display: 96px;
+
+  /* Mindestgröße für Fingerziele. */
+  --touch: 56px;
+
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.28);
+  --shadow-2: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 18px 48px rgba(0, 0, 0, 0.45);
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Tabellarische Ziffern: Zahlen springen beim Hochzählen nicht hin und
+   her (Uhr, Temperaturen, Minuten). */
+.num,
+.ds-num {
+  font-variant-numeric: tabular-nums;
+  -webkit-font-feature-settings: "tnum" 1;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Grundfläche für Panels im neuen Designsystem. */
+.ds-dark {
+  background: var(--c-bg);
+  color: var(--c-text);
+}
+
+.ds-eyebrow {
+  font-size: var(--f-xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-text-3);
+}
+
+.ds-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-l);
+  box-shadow: var(--shadow-1);
+}

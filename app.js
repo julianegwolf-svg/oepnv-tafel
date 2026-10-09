@@ -131,6 +131,12 @@ function setRadioMenuOpen(open) {
 }
 
 function toggleRadioStation(url) {
+  // Home Assistant verbunden und im Menü ein Lautsprecher als Ziel gewählt
+  // (siehe ha-panels.js): dann spielt HA den Sender dort, nicht das iPad.
+  if (window.TafelHAUI && TafelHAUI.radioUmleiten(url)) {
+    setRadioMenuOpen(false);
+    return;
+  }
   if (!radioAudioEl) return;
 
   // Nochmal denselben Sender antippen = stoppen, statt neu zu starten.
@@ -259,12 +265,24 @@ function isNightHour(hour) {
 // updateNightDim unten.
 let recentlyTouched = false;
 
+// Bewegung im Flur (Home Assistant, siehe ha-panels.js) zählt wie ein
+// Antippen: weckt aus Ambient-Modus und Nacht-Tiefschlaf, ohne dabei das
+// Karussell anzuhalten.
+let presenceWakeUntil = 0;
+
+function wakeByPresence() {
+  presenceWakeUntil = Date.now() + 5 * 60 * 1000;
+  armAmbientTimer();
+  if (ambientActive) exitAmbientMode();
+  updateNightDim(new Date().getHours());
+}
+
 function updateNightDim(hour) {
   if (!els.nightOverlay) return;
   const cfg = CONFIG.nightDim;
   const sleepCfg = CONFIG.nightSleep;
   const dimActive = isNightHour(hour);
-  const sleepActive = isInHourRange(hour, sleepCfg) && !recentlyTouched;
+  const sleepActive = isInHourRange(hour, sleepCfg) && !recentlyTouched && Date.now() > presenceWakeUntil;
 
   const opacity = sleepActive && sleepCfg && sleepCfg.opacity != null
     ? sleepCfg.opacity
@@ -599,6 +617,19 @@ function renderDepartures(departures) {
   const firstReachable = visible.filter(function (d) { return !d.cancelled && !d.tripCancelled; })[0];
   renderLeaveNowBanner(firstReachable, now);
 
+  lastDepartureSnapshot = visible.filter(function (d) { return !d.cancelled && !d.tripCancelled; }).slice(0, 6).map(function (dep) {
+    const place = dep.place || {};
+    const when = place.departure || place.scheduledDeparture;
+    const whenMs = when ? new Date(when).getTime() : null;
+    return {
+      line: dep.routeShortName || dep.tripShortName || dep.displayName || "?",
+      dest: dep.headsign || "",
+      whenMs: whenMs,
+      clock: whenMs ? new Date(whenMs).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "",
+      leaveByMs: whenMs && walkMinutesToStop != null ? whenMs - walkMinutesToStop * 60000 : whenMs,
+    };
+  });
+
   visible.slice(0, CONFIG.maxRows).forEach(function (dep) {
     const place = dep.place || {};
     const when = place.departure || place.scheduledDeparture;
@@ -772,6 +803,10 @@ const RAIN_CODES = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99];
 // nächsten 3 Stunden in Sicht. Minutengenau statt nur stundengenau, damit
 // die "Sollte ich jetzt los?"-Karte einen echten Countdown zeigen kann.
 let rainStartMinutes = null;
+// Kurzfassung der zuletzt geladenen Daten für Begrüßung/Vorschläge
+// (siehe tafelSnapshot weiter unten, lernen.js, ha-panels.js).
+let lastWeatherSnapshot = null;
+let lastDepartureSnapshot = [];
 
 // ---------- Wetter-Icons als eigene SVGs statt Emoji ----------
 // Emoji-Wettericons (☀️🌧️🌙 …) rendern je nach Gerät/Systemschriftart
@@ -1272,6 +1307,14 @@ function updateWeather() {
     const code = data.current.weather_code;
     const isDay = data.current.is_day !== 0;
     const entry = WEATHER_CODES[code] || ["🌡️", ""];
+    lastWeatherSnapshot = {
+      temp: temp,
+      code: code,
+      desc: entry[1] || "",
+      hi: data.daily && data.daily.temperature_2m_max ? Math.round(data.daily.temperature_2m_max[0]) : null,
+      lo: data.daily && data.daily.temperature_2m_min ? Math.round(data.daily.temperature_2m_min[0]) : null,
+      at: Date.now(),
+    };
 
     if (els.weatherBigIcon) {
       els.weatherBigIcon.innerHTML = weatherIconMarkup(code, isDay);
@@ -3499,6 +3542,19 @@ function updateWasteLine() {
   els.wasteLine.textContent = formatWasteEntry(upcoming[0]) || "";
 }
 
+// Kurzfassung des aktuellen Stands für Begrüßung und Vorschläge
+// (ha-panels.js, lernen.js) — nur gelesen, nichts wird neu abgerufen.
+function tafelSnapshot() {
+  const waste = nextWasteCollections(1)[0] || null;
+  return {
+    weather: lastWeatherSnapshot,
+    rainStartMinutes: rainStartMinutes,
+    departures: lastDepartureSnapshot,
+    walkMinutes: walkMinutesToStop,
+    waste: waste ? { date: waste.date, text: formatWasteEntry(waste) } : null,
+  };
+}
+
 // ---------- Sport-Ticker (Lieblingsvereine, openligadb.de) ----------
 // openligadb ist kostenlos, ohne API-Key, offene REST-API für Fußball-
 // daten. Abfrage per Vereinsname (getmatchesbyteam) statt fester Team-ID —
@@ -3971,9 +4027,19 @@ const PANEL_AVAILABILITY = {
   riddle: function () { return riddleAvailable; },
   events: function () { return eventsAvailable; },
   calendar: function () { return calendarAvailable; },
+  // Home-Assistant-Panels (ha-panels.js): ohne eingerichtetes HA nie da.
+  home: function () { return haPanelAvailable("home"); },
+  klima: function () { return haPanelAvailable("klima"); },
+  medien: function () { return haPanelAvailable("medien"); },
+  // Video "tagesschau in 100 Sekunden" (clips.js): nur morgens/abends.
+  tagesschau: function () { return !!(window.TafelClips && TafelClips.tagesschauAvailable()); },
 };
 
-const PANEL_IDS = ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events", "calendar"];
+function haPanelAvailable(name) {
+  return !!(window.TafelHAUI && TafelHAUI.panelAvailable(name));
+}
+
+const PANEL_IDS = ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events", "calendar", "home", "klima", "medien", "tagesschau"];
 
 // Alle 11 Panels bleiben wegen der Crossfade-Optik dauerhaft im DOM (nur
 // opacity:0 + pointer-events:none statt display:none, siehe .panel-view-
@@ -4045,6 +4111,9 @@ function showPanel(name) {
   } else {
     stopSportSlideshow();
   }
+
+  if (window.TafelHAUI) TafelHAUI.onPanelShown(name);
+  if (window.TafelClips) TafelClips.onPanelShown(name);
 }
 
 const progressFillEl = document.getElementById("progressFill");
@@ -4120,6 +4189,15 @@ function shuffleSequence() {
   } else {
     activeSequence = [anchor].concat(rest);
   }
+
+  // Gelernt (lernen.js): was jemand um diese Uhrzeit sonst selbst aufruft,
+  // kommt direkt nach dem Anker.
+  const learned = window.TafelLernen ? TafelLernen.bevorzugtePanels() : [];
+  if (learned.length) {
+    const head = activeSequence.slice(1).filter(function (n) { return learned.indexOf(n) !== -1; });
+    const tail = activeSequence.slice(1).filter(function (n) { return learned.indexOf(n) === -1; });
+    activeSequence = [anchor].concat(head, tail);
+  }
 }
 
 function pickNextAvailablePanel() {
@@ -4170,6 +4248,10 @@ const PANEL_NAV_META = {
   riddle: { icon: "🧩", label: "Rätsel des Tages" },
   events: { icon: "🎉", label: "Veranstaltungen" },
   calendar: { icon: "🗓️", label: "Termine" },
+  home: { icon: "🏠", label: "Zuhause" },
+  klima: { icon: "🌡️", label: "Raumklima" },
+  medien: { icon: "🔊", label: "Medien" },
+  tagesschau: { icon: "📺", label: "tagesschau in 100 s" },
 };
 
 let panelNavOpen = false;
@@ -4246,6 +4328,7 @@ function resumeCarouselFromFraction() {
 function deferCarouselAdvance() {
   markUserActivity();
   if (panelNavOpen) return; // Übersicht offen: pauseCarouselIndefinitely() übernimmt das
+  if (window.TafelHAUI && TafelHAUI.blocksCarousel()) return; // Raumansicht/HA-Einrichtung offen
   if (!activeSequence || activeSequence.length < 2) return;
 
   if (carouselTimer) {
@@ -4333,6 +4416,8 @@ function buildPanelNavGrid() {
 
     tile.addEventListener("click", function (ev) {
       ev.stopPropagation();
+      // Selbst gewählt → zählt fürs Lernen (welches Panel wann, lernen.js).
+      if (window.TafelLernen) TafelLernen.merkePanel(name);
       jumpToPanel(name);
     });
 
@@ -4448,6 +4533,10 @@ function init() {
   initPanelNav();
   initStageSwipe();
   armAmbientTimer();
+  // Home Assistant (ha.js/ha-panels.js) — ohne Token/Adresse ein No-Op.
+  if (window.TafelHAUI) TafelHAUI.init();
+  if (window.TafelLernen) TafelLernen.init();
+  if (window.TafelClips) TafelClips.init();
 
   tickClock();
   setInterval(tickClock, CONFIG.refreshClockMs);
