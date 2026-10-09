@@ -2701,3 +2701,146 @@ html, body {
 .panel-view.active {
   animation: panelRise 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) 1;
 }
+
+
+/* ---------- Kopfzeile (IDEEN R2/R3) ----------
+   Keine schwebende Pille mehr: eine ruhige Zeile über die volle Breite,
+   links der Titel des Panels, rechts Knöpfe (52 px, einfarbige Symbole
+   statt Emoji) und die Uhr in 56 px — vorher 30 px, aus 3 m kaum
+   lesbar. Bei Vollbild-Panels (Wetter, News, Fußball, Video) legt sich
+   ein sanfter Verlauf darunter, damit Uhr und Titel auf Fotos lesbar
+   bleiben. */
+.topbar {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 84px;
+  max-width: none;
+  padding: 4px 22px 0 24px;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  pointer-events: none;
+  transition: background 0.4s ease;
+}
+
+.topbar > * {
+  pointer-events: auto;
+}
+
+.panel.is-fullbleed .topbar {
+  background: linear-gradient(180deg, rgba(8, 12, 18, 0.72) 0%, rgba(8, 12, 18, 0.35) 60%, rgba(8, 12, 18, 0) 100%);
+}
+
+.topbar-title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-title:not(:empty)::before {
+  content: "";
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-right: 12px;
+  border-radius: 50%;
+  background: var(--accent, var(--brass));
+}
+
+.panel.is-fullbleed .topbar-title,
+.panel.is-fullbleed .clock-time,
+.panel.is-fullbleed .clock-date {
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.topbar-right > * + * {
+  margin-left: 12px;
+}
+
+.topbar .panel-nav-toggle,
+.topbar .radio-toggle,
+.topbar .ha-house-toggle {
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  background: rgba(127, 127, 127, 0.08);
+  border: 1px solid var(--panel-edge);
+  box-shadow: none;
+  color: var(--ink-dim);
+}
+
+.topbar-ico,
+.topbar .ha-house-toggle .ha-ico {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.topbar .radio-toggle.is-playing,
+.topbar .radio-toggle.is-playing-ha {
+  background: var(--brass);
+  border-color: var(--brass);
+  color: #2b1d07;
+}
+
+.topbar .clock {
+  display: flex;
+  align-items: center;
+  margin-left: 22px;
+}
+
+.topbar .clock-date {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: 14px;
+  font-size: 16px;
+  line-height: 1.25;
+  color: var(--ink-dim);
+}
+
+.topbar .clock-time {
+  font-size: 56px;
+  letter-spacing: 0;
+  line-height: 1;
+  color: var(--ink);
+}
+
+/* Titel steht jetzt in der Kopfzeile — die alten Mini-Labels entfallen,
+   Inhalte beginnen direkt unter der Kopfzeile. */
+.view-label {
+  display: none;
+}
+
+.panel-view {
+  padding-top: 88px;
+}
+
+#panel-weather.panel-view,
+#panel-news.panel-view,
+#panel-sport.panel-view {
+  padding-top: 0;
+}
+
+/* Wetter: großer Temperaturblock mit Luft unter der Kopfzeile statt
+   daneben eingeklemmt. */
+#panel-weather .weather-big {
+  padding-top: 72px;
+}

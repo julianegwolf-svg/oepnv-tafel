@@ -13,31 +13,34 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="design.css?v=93">
-<link rel="stylesheet" href="style.css?v=93">
-<link rel="stylesheet" href="farbwelt.css?v=93">
-<link rel="stylesheet" href="ha.css?v=93">
-<link rel="stylesheet" href="clips.css?v=93">
+<link rel="stylesheet" href="design.css?v=94">
+<link rel="stylesheet" href="style.css?v=94">
+<link rel="stylesheet" href="farbwelt.css?v=94">
+<link rel="stylesheet" href="ha.css?v=94">
+<link rel="stylesheet" href="clips.css?v=94">
 </head>
 <body>
   <div class="panel">
     <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
 
     <header class="topbar">
-      <button type="button" class="panel-nav-toggle" id="panelNavToggle" aria-label="Übersicht">
-        <span class="panel-nav-toggle-icon">▦</span>
-      </button>
-
-      <div class="radio-widget" id="radioWidget">
-        <button type="button" class="radio-toggle" id="radioToggle" aria-label="Radio">
-          <span class="radio-toggle-icon">📻</span>
+      <div class="topbar-title" id="topbarTitle"></div>
+      <div class="topbar-right" id="topbarRight">
+        <button type="button" class="panel-nav-toggle" id="panelNavToggle" aria-label="Übersicht">
+          <svg class="topbar-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>
         </button>
-        <div class="radio-menu" id="radioMenu"></div>
-      </div>
 
-      <div class="clock">
-        <span class="clock-time" id="clockTime">--:--</span>
-        <span class="clock-date" id="clockDate">--</span>
+        <div class="radio-widget" id="radioWidget">
+          <button type="button" class="radio-toggle" id="radioToggle" aria-label="Radio">
+            <svg class="topbar-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l9-4.5"/><circle cx="15.5" cy="14" r="2.8"/><path d="M6.5 12.5h3M6.5 15.5h3"/></svg>
+          </button>
+          <div class="radio-menu" id="radioMenu"></div>
+        </div>
+
+        <div class="clock">
+          <span class="clock-date" id="clockDate"><span class="clock-weekday" id="clockWeekday">--</span><span class="clock-day" id="clockDay">--</span></span>
+          <span class="clock-time" id="clockTime">--:--</span>
+        </div>
       </div>
     </header>
 
@@ -206,12 +209,12 @@
     </div>
   </div>
 
-  <script src="debug-zeit.js?v=93"></script>
-  <script src="config.js?v=93"></script>
-  <script src="ha.js?v=93"></script>
-  <script src="ha-panels.js?v=93"></script>
-  <script src="lernen.js?v=93"></script>
-  <script src="clips.js?v=93"></script>
-  <script src="app.js?v=93"></script>
+  <script src="debug-zeit.js?v=94"></script>
+  <script src="config.js?v=94"></script>
+  <script src="ha.js?v=94"></script>
+  <script src="ha-panels.js?v=94"></script>
+  <script src="lernen.js?v=94"></script>
+  <script src="clips.js?v=94"></script>
+  <script src="app.js?v=94"></script>
 </body>
 </html>

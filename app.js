@@ -53,6 +53,9 @@ const els = {
   lastUpdate: document.getElementById("lastUpdate"),
   clockTime: document.getElementById("clockTime"),
   clockDate: document.getElementById("clockDate"),
+  clockWeekday: document.getElementById("clockWeekday"),
+  clockDay: document.getElementById("clockDay"),
+  topbarTitle: document.getElementById("topbarTitle"),
   nightOverlay: document.getElementById("nightOverlay"),
   ambientOverlay: document.getElementById("ambientOverlay"),
   ambientClock: document.getElementById("ambientClock"),
@@ -229,11 +232,12 @@ function tickClock() {
     hour: "2-digit",
     minute: "2-digit",
   });
-  els.clockDate.textContent = now.toLocaleDateString("de-DE", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-  });
+  // Datum zweizeilig links neben der großen Uhr (IDEEN R2); nur bei
+  // Änderung anfassen, nicht jede Sekunde.
+  const weekday = now.toLocaleDateString("de-DE", { weekday: "long" });
+  const dayText = now.toLocaleDateString("de-DE", { day: "numeric", month: "long" });
+  if (els.clockWeekday && els.clockWeekday.textContent !== weekday) els.clockWeekday.textContent = weekday;
+  if (els.clockDay && els.clockDay.textContent !== dayText) els.clockDay.textContent = dayText;
   if (els.ambientClock) {
     els.ambientClock.textContent = now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
   }
@@ -4386,6 +4390,31 @@ function showPanel(name) {
 
   if (window.TafelHAUI) TafelHAUI.onPanelShown(name);
   if (window.TafelClips) TafelClips.onPanelShown(name);
+  updateTopbarTitle(name);
+}
+
+// Einheitliche Kopfzeile (IDEEN R3): Titel des aktuellen Panels links,
+// Uhr rechts — statt je Panel woanders stehender Mini-Labels. Panels mit
+// eigenem großem Kopf (Home Assistant, Video) zeigen hier keinen Titel.
+const PANELS_OHNE_KOPFTITEL = ["home", "klima", "medien", "tagesschau", "weather"];
+const PANELS_VOLLBILD = ["weather", "news", "sport", "tagesschau"];
+
+function updateTopbarTitle(name) {
+  if (!els.topbarTitle) return;
+  const panelEl = document.getElementById("panel-" + name);
+  let text = "";
+  if (PANELS_OHNE_KOPFTITEL.indexOf(name) === -1) {
+    const label = panelEl ? panelEl.querySelector(".view-label") : null;
+    text = label ? label.textContent : ((PANEL_NAV_META[name] || {}).label || "");
+    if (name === "departures") text = "Abfahrten — " + String(CONFIG.stopQuery || "").split(",")[0];
+  }
+  els.topbarTitle.textContent = text;
+  if (panelEl) {
+    const accent = getComputedStyle(panelEl).getPropertyValue("--accent");
+    if (accent) els.topbarTitle.style.setProperty("--accent", accent.trim());
+  }
+  const shell = document.querySelector(".panel");
+  if (shell) shell.classList.toggle("is-fullbleed", PANELS_VOLLBILD.indexOf(name) !== -1);
 }
 
 const progressFillEl = document.getElementById("progressFill");
@@ -4796,6 +4825,7 @@ function initStageSwipe() {
 
 // ---------- Start ----------
 function init() {
+  updateTopbarTitle("departures");
   // Sofort beim Start alle Panels außer dem sichtbaren ersten unmounten
   // (siehe unmountInactivePanels-Kommentar) — sonst stünden bis zum ersten
   // Karussell-Wechsel alle 11 Panels unnötig lange voll im Speicher.

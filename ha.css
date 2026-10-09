@@ -487,8 +487,8 @@ body.ha-offline .ha-ctl {
 
 .ha-dot {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 3px;
+  right: 3px;
   width: 11px;
   height: 11px;
   border-radius: 50%;

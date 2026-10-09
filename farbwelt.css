@@ -47,10 +47,6 @@ body.farbe-dunkel #panel-events { --accent: #e08a55; }
 body.farbe-dunkel #panel-calendar { --accent: #6fb3d6; }
 
 /* Kopfzeilen-Pille, Knöpfe, Menüs */
-body.farbe-dunkel .topbar,
-body.farbe-dunkel .panel-nav-toggle,
-body.farbe-dunkel .radio-toggle,
-body.farbe-dunkel .ha-house-toggle,
 body.farbe-dunkel .radio-menu,
 body.farbe-dunkel .waste-line,
 body.farbe-dunkel .ha-hint:not(.is-p1):not(.is-p2):not(.is-vorschlag) {

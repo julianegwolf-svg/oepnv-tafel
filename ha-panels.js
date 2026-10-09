@@ -437,7 +437,9 @@
       '<button type="button" class="ha-house-toggle" id="haHouseToggle" aria-label="Zuhause">' + icon("home") +
       '<span class="ha-dot" id="haDot"></span></button>' +
       '<div class="ha-actions-menu" id="haActionsMenu"></div>';
-    if (topbar) topbar.insertBefore(els.houseWrap, radio || topbar.firstChild);
+    // Haus-Knopf vor dem Radio (beide sitzen rechts in der Kopfzeile).
+    if (radio && radio.parentNode) radio.parentNode.insertBefore(els.houseWrap, radio);
+    else if (topbar) topbar.appendChild(els.houseWrap);
     els.houseToggle = document.getElementById("haHouseToggle");
     els.dot = document.getElementById("haDot");
     els.actionsMenu = document.getElementById("haActionsMenu");
