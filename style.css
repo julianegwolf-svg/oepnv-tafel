@@ -2688,3 +2688,16 @@ html, body {
   60% { transform: rotate(-1.5deg); }
   80% { transform: rotate(1deg); }
 }
+
+/* ---------- Panel-Wechsel (IDEEN R6 / AUSBAU 4) ----------
+   Das neue Panel blendet ein und steigt dabei 8 px auf; das alte blendet
+   nur aus (keine Bewegung). Als einmalige Keyframe-Animation beim
+   Aktivieren statt Transition, damit das ausblendende Panel stillsteht. */
+@keyframes panelRise {
+  from { transform: translateY(8px); }
+  to { transform: translateY(0); }
+}
+
+.panel-view.active {
+  animation: panelRise 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) 1;
+}
