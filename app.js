@@ -3633,6 +3633,70 @@ const WASTE_LABELS = {
   papier: { icon: "♻️", text: "Papier & Gelber Sack" },
 };
 
+// ---------- Feiertage Bremen (D19) ----------
+// Gesetzliche Feiertage im Land Bremen: feste Tage plus die von Ostern
+// abhängigen (Gaußsche Osterformel). Reformationstag ist seit 2018 in
+// Bremen gesetzlicher Feiertag.
+function easterSunday(year) {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+
+function bremenHolidays(year) {
+  const e = easterSunday(year).getTime();
+  const DAY = 86400000;
+  const rel = function (n, name) { const d = new Date(e + n * DAY); return { date: new Date(d.getFullYear(), d.getMonth(), d.getDate()), name: name }; };
+  return [
+    { date: new Date(year, 0, 1), name: "Neujahr" },
+    rel(-2, "Karfreitag"),
+    rel(1, "Ostermontag"),
+    { date: new Date(year, 4, 1), name: "Tag der Arbeit" },
+    rel(39, "Christi Himmelfahrt"),
+    rel(50, "Pfingstmontag"),
+    { date: new Date(year, 9, 3), name: "Tag der Deutschen Einheit" },
+    { date: new Date(year, 9, 31), name: "Reformationstag" },
+    { date: new Date(year, 11, 25), name: "1. Weihnachtstag" },
+    { date: new Date(year, 11, 26), name: "2. Weihnachtstag" },
+  ];
+}
+
+function holidayOn(date) {
+  const list = bremenHolidays(date.getFullYear());
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].date.getMonth() === date.getMonth() && list[i].date.getDate() === date.getDate()) return list[i];
+  }
+  return null;
+}
+
+// Feiertagsverschiebung (übliche Regel der Bremer Stadtreinigung): liegt
+// in derselben Woche am oder vor dem Abfuhrtag ein Feiertag (Mo–Abfuhrtag),
+// verschiebt sich die Abfuhr um einen Werktag nach hinten.
+function shiftForHolidays(date) {
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 6) % 7));
+  for (let d = new Date(monday.getTime()); d <= date; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+    const h = holidayOn(d);
+    if (h) {
+      let shifted = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+      while (holidayOn(shifted) || shifted.getDay() === 0) shifted = new Date(shifted.getFullYear(), shifted.getMonth(), shifted.getDate() + 1);
+      return { date: shifted, reason: h.name };
+    }
+  }
+  return null;
+}
+
 function nextWasteCollections(count) {
   const cfg = CONFIG.wasteCollection;
   if (!cfg) return [];
@@ -3653,7 +3717,10 @@ function nextWasteCollections(count) {
     const weeksSinceRef = Math.round((d.getTime() - refDate.getTime()) / (7 * 86400000));
     const isRefType = ((weeksSinceRef % 2) + 2) % 2 === 0;
     const type = isRefType ? refType : (refType === "restbio" ? "papier" : "restbio");
-    items.push({ date: new Date(d.getTime()), type: type });
+    const shift = shiftForHolidays(d);
+    items.push(shift
+      ? { date: shift.date, type: type, shiftedBecause: shift.reason }
+      : { date: new Date(d.getTime()), type: type });
     d = new Date(d.getTime() + 7 * 86400000);
   }
 
@@ -3691,16 +3758,44 @@ function formatWasteEntry(entry) {
   return info.icon + " " + when + ": " + info.text;
 }
 
+// Müll (IDEEN R5 / AUSBAU D17): nicht mehr tagelang vorher, sondern
+// dann, wenn man etwas tun muss — ab 16 Uhr am Vorabend prominent
+// ("heute Abend rausstellen") und am Abholtag bis 9 Uhr.
 function updateWasteLine() {
   if (!els.wasteLine || !CONFIG.wasteCollection) return;
-
-  const upcoming = nextWasteCollections(1);
-  if (!upcoming.length) {
-    els.wasteLine.textContent = "";
-    return;
+  const upcoming = nextWasteCollections(2);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let text = "";
+  let urgent = false;
+  for (let i = 0; i < upcoming.length && !text; i++) {
+    const entry = upcoming[i];
+    const days = Math.round((entry.date.getTime() - today.getTime()) / 86400000);
+    const info = entry.type === "exception" ? { icon: "🎄", text: entry.label } : WASTE_LABELS[entry.type];
+    if (!info) continue;
+    const shifted = entry.shiftedBecause ? " (verschoben wegen " + entry.shiftedBecause + ")" : "";
+    if (days === 1 && now.getHours() >= 16) {
+      text = info.icon + " Morgen: " + info.text + " – heute Abend rausstellen" + shifted;
+      urgent = true;
+    } else if (days === 0 && now.getHours() < 9) {
+      text = info.icon + " Heute: " + info.text + " – bis 7 Uhr an die Straße" + shifted;
+      urgent = true;
+    }
   }
+  els.wasteLine.textContent = text;
+  els.wasteLine.classList.toggle("is-urgent", urgent);
+  updateHintBar();
+}
 
-  els.wasteLine.textContent = formatWasteEntry(upcoming[0]) || "";
+// Hinweiszeile unten (IDEEN R5): nur sichtbar, wenn es etwas zu sagen
+// gibt — dann schrumpft die Bühne um ihre Höhe, damit nichts verdeckt
+// wird (vorher lag der Müll-Chip über Wetter-, News- und Spruch-Inhalten).
+function updateHintBar() {
+  const shell = document.querySelector(".panel");
+  if (!shell) return;
+  const hints = document.getElementById("haHints");
+  const has = !!((els.wasteLine && els.wasteLine.textContent) || (hints && hints.children.length));
+  if (shell.classList.contains("has-hintbar") !== has) shell.classList.toggle("has-hintbar", has);
 }
 
 // Kurzfassung des aktuellen Stands für Begrüßung und Vorschläge

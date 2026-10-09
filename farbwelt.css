@@ -119,3 +119,14 @@ body.farbe-dunkel .panel-nav-overlay {
 body.farbe-dunkel .dep-pill.is-soon {
   color: #2b1d07;
 }
+
+body.farbe-dunkel .statusbar {
+  background: #111822;
+  border-top-color: rgba(239, 233, 223, 0.1);
+}
+
+body.farbe-dunkel .waste-line.is-urgent {
+  background: #f6d9a8;
+  border-color: #e9b86c;
+  color: #4a2f0a;
+}

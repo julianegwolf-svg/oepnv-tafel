@@ -2634,3 +2634,57 @@ html, body {
 .leave-now-banner .leave-now-headline {
   font-size: 28px;
 }
+
+
+/* ---------- Hinweiszeile unten (IDEEN R5) ----------
+   Feste Zeile über die volle Breite statt schwebender Chips über dem
+   Inhalt. Nur sichtbar, wenn es etwas zu sagen gibt (.panel.has-hintbar,
+   gesetzt in app.js) — dann endet die Bühne über ihr. */
+.statusbar {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 56px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  background: #ebe6dc;
+  border-top: 1px solid var(--panel-edge);
+  opacity: 0;
+  transform: translateY(100%);
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.panel.has-hintbar .statusbar {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.panel.has-hintbar .stage {
+  margin-bottom: 56px;
+}
+
+.waste-line {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 15px;
+  box-shadow: none;
+}
+
+/* Vorabend/Abholtag: auffällig — Tonne wackelt einmal kurz. */
+.waste-line.is-urgent {
+  background: #f6d9a8;
+  border-color: #e9b86c;
+  color: #4a2f0a;
+  animation: wasteWiggle 0.9s ease-in-out 0.4s 1;
+}
+
+@keyframes wasteWiggle {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-2deg); }
+  40% { transform: rotate(2deg); }
+  60% { transform: rotate(-1.5deg); }
+  80% { transform: rotate(1deg); }
+}

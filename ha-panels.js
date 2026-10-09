@@ -2215,7 +2215,11 @@
 
   function renderHints() {
     if (!els.hints) return;
-    if (!usable() || CFG.hinweise === false) { setHtml(els.hints, ""); return; }
+    if (!usable() || CFG.hinweise === false) {
+      setHtml(els.hints, "");
+      if (typeof updateHintBar === "function") updateHintBar();
+      return;
+    }
     // Info-Hinweise (Prio 4) nur auf dem Zuhause-Panel als Band, sonst ruhig.
     const visible = hints.filter(function (h) { return h.prio <= 3 || currentPanel === "home"; });
     // Höchstens zwei Chips (plus "+n"), damit sie lesbar bleiben statt
@@ -2224,6 +2228,7 @@
     let html = shown.map(hintChipHtml).join("");
     if (visible.length > 2) html += '<button type="button" class="ha-hint is-more" data-act="hinweis" data-key="">+' + (visible.length - 2) + "</button>";
     setHtml(els.hints, html);
+    if (typeof updateHintBar === "function") updateHintBar();
   }
 
   function openHint(key) {

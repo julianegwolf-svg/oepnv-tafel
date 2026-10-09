@@ -66,9 +66,9 @@ body.ha-offline .ha-ctl {
 }
 
 /* ---------- Panel-Grundfläche ---------- */
-/* Unten 60 px frei für das Hinweisband (schwebt unten links). */
+/* Unten bleibt Platz frei; die Hinweiszeile sitzt unter der Bühne. */
 .ha-panel.panel-view {
-  padding: 22px 24px 60px;
+  padding: 22px 24px 22px;
   color: var(--c-text);
   background:
     radial-gradient(ellipse at 0% 0%, rgba(226, 166, 90, 0.08), rgba(226, 166, 90, 0) 55%),
