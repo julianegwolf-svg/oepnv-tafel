@@ -94,7 +94,11 @@ html, body {
    spürbar träge. */
 .night-overlay {
   position: absolute;
-  inset: 0;
+  /* Safari 12 kennt "inset" nicht (Overlay hätte dort 0×0 px) – daher ausgeschrieben. */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background: #000;
   opacity: 0;
   pointer-events: none;
@@ -143,13 +147,17 @@ html, body {
   z-index: 80;
   display: flex;
   align-items: center;
-  gap: 10px;
   max-width: 70vw;
   padding: 6px 8px 6px 16px;
   background: var(--glass-bg);
   border: 1px solid var(--panel-edge);
   border-radius: 999px;
   box-shadow: var(--glass-shadow);
+}
+
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern (gleiche Optik). */
+.topbar > * + * {
+  margin-left: 10px;
 }
 
 /* Kleiner "Live"-Puls statt eines starren Punkts — winzige Ergänzung, die
@@ -175,7 +183,11 @@ html, body {
 .clock {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+}
+
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern (gleiche Optik). */
+.clock > * + * {
+  margin-left: 10px;
 }
 
 .clock-time {
@@ -236,7 +248,6 @@ html, body {
   right: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
   min-width: 240px;
   padding: 12px;
   background: var(--glass-bg);
@@ -250,6 +261,11 @@ html, body {
   z-index: 50;
 }
 
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern (gleiche Optik). */
+.radio-menu > * + * {
+  margin-top: 8px;
+}
+
 .radio-menu.is-open {
   opacity: 1;
   pointer-events: auto;
@@ -259,7 +275,6 @@ html, body {
 .radio-menu-item {
   display: flex;
   align-items: center;
-  gap: 12px;
   font-family: 'Inter', -apple-system, system-ui, sans-serif;
   font-size: 17px;
   font-weight: 700;
@@ -271,6 +286,11 @@ html, body {
   min-height: 52px;
   text-align: left;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern (gleiche Optik). */
+.radio-menu-item > * + * {
+  margin-left: 12px;
 }
 
 .radio-menu-dot {
@@ -317,7 +337,11 @@ html, body {
 
 .panel-nav-overlay {
   position: absolute;
-  inset: 0;
+  /* Safari 12 kennt "inset" nicht (Overlay hätte dort 0×0 px) – daher ausgeschrieben. */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -346,7 +370,11 @@ html, body {
    nichts passiert ist, spielt die Kosten hier ohnehin kaum eine Rolle. */
 .ambient-overlay {
   position: absolute;
-  inset: 0;
+  /* Safari 12 kennt "inset" nicht (Overlay hätte dort 0×0 px) – daher ausgeschrieben. */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 950;
   display: flex;
   align-items: center;
@@ -406,7 +434,6 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
   padding: 22px 12px;
   min-height: 120px;
   background: var(--glass-bg);
@@ -415,6 +442,11 @@ html, body {
   box-shadow: var(--glass-shadow);
   color: var(--ink);
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern (gleiche Optik). */
+.panel-nav-tile > * + * {
+  margin-top: 10px;
 }
 
 .panel-nav-tile.is-current {
@@ -629,12 +661,21 @@ html, body {
 .leave-now-banner {
   display: none;
   flex-direction: column;
-  gap: 4px;
   margin-bottom: 14px;
   padding: 18px 24px;
   border-radius: var(--radius-m);
   background: rgba(169, 121, 63, 0.14);
   border: 1px solid rgba(169, 121, 63, 0.3);
+}
+
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern (gleiche Optik). */
+.leave-now-banner > * + * {
+  margin-top: 4px;
+}
+
+/* bisher gap 4px + eigener margin-top 2px */
+.leave-now-banner > .leave-now-arrival {
+  margin-top: 6px;
 }
 
 .leave-now-banner.is-visible {
@@ -1161,7 +1202,11 @@ html, body {
 .weather-big-text {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+}
+
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern (gleiche Optik). */
+.weather-big-text > * + * {
+  margin-top: 6px;
 }
 
 .weather-big-desc {
@@ -1317,8 +1362,15 @@ html, body {
 .weather-details {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 14px;
+  /* margin-top war 14px; 10px davon tragen jetzt die Kinder (Ersatz für gap) */
+  margin-top: 4px;
+  margin-left: -10px;
+}
+
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern; bei flex-wrap per negativem Rand am Container (gleiche Optik). */
+.weather-details > * {
+  margin-top: 10px;
+  margin-left: 10px;
 }
 
 .weather-detail-chip {
@@ -1326,11 +1378,15 @@ html, body {
   min-width: 92px;
   display: flex;
   align-items: center;
-  gap: 8px;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--radius-s);
   padding: 8px 12px;
+}
+
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern (gleiche Optik). */
+.weather-detail-chip > * + * {
+  margin-left: 8px;
 }
 
 .weather-detail-icon {
@@ -1437,10 +1493,14 @@ html, body {
   right: 22px;
   z-index: 3;
   display: flex;
-  gap: 7px;
   background: rgba(0, 0, 0, 0.38);
   padding: 7px 11px;
   border-radius: 999px;
+}
+
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern (gleiche Optik). */
+.news-progress > * + * {
+  margin-left: 7px;
 }
 
 .news-progress-dot {
@@ -1523,12 +1583,16 @@ html, body {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 20px;
   padding: 22px 26px;
   background: var(--glass-bg);
   border: 1px solid var(--panel-edge);
   border-radius: var(--radius-l);
   box-shadow: var(--glass-shadow);
+}
+
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern (gleiche Optik). */
+.music-hero > * + * {
+  margin-left: 20px;
 }
 
 .music-hero-art {
@@ -1720,13 +1784,17 @@ html, body {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  gap: 22px;
   padding: 26px 30px;
   margin-bottom: 20px;
   background: var(--glass-bg);
   border: 1px solid var(--panel-edge);
   border-radius: var(--radius-l);
   box-shadow: var(--glass-shadow);
+}
+
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern (gleiche Optik). */
+.commute-hero > * + * {
+  margin-left: 22px;
 }
 
 .commute-hero-icon {
@@ -1816,7 +1884,11 @@ html, body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+}
+
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern (gleiche Optik). */
+.commute-race > * + * {
+  margin-top: 14px;
 }
 
 .commute-race-row {
@@ -1840,8 +1912,12 @@ html, body {
 .commute-race-head {
   display: flex;
   align-items: center;
-  gap: 10px;
   margin-bottom: 10px;
+}
+
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern (gleiche Optik). */
+.commute-race-head > * + * {
+  margin-left: 10px;
 }
 
 .commute-race-icon {
@@ -2093,12 +2169,19 @@ html, body {
 .trivia-choices {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
-  margin-top: 26px;
+  /* margin-top war 26px; 14px davon tragen jetzt die Kinder (Ersatz für gap) */
+  margin-top: 12px;
+  margin-left: -14px;
   opacity: 0;
   pointer-events: none;
   transform: translateY(6px);
   transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+/* Safari 12: kein gap bei Flexbox – Abstand per margin an den Kindern; bei flex-wrap per negativem Rand am Container (gleiche Optik). */
+.trivia-choices > * {
+  margin-top: 14px;
+  margin-left: 14px;
 }
 
 /* pointer-events erst mit is-shown scharf — davor sind die Chips zwar
