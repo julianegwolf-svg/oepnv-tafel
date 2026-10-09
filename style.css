@@ -9,6 +9,7 @@
   --steel: #5b6b78;
   --steel-ink: #22303a;
   --danger: #b1402f;
+  --warn: #b8701c;
   --ok: #3f7d52;
 
   /* Glas-Karten: halbtransparenter Hintergrund + weicher, mehrschichtiger
@@ -2488,4 +2489,148 @@ html, body {
   font-size: 18px;
   white-space: nowrap;
   letter-spacing: 0.02em;
+}
+
+
+/* ---------- Abfahrtstafel 2026 (IDEEN A1/A2/A4) ----------
+   Minuten als Fern-Info (60 px), echte Linienfarben, Dringlichkeit als
+   Pille in der Zeile, Verspätung durchgestrichen + "+3". Abgefahrene
+   Zeilen gleiten nach oben hinaus, die anderen rücken nach (FLIP in
+   app.js). Nur transform/opacity werden animiert. */
+.board-head {
+  display: none;
+}
+
+.board-rows {
+  position: relative;
+}
+
+.row.dep-row {
+  grid-template-columns: 104px 1fr auto 170px;
+  min-height: 100px;
+  padding: 14px 24px 14px 18px;
+  transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.45s ease;
+}
+
+.row.dep-row.is-next {
+  border-color: var(--brass);
+  border-width: 2px 2px 2px 6px;
+}
+
+.row.dep-row.is-entering {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: none;
+}
+
+.row.dep-row.is-leaving {
+  opacity: 0;
+  transform: translateY(-28px);
+  pointer-events: none;
+}
+
+.row.dep-row.is-cancelled {
+  opacity: 0.45;
+}
+
+.line-badge.dep-badge {
+  width: 88px;
+  height: 56px;
+  font-size: 26px;
+}
+
+.line-badge.dep-badge.has-color {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.dep-row .dest {
+  font-size: 32px;
+}
+
+.dep-row .walk-hint {
+  margin-top: 4px;
+  font-size: 17px;
+}
+
+.dep-pill {
+  margin-right: 18px;
+  padding: 0 16px;
+  height: 40px;
+  line-height: 40px;
+  border-radius: 999px;
+  font-size: 20px;
+  font-weight: 800;
+  white-space: nowrap;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.dep-pill.is-shown {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.dep-pill.is-now {
+  background: var(--danger);
+  color: #fff;
+}
+
+.dep-pill.is-soon {
+  background: var(--warn);
+  color: #fff;
+}
+
+.dep-row .time-min {
+  font-size: 60px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dep-row .dep-unit {
+  margin-left: 6px;
+  font-size: 24px;
+  color: var(--ink-dim);
+}
+
+.dep-row .time-min.now .dep-min {
+  font-size: 44px;
+}
+
+.dep-digit {
+  display: inline-block;
+}
+
+@keyframes depRoll {
+  from { transform: translateY(-0.45em); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.dep-digit.is-rolling {
+  animation: depRoll 0.35s cubic-bezier(0.22, 0.61, 0.36, 1) 1;
+}
+
+.dep-row .time-clock {
+  margin-top: 6px;
+  font-size: 18px;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+.dep-row .dep-planned {
+  margin-right: 6px;
+  color: var(--ink-dim);
+  opacity: 0.7;
+}
+
+.dep-row .dep-delay {
+  margin-left: 6px;
+  color: var(--warn);
+  font-weight: 700;
+}
+
+/* Variante "banner": kompaktes Banner (44 px, 28 px Schrift) statt Pille. */
+.leave-now-banner .leave-now-headline {
+  font-size: 28px;
 }

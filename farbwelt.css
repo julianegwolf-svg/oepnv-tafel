@@ -17,6 +17,7 @@ body.farbe-dunkel {
   --steel: #8fa6b8;
   --steel-ink: #dbe4ec;
   --danger: #e86a5c;
+  --warn: #f0a04b;
   --ok: #62c08d;
   --glass-bg: rgba(24, 33, 45, 0.94);
   --glass-shadow: 0 12px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -113,4 +114,8 @@ body.farbe-dunkel .event-date-day {
    durchscheinen und mit den Kacheln konkurrieren. */
 body.farbe-dunkel .panel-nav-overlay {
   background: rgba(9, 13, 19, 0.92);
+}
+
+body.farbe-dunkel .dep-pill.is-soon {
+  color: #2b1d07;
 }

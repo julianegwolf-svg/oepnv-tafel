@@ -598,24 +598,81 @@ function renderLeaveNowBanner(soonestDep, now) {
   els.leaveNowBanner.classList.toggle("is-urgent", minutesUntilLeave <= 2);
 }
 
-function renderDepartures(departures) {
+// ---------- Abfahrtstafel (IDEEN A1/A2/A4) ----------
+// Zeilen werden nicht mehr bei jedem Abruf komplett neu gebaut, sondern
+// über einen Schlüssel (Fahrt + Plan-Abfahrt) wiederverwendet: so kann
+// eine abgefahrene Bahn nach oben hinausgleiten, die anderen rücken weich
+// nach (FLIP: alte Position merken, neu anordnen, Differenz per transform
+// zurückrechnen und auf 0 animieren), und bei den Minuten rollt nur die
+// Ziffer, die sich wirklich ändert.
+const depRowEls = {};
+
+function depKey(dep) {
+  const place = dep.place || {};
+  return (dep.tripId || dep.routeShortName || "?") + "|" + (place.scheduledDeparture || place.departure || "");
+}
+
+// Text in Ziffern-Spans halten; nur geänderte Stellen rollen neu ein.
+function setRollingText(el, text) {
+  if (el._text === text) return;
+  const old = el._text || "";
+  el._text = text;
+  if (old.length !== text.length) {
+    el.innerHTML = "";
+    for (let i = 0; i < text.length; i++) {
+      const sp = document.createElement("span");
+      sp.className = "dep-digit";
+      sp.textContent = text.charAt(i);
+      el.appendChild(sp);
+    }
+    return;
+  }
+  for (let i = 0; i < text.length; i++) {
+    if (old.charAt(i) === text.charAt(i)) continue;
+    const sp = el.children[i];
+    sp.textContent = text.charAt(i);
+    sp.classList.remove("is-rolling");
+    void sp.offsetWidth;
+    sp.classList.add("is-rolling");
+  }
+}
+
+function clearDepartureRows(message) {
+  Object.keys(depRowEls).forEach(function (k) { delete depRowEls[k]; });
   els.rows.innerHTML = "";
+  const div = document.createElement("div");
+  div.className = "row placeholder";
+  div.textContent = message;
+  els.rows.appendChild(div);
+}
+
+function buildDepartureRow() {
+  const row = document.createElement("div");
+  row.className = "row dep-row";
+  row.innerHTML =
+    '<span class="line-badge dep-badge"></span>' +
+    '<span class="dest-wrap"><span class="dest"></span><span class="walk-hint dep-sub"></span></span>' +
+    '<span class="dep-pill"></span>' +
+    '<span class="time-cell"><span class="time-min"><span class="dep-min"></span><span class="dep-unit">min</span></span>' +
+    '<span class="time-clock"><s class="dep-planned"></s><span class="dep-actual"></span><span class="dep-delay"></span></span></span>';
+  return row;
+}
+
+function renderDepartures(departures) {
   const now = Date.now();
+  const style = (CONFIG.abfahrtenDringlichkeit || "zeile");
+  els.rows.classList.toggle("is-banner-variant", style === "banner");
 
   if (!departures.length) {
-    const div = document.createElement("div");
-    div.className = "row placeholder";
-    div.textContent = "Keine Abfahrten in den nächsten 60 Minuten";
-    els.rows.appendChild(div);
+    clearDepartureRows("Keine Abfahrten in den nächsten 60 Minuten");
     renderLeaveNowBanner(null, now);
+    lastDepartureSnapshot = [];
     return;
   }
 
   // Ist die Gehzeit bekannt: Abfahrten rausfiltern, die eh nicht mehr zu
-  // schaffen sind (mehr als 1 Minute "zu spät los"). Sonst steht die Tafel
-  // voller Verbindungen, die man ohnehin schon verpasst hat, und die
-  // tatsächlich planbaren gehen darin unter — genau das Problem, das die
-  // Tafel eigentlich lösen soll.
+  // schaffen sind (mehr als 1 Minute "zu spät los") — weniger, aber
+  // tatsächlich planbare Zeilen statt einer Liste voller "zu spät".
   let visible = departures;
   if (walkMinutesToStop != null) {
     visible = departures.filter(function (dep) {
@@ -624,22 +681,21 @@ function renderDepartures(departures) {
       const when = place.departure || place.scheduledDeparture;
       if (!when) return true;
       const leaveByMs = new Date(when).getTime() - walkMinutesToStop * 60000;
-      const minutesUntilLeave = Math.round((leaveByMs - now) / 60000);
-      return minutesUntilLeave > -1;
+      return Math.round((leaveByMs - now) / 60000) > -1;
     });
   }
 
   if (!visible.length) {
-    const div = document.createElement("div");
-    div.className = "row placeholder";
-    div.textContent = "Gerade keine erreichbare Abfahrt — nächste in Kürze";
-    els.rows.appendChild(div);
+    clearDepartureRows("Gerade keine erreichbare Abfahrt — nächste in Kürze");
     renderLeaveNowBanner(null, now);
+    lastDepartureSnapshot = [];
     return;
   }
 
   const firstReachable = visible.filter(function (d) { return !d.cancelled && !d.tripCancelled; })[0];
-  renderLeaveNowBanner(firstReachable, now);
+  // Variante "banner": Handlungsaufforderung oben (kompakt); Variante
+  // "zeile": direkt in der Zeile der nächsten erreichbaren Bahn.
+  renderLeaveNowBanner(style === "banner" ? firstReachable : null, now);
 
   lastDepartureSnapshot = visible.filter(function (d) { return !d.cancelled && !d.tripCancelled; }).slice(0, 16).map(function (dep) {
     const place = dep.place || {};
@@ -654,83 +710,162 @@ function renderDepartures(departures) {
     };
   });
 
-  visible.slice(0, CONFIG.maxRows).forEach(function (dep) {
-    const place = dep.place || {};
-    const when = place.departure || place.scheduledDeparture;
-    const scheduled = place.scheduledDeparture;
-    const whenDate = when ? new Date(when) : null;
-    const minutes = whenDate ? Math.round((whenDate.getTime() - now) / 60000) : null;
-    const cancelled = !!(dep.cancelled || dep.tripCancelled);
+  // Mit Banner passen nur 4 Zeilen sauber unter den Kopf.
+  const shown = visible.slice(0, style === "banner" ? Math.min(4, CONFIG.maxRows) : CONFIG.maxRows);
 
-    // Gehzeit-Hinweis: bis wann muss man spätestens los, um diesen Bus
-    // noch zu bekommen.
-    let walkHint = null;
-    let urgencyClass = "";
-    if (walkMinutesToStop != null && whenDate) {
-      const leaveByMs = whenDate.getTime() - walkMinutesToStop * 60000;
-      const minutesUntilLeave = Math.round((leaveByMs - now) / 60000);
-      urgencyClass = walkUrgencyClass(minutesUntilLeave);
-      const leaveByDate = new Date(leaveByMs);
-      walkHint = "Los bis " + leaveByDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-    }
-
-    const row = document.createElement("div");
-    row.className = "row" + urgencyClass;
-    if (cancelled) row.style.opacity = "0.45";
-
-    const lineName = dep.routeShortName || dep.tripShortName || dep.displayName || "?";
-
-    const lineBadge = document.createElement("span");
-    lineBadge.className = "line-badge " + productClass(dep.mode);
-    lineBadge.textContent = lineName;
-
-    const destWrap = document.createElement("span");
-    destWrap.className = "dest-wrap";
-
-    const dest = document.createElement("span");
-    dest.className = "dest";
-    dest.textContent = cancelled
-      ? (dep.headsign || "") + " (fällt aus)"
-      : (dep.headsign || "—");
-    destWrap.appendChild(dest);
-
-    if (walkHint && !cancelled) {
-      const hint = document.createElement("span");
-      hint.className = "walk-hint";
-      hint.textContent = walkHint;
-      destWrap.appendChild(hint);
-    }
-
-    const timeCell = document.createElement("span");
-    timeCell.className = "time-cell";
-
-    const timeMin = document.createElement("span");
-    timeMin.className = "time-min" + (minutes !== null && minutes <= 0 ? " now" : "");
-    timeMin.textContent =
-      minutes === null ? "–" : (minutes <= 0 ? "jetzt" : minutes + " min");
-
-    timeCell.appendChild(timeMin);
-
-    // Kleine, genaue Uhrzeit unter der Minutenangabe — grün wenn
-    // pünktlich, rot wenn verspätet (>= 60 Sekunden Abweichung vom
-    // Fahrplan).
-    if (whenDate) {
-      const delaySec = (when && scheduled && when !== scheduled)
-        ? Math.round((new Date(when).getTime() - new Date(scheduled).getTime()) / 1000)
-        : 0;
-      const isLate = delaySec >= 60;
-
-      const clockEl = document.createElement("span");
-      clockEl.className = "time-clock " + (isLate ? "late" : "ontime");
-      clockEl.textContent = whenDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-      timeCell.appendChild(clockEl);
-    }
-
-    row.appendChild(lineBadge);
-    row.appendChild(destWrap);
-    row.appendChild(timeCell);
-    els.rows.appendChild(row);
+  // FLIP, Schritt 1: alte Positionen merken.
+  const oldTops = {};
+  const panelVisible = els.rows.offsetParent !== null;
+  Object.keys(depRowEls).forEach(function (k) {
+    if (panelVisible) oldTops[k] = depRowEls[k].getBoundingClientRect().top;
   });
+
+  const wanted = {};
+  const ordered = [];
+  shown.forEach(function (dep) {
+    const key = depKey(dep);
+    wanted[key] = true;
+    let row = depRowEls[key];
+    const isNew = !row;
+    if (isNew) {
+      row = buildDepartureRow();
+      depRowEls[key] = row;
+    }
+    updateDepartureRow(row, dep, now, dep === firstReachable && style === "zeile");
+    ordered.push({ key: key, row: row, isNew: isNew });
+  });
+
+  // Abgefahrene/verschwundene Zeilen: gleiten nach oben hinaus und werden
+  // danach entfernt (absolut positioniert, damit die anderen schon
+  // nachrücken können).
+  const containerTop = panelVisible ? els.rows.getBoundingClientRect().top : 0;
+  Object.keys(depRowEls).forEach(function (k) {
+    if (wanted[k]) return;
+    const row = depRowEls[k];
+    delete depRowEls[k];
+    if (!panelVisible || !row.parentNode) {
+      if (row.parentNode) row.parentNode.removeChild(row);
+      return;
+    }
+    const r = row.getBoundingClientRect();
+    row.style.position = "absolute";
+    row.style.left = "0";
+    row.style.right = "0";
+    row.style.top = (r.top - containerTop) + "px";
+    row.classList.add("is-leaving");
+    setTimeout(function () { if (row.parentNode) row.parentNode.removeChild(row); }, 500);
+  });
+
+  // Platzhalter entfernen, Zeilen in neuer Reihenfolge einsetzen.
+  const placeholder = els.rows.querySelector(".row.placeholder");
+  if (placeholder) placeholder.parentNode.removeChild(placeholder);
+  ordered.forEach(function (o) { els.rows.appendChild(o.row); });
+
+  // FLIP, Schritt 2: Differenz zurückrechnen und weich auf 0 laufen lassen.
+  if (!panelVisible) return;
+  ordered.forEach(function (o) {
+    const row = o.row;
+    if (o.isNew) {
+      row.classList.add("is-entering");
+      void row.offsetWidth;
+      row.classList.remove("is-entering");
+      return;
+    }
+    const before = oldTops[o.key];
+    if (before == null) return;
+    const delta = before - row.getBoundingClientRect().top;
+    if (Math.abs(delta) < 1) return;
+    row.style.transition = "none";
+    row.style.transform = "translateY(" + delta + "px)";
+    void row.offsetWidth;
+    row.style.transition = "";
+    row.style.transform = "";
+  });
+}
+
+function updateDepartureRow(row, dep, now, isNext) {
+  const place = dep.place || {};
+  const when = place.departure || place.scheduledDeparture;
+  const scheduled = place.scheduledDeparture;
+  const whenDate = when ? new Date(when) : null;
+  const minutes = whenDate ? Math.round((whenDate.getTime() - now) / 60000) : null;
+  const cancelled = !!(dep.cancelled || dep.tripCancelled);
+
+  let minutesUntilLeave = null;
+  if (walkMinutesToStop != null && whenDate) {
+    minutesUntilLeave = Math.round((whenDate.getTime() - walkMinutesToStop * 60000 - now) / 60000);
+  }
+
+  row.className = "row dep-row" + walkUrgencyClass(minutesUntilLeave) +
+    (isNext ? " is-next" : "") + (cancelled ? " is-cancelled" : "") +
+    (row.classList.contains("is-leaving") ? " is-leaving" : "");
+
+  // Linie: echte Linienfarbe aus Transitous (Trams), sonst neutral.
+  const badge = row.querySelector(".dep-badge");
+  const lineName = dep.routeShortName || dep.tripShortName || dep.displayName || "?";
+  if (badge.textContent !== lineName) badge.textContent = lineName;
+  badge.className = "line-badge dep-badge " + productClass(dep.mode) + (dep.routeColor ? " has-color" : "");
+  badge.style.background = dep.routeColor ? "#" + dep.routeColor : "";
+  badge.style.color = dep.routeColor ? "#" + (dep.routeTextColor || "ffffff") : "";
+
+  row.querySelector(".dest").textContent = cancelled ? (dep.headsign || "") + " (fällt aus)" : (dep.headsign || "—");
+
+  // Unterzeile: "Los bis …"; bei der nächsten Bahn zusätzlich Regen und
+  // Ankunft bei der Arbeit (was früher im Banner stand).
+  const subParts = [];
+  if (minutesUntilLeave != null && !cancelled) {
+    subParts.push("Los bis " + new Date(whenDate.getTime() - walkMinutesToStop * 60000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }));
+  }
+  if (isNext && rainStartMinutes != null && minutesUntilLeave != null &&
+      rainStartMinutes <= minutesUntilLeave + walkMinutesToStop + 15) {
+    subParts.push(rainStartMinutes <= 0 ? "☔ es regnet" : "☔ Regen in " + rainStartMinutes + " Min");
+  }
+  if (isNext && whenDate) {
+    const est = workArrivalEstimate(whenDate);
+    if (est) {
+      subParts.push((est.diffMin < 0 ? "⚠ Arbeit " : "Arbeit ") +
+        est.arrivalDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) +
+        (est.diffMin < 0 ? " (" + Math.abs(est.diffMin) + " Min zu spät)" : ""));
+    }
+  }
+  row.querySelector(".dep-sub").textContent = subParts.join(" · ");
+
+  // Dringlichkeit als Pille in der Zeile der nächsten Bahn.
+  const pill = row.querySelector(".dep-pill");
+  let pillText = "";
+  let pillCls = "dep-pill";
+  if (isNext && minutesUntilLeave != null && !cancelled) {
+    if (minutesUntilLeave <= 0) { pillText = "LOS!"; pillCls += " is-now"; }
+    else if (minutesUntilLeave <= 4) { pillText = "in " + minutesUntilLeave + " min los"; pillCls += " is-soon"; }
+  }
+  pill.textContent = pillText;
+  pill.className = pillCls + (pillText ? " is-shown" : "");
+
+  // Minuten: Fern-Info, nur geänderte Ziffern rollen.
+  const minEl = row.querySelector(".dep-min");
+  const unit = row.querySelector(".dep-unit");
+  if (minutes === null) { setRollingText(minEl, "–"); unit.style.display = "none"; }
+  else if (minutes <= 0) { setRollingText(minEl, "jetzt"); unit.style.display = "none"; }
+  else { setRollingText(minEl, String(minutes)); unit.style.display = ""; }
+  row.querySelector(".time-min").classList.toggle("now", minutes !== null && minutes <= 0);
+
+  // Uhrzeit; Verspätung: Plan durchgestrichen + "+3" in Warnfarbe.
+  const delaySec = (when && scheduled && when !== scheduled)
+    ? Math.round((new Date(when).getTime() - new Date(scheduled).getTime()) / 1000) : 0;
+  const delayMin = Math.round(delaySec / 60);
+  const planned = row.querySelector(".dep-planned");
+  const actual = row.querySelector(".dep-actual");
+  const delay = row.querySelector(".dep-delay");
+  const fmt = function (d) { return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }); };
+  if (whenDate && delayMin >= 1 && scheduled) {
+    planned.textContent = fmt(new Date(scheduled));
+    actual.textContent = fmt(whenDate);
+    delay.textContent = "+" + delayMin;
+  } else {
+    planned.textContent = "";
+    actual.textContent = whenDate ? fmt(whenDate) : "";
+    delay.textContent = "";
+  }
 }
 
 let consecutiveFailures = 0;

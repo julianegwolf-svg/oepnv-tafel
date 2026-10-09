@@ -28,7 +28,12 @@ const CONFIG = {
   // der Gehzeit eh nicht mehr schafft (siehe renderDepartures) — weniger,
   // aber tatsächlich planbare Zeilen statt einer langen Liste voller
   // "eigentlich schon zu spät".
-  maxRows: 4,
+  maxRows: 5,
+
+  // Dringlichkeit auf der Abfahrtstafel (IDEEN A2): "zeile" = Pille
+  // "LOS!"/"in 3 min los" direkt in der Zeile der nächsten erreichbaren
+  // Bahn (spart das Banner), "banner" = kompaktes Banner darüber.
+  abfahrtenDringlichkeit: "zeile",
 
   // Koordinaten für die Wetteranzeige (Alter Postweg, Bremen-Hemelingen)
   weatherLat: 53.073,
