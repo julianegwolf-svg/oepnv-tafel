@@ -2867,6 +2867,7 @@
     openRoom: openRoom,
     closeRoom: closeRoom,
     quickActions: function () { return HA.everReady() ? quickActions() : []; },
+    refresh: function () { lastHintsAt = 0; scheduleFlush(0); },
     // Raumansicht/Einrichtung offen: Karussell bleibt stehen, auch wenn
     // darin getippt wird (siehe deferCarouselAdvance in app.js).
     showGreeting: showGreeting,
