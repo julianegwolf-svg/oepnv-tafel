@@ -617,7 +617,7 @@ function renderDepartures(departures) {
   const firstReachable = visible.filter(function (d) { return !d.cancelled && !d.tripCancelled; })[0];
   renderLeaveNowBanner(firstReachable, now);
 
-  lastDepartureSnapshot = visible.filter(function (d) { return !d.cancelled && !d.tripCancelled; }).slice(0, 6).map(function (dep) {
+  lastDepartureSnapshot = visible.filter(function (d) { return !d.cancelled && !d.tripCancelled; }).slice(0, 16).map(function (dep) {
     const place = dep.place || {};
     const when = place.departure || place.scheduledDeparture;
     const whenMs = when ? new Date(when).getTime() : null;
