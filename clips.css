@@ -1,0 +1,186 @@
+/* ---------------------------------------------------------------
+   clips.css — Regenradar im Wetter-Panel und Video-Panel (clips.js)
+   Safari 12: kein inset/aspect-ratio/Flex-gap; Animation nur über
+   opacity/transform.
+   --------------------------------------------------------------- */
+
+/* ---------- Regenradar ---------- */
+.clip-radar {
+  position: absolute;
+  top: 92px;
+  right: 24px;
+  z-index: 3;
+  width: 400px;
+  height: 330px;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(239, 233, 223, 0.14);
+  background: #0f141b;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.clip-radar.is-shown {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.clip-radar-map {
+  position: absolute;
+  width: 512px;
+  height: 512px;
+}
+
+.clip-radar-tile {
+  position: absolute;
+  display: block;
+  width: 256px;
+  height: 256px;
+}
+
+.clip-radar-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 512px;
+  height: 512px;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.clip-radar-layer.is-shown {
+  opacity: 0.85;
+}
+
+/* Zuhause: kleiner Ring, ruhig. */
+.clip-radar-home {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 3px solid #efe9df;
+  box-shadow: 0 0 0 3px rgba(13, 18, 25, 0.6), 0 0 14px rgba(239, 233, 223, 0.6);
+}
+
+.clip-radar-label {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(13, 18, 25, 0.78);
+  color: #efe9df;
+}
+
+.clip-radar-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #b8b0a3;
+}
+
+.clip-radar-time {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.clip-radar-credit {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 10px;
+  color: rgba(239, 233, 223, 0.45);
+}
+
+.clip-radar-steps {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: #6fb3d6;
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 0.3s linear;
+}
+
+/* ---------- Video-Panel (tagesschau in 100 Sekunden) ---------- */
+#panel-tagesschau.panel-view {
+  padding: 0;
+  background: #000;
+}
+
+.clip-video-box {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+/* contain statt cover: 16:9 im 4:3-Bildschirm ganz zeigen. Die schwarzen
+   Streifen oben/unten tragen Titel und Fortschritt — so wird die im Video
+   eingeblendete Bauchbinde nie überdeckt. */
+.clip-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.clip-video-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 92px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 580px;
+  padding: 0 28px;
+  color: #fff;
+  pointer-events: none;
+}
+
+.clip-video-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.clip-video-brand {
+  color: #8fc2ff;
+}
+
+.clip-video-date {
+  margin-top: 2px;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.clip-video-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.clip-video-progress {
+  height: 100%;
+  background: #8fc2ff;
+  transform-origin: left center;
+  transform: scaleX(0);
+}
