@@ -4551,7 +4551,10 @@ function updateHintBar() {
   if (!shell) return;
   const hints = document.getElementById("haHints");
   const warn = document.getElementById("warnHints");
-  const has = !!((els.wasteLine && els.wasteLine.textContent) || (hints && hints.children.length) || (warn && warn.children.length));
+  // Zeigt das Panel die DWD-Warnung selbst (Tagesblick), zählen nur die
+  // übrigen Einträge – sonst bliebe ein leeres Band stehen.
+  const warnZahl = !warn ? 0 : (shell.classList.contains("warn-im-panel") ? warn.querySelectorAll(".ha-hint:not([data-warn])").length : warn.children.length);
+  const has = !!((els.wasteLine && els.wasteLine.textContent) || (hints && hints.children.length) || warnZahl);
   if (shell.classList.contains("has-hintbar") !== has) shell.classList.toggle("has-hintbar", has);
 }
 

@@ -126,7 +126,7 @@
       if (h.time[i] + 3600000 <= vonMs || h.time[i] >= bisMs) continue;
       const pp = h.pp[i] || 0;
       if (pp > maxPp) maxPp = pp;
-      if (pp >= 50) return { text: "Regen ab " + new Date(h.time[i]).getHours() + " Uhr (" + pp + " %)", nass: true };
+      if (pp >= 50) return { text: "Regen ab " + new Date(h.time[i]).getHours() + " Uhr (" + pp + " %)", nass: true, ab: h.time[i] };
     }
     if (maxPp >= 30) return { text: "Schauer möglich (" + maxPp + " %)", nass: false };
     return { text: "Bleibt trocken", nass: false };
@@ -155,6 +155,22 @@
     return zellen.length ? '<div class="tb-hours">' + zellen.join("") + "</div>" : "";
   }
 
+  // Die nächsten 4 Stunden einzeln, danach in 2-Stunden-Schritten. Steht
+  // oben "Regen ab 14 Uhr", liegt 14 Uhr auch auf diesem Raster – vorher
+  // sprang die Liste von 13 auf 15 Uhr, genau an der angekündigten Stunde
+  // vorbei.
+  function stundenHeute(regenAbMs) {
+    const jetzt = Date.now();
+    let start = 6;
+    if (regenAbMs) {
+      const n = Math.round((regenAbMs - (jetzt - jetzt % 3600000)) / 3600000);
+      if (n > 4 && n % 2 === 1) start = 5;
+    }
+    const stunden = [1, 2, 3, 4];
+    for (let n = start; n <= start + 6; n += 2) stunden.push(n);
+    return stunden.map(function (n) { return jetzt + n * 3600000; });
+  }
+
   function wetterKarte(s, m, tag) {
     const w = s.weather;
     if (!w) return "";
@@ -169,7 +185,7 @@
         '<span class="tb-wetter-text"><b>' + esc(w.desc) + "</b>" +
         (w.hi != null ? '<span class="tb-hilo"><span>bis ' + esc(w.hi) + '°</span><span class="tb-sep"> · </span><span>nachts ' + esc(w.lo) + "°</span></span>" : "") + "</span></div>" +
         (regen ? '<div class="tb-line' + (regen.nass ? " is-nass" : "") + '">' + (regen.nass ? "☔ " : "") + esc(regen.text) + "</div>" : "") +
-        stundenLeiste(w, [1, 2, 3, 4, 6, 8, 10, 12].map(function (n) { return Date.now() + n * 3600000; })) +
+        stundenLeiste(w, stundenHeute(regen && regen.ab)) +
         "</div>";
     }
     // Abends: Wetter zur gewohnten Losgehzeit morgen bzw. um 9 Uhr am freien Tag.
@@ -436,14 +452,75 @@
   }
 
   // ---------- Amtliche Warnung (warnungen.js) ----------
-  function warnKarte() {
+  // Als Streifen über den Karten statt als eigene Karte: Die Karte war zu
+  // zwei Dritteln leer und nahm der Bahn zur Arbeit den Fahrplan weg.
+  // Dafür steht hier alles, was man morgens wissen muss: wann, wie stark,
+  // was tun – und das Hinweisband unten wiederholt sie auf diesem Panel nicht.
+  function schoen(t) {
+    return String(t || "").toLowerCase().replace(/(^|\s|-)(\S)/g, function (x, a, b) { return a + b.toUpperCase(); });
+  }
+
+  function warnZeit(a) {
+    const on = Date.parse(a.onset || a.effective);
+    const ex = Date.parse(a.expires);
+    const heute = startOfDay(new Date()).getTime();
+    const tagWort = function (ms) {
+      const t = startOfDay(new Date(ms)).getTime();
+      if (t === heute) return "heute";
+      if (t === addDays(new Date(heute), 1).getTime()) return "morgen";
+      return new Date(ms).toLocaleDateString("de-DE", { weekday: "short" });
+    };
+    const uhr = function (ms) {
+      const d = new Date(ms);
+      return d.getHours() + (d.getMinutes() ? ":" + (d.getMinutes() < 10 ? "0" : "") + d.getMinutes() : "");
+    };
+    if (isFinite(on) && on > Date.now()) {
+      if (!isFinite(ex)) return "ab " + tagWort(on) + " " + uhr(on) + " Uhr";
+      return tagWort(on) === tagWort(ex)
+        ? tagWort(on) + " " + uhr(on) + "–" + uhr(ex) + " Uhr"
+        : tagWort(on) + " " + uhr(on) + " Uhr bis " + tagWort(ex) + " " + uhr(ex) + " Uhr";
+    }
+    if (!isFinite(ex)) return "jetzt";
+    return "bis " + (tagWort(ex) === "heute" ? "" : tagWort(ex) + " ") + uhr(ex) + " Uhr";
+  }
+
+  // "Es treten Windböen mit Geschwindigkeiten um 55 km/h (15 m/s, 30 kn,
+  // Bft 7) aus südwestlicher Richtung auf." → "Windböen um 55 km/h aus
+  // südwestlicher Richtung"; dazu die erste Handlungsempfehlung des DWD.
+  function warnText(a, name) {
+    const saetze = String(a.description_de || "").split(/\.\s+(?=[A-ZÄÖÜ])/);
+    let text = "";
+    for (let i = 0; i < saetze.length && i < 2 && text.length < 30; i++) {
+      let t = saetze[i].replace(/\s*\([^)]*\)/g, "").replace(/\.\s*$/, "").trim();
+      const m = /^Es (?:tritt|treten) (.+) auf$/.exec(t);
+      if (m) t = m[1].charAt(0).toUpperCase() + m[1].slice(1);
+      t = t.replace(/ mit Geschwindigkeiten /, " ");
+      if (t) text += (text ? ". " : "") + t;
+    }
+    // Steht schon fett davor: "Orkanartige Böen zwischen 100 und …" →
+    // "Zwischen 100 und …".
+    const lower = name.toLowerCase() + " ";
+    if (text.toLowerCase().indexOf(lower) === 0) text = text.charAt(lower.length).toUpperCase() + text.slice(lower.length + 1);
+    const r = /Handlungsempfehlungen:\s*([^;\n]+)/.exec(String(a.instruction_de || ""));
+    const rat = r ? r[1].trim().replace(/\.$/, "") : "";
+    return [text, rat ? rat.charAt(0).toUpperCase() + rat.slice(1) : ""].filter(function (x) { return !!x; }).join(". ") + (text || rat ? "." : "");
+  }
+
+  function warnStreifen() {
     if (!window.TafelWarn) return "";
     const a = TafelWarn.aktuelle()[0];
     if (!a) return "";
     const stufe = TafelWarn.stufe(a);
-    return '<div class="tb-card tb-warn stufe-' + stufe + '"><div class="tb-eyebrow">DWD-Warnung · Stufe ' + stufe + "</div>" +
-      '<div class="tb-mid">' + esc(TafelWarn.kurz(a)) + "</div>" +
-      (a.instruction_de ? '<div class="tb-line">' + esc(String(a.instruction_de).split(/(?:\.\s)/)[0]) + ".</div>" : "") + "</div>";
+    const name = schoen(a.event_de || a.event_en || "Warnung");
+    const text = warnText(a, name);
+    return '<div class="tb-warnstreifen stufe-' + stufe + '">' +
+      '<span class="tb-warn-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l9 16H3z"/><path d="M12 10v4.3M12 17.2v.3"/></svg></span>' +
+      '<div class="tb-warn-text"><div class="tb-warn-kopf">' +
+      '<span class="tb-warn-name">' + esc(name) + "</span>" +
+      '<span class="tb-warn-zeit">' + esc(warnZeit(a)) + "</span>" +
+      '<span class="tb-warn-quelle">' + (stufe >= 3 ? "Unwetter" : "DWD") + " · Stufe " + stufe + "</span></div>" +
+      (text ? '<div class="tb-warn-rat">' + esc(text) + "</div>" : "") +
+      "</div></div>";
   }
 
   // ---------- Darstellung ----------
@@ -467,12 +544,14 @@
     const datum = tag.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" }) +
       (frei && frei !== "Samstag" && frei !== "Sonntag" ? " · " + frei : "");
 
-    const karten = [wetterKarte(s, m, tag), warnKarte(), bahnKarte(s, m, tag), terminKarte(s, m, tag), muellKarte(s, m, tag), zuhauseKarte()]
+    const streifen = warnStreifen();
+    warnImPanel(!!streifen);
+    const karten = [wetterKarte(s, m, tag), bahnKarte(s, m, tag), terminKarte(s, m, tag), muellKarte(s, m, tag), zuhauseKarte()]
       .filter(function (k) { return !!k; })
       .slice(0, 5); // mehr passt nicht lesbar auf 1024×768 (Reihenfolge = Wichtigkeit)
     // Ohne Wetterkarte übernimmt die erste Karte deren hohen Platz links.
     const mitWetter = karten.length && karten[0].indexOf("tb-wetter") !== -1;
-    const html = '<div class="tb-head"><div class="tb-title">' + esc(kopf) + '</div><div class="tb-sub">' + esc(datum) + "</div></div>" +
+    const html = '<div class="tb-head"><div class="tb-title">' + esc(kopf) + '</div><div class="tb-sub">' + esc(datum) + "</div></div>" + streifen +
       '<div class="tb-grid n-' + karten.length + (mitWetter ? "" : " kein-wetter") + '">' + karten.join("") + "</div>";
     // Höhe gehört zum Vergleich: kommt die Hinweiszeile unten dazu oder
     // geht sie, wird neu gezeichnet und neu eingepasst.
@@ -482,6 +561,17 @@
       bodyEl.innerHTML = html;
       einpassen();
     }
+  }
+
+  // Steht die Warnung als Streifen im Panel, blendet das Hinweisband sie
+  // aus (app.js updateHintBar, style.css .warn-im-panel) – vor dem Messen
+  // der Höhe, damit gleich mit dem gewonnenen Platz eingepasst wird.
+  function warnImPanel(an) {
+    const shell = document.querySelector(".panel");
+    const soll = !!(an && panel && panel.classList.contains("active"));
+    if (!shell || shell.classList.contains("warn-im-panel") === soll) return;
+    shell.classList.toggle("warn-im-panel", soll);
+    if (typeof updateHintBar === "function") updateHintBar();
   }
 
   // Nur sichtbare Kandidaten (per CSS ausgeblendete Zeilen zählen nicht).
@@ -521,9 +611,12 @@
     if (name === "tagesblick") {
       render();
       if (!ticker) ticker = setInterval(render, 20 * 1000);
-    } else if (ticker) {
-      clearInterval(ticker);
-      ticker = null;
+    } else {
+      warnImPanel(false);
+      if (ticker) {
+        clearInterval(ticker);
+        ticker = null;
+      }
     }
   }
 
