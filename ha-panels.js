@@ -2291,7 +2291,10 @@
     const artist = HA.attr(st, "media_artist") || HA.attr(st, "media_album_name") || "";
     const vol = HA.attr(st, "volume_level");
 
-    let html = '<div class="ha-hero">' + coverHtml(st, "ha-cover-l") +
+    // Nur ein Lautsprecher (wie bei Julian: ein HomePod): keine Geräteliste
+    // darunter – Cover und Titel dürfen den Platz nutzen.
+    const others = mediaPlayers().filter(function (id) { return id !== heroId; });
+    let html = '<div class="ha-hero' + (others.length ? "" : " is-allein") + '">' + coverHtml(st, "ha-cover-l") +
       '<div class="ha-hero-info">' +
       '<span class="ha-chip is-media">' + icon(HA.attr(st, "device_class") === "tv" ? "tv" : "speaker") + esc(HA.name(heroId) + (room ? " · " + room : "")) + "</span>" +
       '<div class="ha-hero-title">' + esc(title) + "</div>" +
@@ -2318,7 +2321,6 @@
     }
     html += "</div></div>";
 
-    const others = mediaPlayers().filter(function (id) { return id !== heroId; });
     if (others.length) {
       html += '<div class="ha-players">' + others.slice(0, 4).map(function (id) {
         const ost = eff(id);

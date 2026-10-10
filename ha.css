@@ -3144,3 +3144,18 @@ body.ha-ruhe .ha-dot {
   margin-top: 9px;
   font-size: 22px;
 }
+
+/* Medien mit nur einem Lautsprecher: oben und unten standen je ~150 px
+   leer. Cover 400 statt 300 px, Titel 48 px (aus 3 m lesbar). */
+.ha-hero.is-allein .ha-cover-l {
+  width: 400px;
+  height: 400px;
+}
+
+.ha-hero.is-allein .ha-hero-title {
+  font-size: 48px;
+}
+
+.ha-hero.is-allein .ha-hero-artist {
+  font-size: 26px;
+}
