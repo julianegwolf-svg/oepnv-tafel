@@ -355,6 +355,9 @@ const CONFIG = {
   // kommt niemand an die echten Kalenderdaten.
   calendarWorkerUrl: "https://kalender-worker.julian-e-g-wolf.workers.dev/",
   calendarCount: 6,
+  // Termine/Veranstaltungen: "tage" = nach Tagen gruppiert, Uhrzeit vorn,
+  // nächster Termin groß (IDEEN V1/K1); "kacheln" = bisherige Liste.
+  terminListe: "tage",
   refreshCalendarMs: 30 * 60 * 1000,
 
   // ---------------------------------------------------------------

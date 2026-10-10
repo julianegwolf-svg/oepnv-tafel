@@ -2178,6 +2178,68 @@ function updateMusic() {
 // weil man bei Terminen mehrere auf einen Blick vergleichen will.
 const EVENT_MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
+// ---------- Liste nach Tagen (IDEEN V1/K1) ----------
+// Statt derselben Datumskachel dreimal hintereinander: Zwischenüberschrift
+// je Tag ("Heute · Samstag"), Uhrzeit vorn in einer eigenen Spalte.
+// items: [{ start: Date, allDay: bool, title, location }]
+function dayLabel(d) {
+  const today = new Date();
+  const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const d0 = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diff = Math.round((d0 - t0) / 86400000);
+  const wd = d.toLocaleDateString("de-DE", { weekday: "long" });
+  if (diff === 0) return "Heute · " + wd;
+  if (diff === 1) return "Morgen · " + wd;
+  return wd + " · " + d.toLocaleDateString("de-DE", { day: "numeric", month: "long" });
+}
+
+function renderDayGroupedList(container, items) {
+  container.innerHTML = "";
+  container.classList.add("day-list");
+  let lastDay = "";
+  items.forEach(function (ev) {
+    const label = dayLabel(ev.start);
+    if (label !== lastDay) {
+      lastDay = label;
+      const head = document.createElement("div");
+      head.className = "day-head";
+      head.textContent = label;
+      container.appendChild(head);
+    }
+    const row = document.createElement("div");
+    row.className = "day-row";
+    const time = document.createElement("span");
+    time.className = "day-time" + (ev.allDay ? " is-allday" : "");
+    time.textContent = ev.allDay ? "ganztags" : ev.start.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    const text = document.createElement("span");
+    text.className = "day-text";
+    const title = document.createElement("span");
+    title.className = "day-title";
+    title.textContent = ev.title;
+    text.appendChild(title);
+    if (ev.location) {
+      const loc = document.createElement("span");
+      loc.className = "day-loc";
+      loc.textContent = ev.location;
+      text.appendChild(loc);
+    }
+    row.appendChild(time);
+    row.appendChild(text);
+    container.appendChild(row);
+  });
+}
+
+function relativeIn(ms) {
+  const min = Math.round(ms / 60000);
+  if (min < 1) return "jetzt";
+  if (min < 60) return "in " + min + " min";
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h < 24) return "in " + h + " h" + (m ? " " + m + " min" : "");
+  const d = Math.round(h / 24);
+  return "in " + d + (d === 1 ? " Tag" : " Tagen");
+}
+
 function updateEvents() {
   if (!els.eventsList) return;
 
@@ -2197,6 +2259,17 @@ function updateEvents() {
       .slice(0, CONFIG.eventsCount || 6);
 
     if (!upcoming.length) throw new Error("Keine anstehenden Veranstaltungen erhalten");
+
+    if ((CONFIG.terminListe || "tage") === "tage") {
+      renderDayGroupedList(els.eventsList, upcoming.map(function (ev) {
+        const d = new Date(ev.date_from);
+        // 00:00 ist bei destination.one meist "keine genaue Uhrzeit".
+        return { start: d, allDay: d.getHours() === 0 && d.getMinutes() === 0, title: ev.title, location: ev.location || "" };
+      }));
+      eventsAvailable = true;
+      markFresh("events");
+      return;
+    }
 
     els.eventsList.innerHTML = "";
     upcoming.forEach(function (ev) {
@@ -2333,6 +2406,41 @@ function updateCalendar() {
       return { title: ev.summary, start: ev.start.date.getTime(), allDay: !!ev.start.allDay, location: ev.location || "" };
     });
     if (!upcoming.length) throw new Error("Keine anstehenden Termine gefunden");
+
+    if ((CONFIG.terminListe || "tage") === "tage") {
+      // Nächster (noch nicht vorbeier) Termin groß, der Rest als Liste.
+      const nowMs = Date.now();
+      const items = upcoming.map(function (ev) {
+        return { start: ev.start.date, allDay: !!ev.start.allDay, title: ev.summary, location: ev.location || "" };
+      });
+      const heroIdx = items.findIndex ? items.findIndex(function (x) { return x.allDay || x.start.getTime() >= nowMs - 30 * 60000; }) : 0;
+      const hero = items[Math.max(0, heroIdx)];
+      els.calendarList.innerHTML = "";
+      const card = document.createElement("div");
+      card.className = "cal-hero";
+      const when = document.createElement("div");
+      when.className = "cal-hero-when";
+      when.textContent = dayLabel(hero.start).split(" · ")[0] + (hero.allDay ? " · ganztägig" : " · " +
+        hero.start.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr · " + relativeIn(hero.start.getTime() - nowMs));
+      const t = document.createElement("div");
+      t.className = "cal-hero-title";
+      t.textContent = hero.title;
+      card.appendChild(when);
+      card.appendChild(t);
+      if (hero.location) {
+        const l = document.createElement("div");
+        l.className = "cal-hero-loc";
+        l.textContent = hero.location;
+        card.appendChild(l);
+      }
+      els.calendarList.appendChild(card);
+      const rest = document.createElement("div");
+      els.calendarList.appendChild(rest);
+      renderDayGroupedList(rest, items.filter(function (x) { return x !== hero; }).slice(0, 4));
+      calendarAvailable = true;
+      markFresh("calendar");
+      return;
+    }
 
     els.calendarList.innerHTML = "";
     upcoming.forEach(function (ev) {
