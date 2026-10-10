@@ -4479,8 +4479,10 @@ function arbeitsBahnHeute() {
   const liste = (lastDepartureSnapshot || []).slice();
   let bis = 0;
   liste.forEach(function (d) { if (d.whenMs > bis) bis = d.whenMs; });
-  if (bis <= spaetestens && window.TafelTag && TafelTag.bahnenAb) {
-    const frueh = TafelTag.bahnenAb(spaetestens - walkMs - 25 * 60000);
+  // Auch wenn die Abfahrtsliste schon weit genug reicht: die gezielt
+  // geholten Abfahrten ergänzen die Bahnen davor/danach (Tagesblick-Fahrplan).
+  if (window.TafelTag && TafelTag.bahnenAb) {
+    const frueh = TafelTag.bahnenAb(spaetestens - walkMs - 15 * 60000);
     (frueh || []).forEach(function (f) {
       const doppelt = liste.some(function (d) { return d.line === f.line && Math.abs(d.whenMs - f.whenMs) < 90000; });
       if (!doppelt) liste.push({ line: f.line, dest: f.dest, whenMs: f.whenMs, clock: fmt(f.whenMs), leaveByMs: f.whenMs - walkMs, color: f.color, textColor: f.textColor });
@@ -4493,10 +4495,11 @@ function arbeitsBahnHeute() {
   });
   let pick = null;
   passend.forEach(function (d) { if (d.whenMs <= spaetestens) pick = d; });
-  if (pick && bis > spaetestens) return { dep: pick, ankunftMs: pick.whenMs + pt * 60000 };
+  // alle: noch erreichbare Bahnen der Linie (Tagesblick zeigt davor/danach).
+  if (pick && bis > spaetestens) return { dep: pick, ankunftMs: pick.whenMs + pt * 60000, alle: passend, ptMin: pt };
   if (spaetestens - walkMs < nowMs) {
     // Pünktlich klappt nicht mehr: die nächste Bahn der Linie, ehrlich "zu spät".
-    return passend.length ? { dep: passend[0], ankunftMs: passend[0].whenMs + pt * 60000, spaet: true } : null;
+    return passend.length ? { dep: passend[0], ankunftMs: passend[0].whenMs + pt * 60000, spaet: true, alle: passend, ptMin: pt } : null;
   }
   return { dep: null, losMs: spaetestens - walkMs, linie: linie };
 }

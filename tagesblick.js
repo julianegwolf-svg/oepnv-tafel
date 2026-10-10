@@ -88,6 +88,22 @@
     return e ? e[1] : "";
   }
 
+  // Kurzwort je Wettercode für die Stundenzeilen (passt auch in die
+  // schmale Wetterspalte bei 4–5 Karten, statt "Teilweise b…").
+  function kurzWetter(code) {
+    if (code === 0) return "Klar";
+    if (code === 1) return "Meist klar";
+    if (code === 2) return "Wolkig";
+    if (code === 3) return "Bedeckt";
+    if (code === 45 || code === 48) return "Nebel";
+    if (code >= 51 && code <= 57) return "Niesel";
+    if (code >= 61 && code <= 67) return "Regen";
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "Schnee";
+    if (code >= 80 && code <= 82) return "Schauer";
+    if (code >= 95) return "Gewitter";
+    return wetterBeschreibung(code);
+  }
+
   function iconHtml(code, isDay) {
     return typeof weatherIconMarkup === "function" ? weatherIconMarkup(code, isDay) : "";
   }
@@ -120,18 +136,21 @@
   function stundenLeiste(w, zeiten) {
     const h = w.hourly;
     if (!h) return "";
-    const zellen = [];
-    zeiten.forEach(function (ms) {
-      const i = stundenIndex(h, ms);
-      if (i === -1) return;
+    const idx = zeiten.map(function (ms) { return stundenIndex(h, ms); }).filter(function (i) { return i !== -1; });
+    // Bleibt es in allen Zeilen trocken (< 20 %), sagt eine Spalte leerer
+    // Balken nichts – dann steht dort, wie der Himmel aussieht.
+    const trocken = idx.every(function (i) { return (h.pp[i] || 0) < 20; });
+    const zellen = idx.map(function (i) {
       const st = new Date(h.time[i]).getHours();
       // Eine Zeile je Stunde: Zeit, Symbol, Temperatur, Regenbalken (Länge =
       // Regenwahrscheinlichkeit) – füllt die hohe Karte und ist aus 3 m lesbar.
       const pp = h.pp[i] != null ? Math.max(0, Math.min(100, h.pp[i])) : null;
-      zellen.push('<div class="tb-hour' + ((pp || 0) >= 50 ? " is-nass" : "") + '"><span class="tb-hour-t num">' + st + ' Uhr</span><span class="tb-hour-i">' +
-        iconHtml(h.code[i], st >= 7 && st < 19) + '</span><span class="tb-hour-v num">' + Math.round(h.temp[i]) + "°</span>" +
-        '<span class="tb-hour-bar"><span class="tb-hour-fill" style="width:' + (pp || 0) + '%"></span></span>' +
-        '<span class="tb-hour-p num">' + (pp != null ? pp + " %" : "") + "</span></div>");
+      const rest = trocken
+        ? '<span class="tb-hour-d">' + esc(kurzWetter(h.code[i])) + "</span>"
+        : '<span class="tb-hour-bar"><span class="tb-hour-fill" style="width:' + (pp || 0) + '%"></span></span>' +
+          '<span class="tb-hour-p num">' + (pp != null ? pp + " %" : "") + "</span>";
+      return '<div class="tb-hour' + ((pp || 0) >= 50 ? " is-nass" : "") + '"><span class="tb-hour-t num">' + st + ' Uhr</span><span class="tb-hour-i">' +
+        iconHtml(h.code[i], st >= 7 && st < 19) + '</span><span class="tb-hour-v num">' + Math.round(h.temp[i]) + "°</span>" + rest + "</div>";
     });
     return zellen.length ? '<div class="tb-hours">' + zellen.join("") + "</div>" : "";
   }
@@ -150,7 +169,7 @@
         '<span class="tb-wetter-text"><b>' + esc(w.desc) + "</b>" +
         (w.hi != null ? "<span>bis " + esc(w.hi) + "° · nachts " + esc(w.lo) + "°</span>" : "") + "</span></div>" +
         (regen ? '<div class="tb-line' + (regen.nass ? " is-nass" : "") + '">' + (regen.nass ? "☔ " : "") + esc(regen.text) + "</div>" : "") +
-        stundenLeiste(w, [1, 2, 3, 4, 6, 9].map(function (n) { return Date.now() + n * 3600000; })) +
+        stundenLeiste(w, [1, 2, 3, 4, 6, 8, 10, 12].map(function (n) { return Date.now() + n * 3600000; })) +
         "</div>";
     }
     // Abends: Wetter zur gewohnten Losgehzeit morgen bzw. um 9 Uhr am freien Tag.
@@ -173,13 +192,47 @@
       '<span class="tb-wetter-text"><b>' + esc(wetterBeschreibung(h.code[i])) + "</b>" +
       (maxT > -99 ? "<span>tagsüber bis " + Math.round(maxT) + "°</span>" : "") + "</span></div>" +
       (regen ? '<div class="tb-line' + (regen.nass ? " is-nass" : "") + '">' + (regen.nass ? "☔ " : "") + esc(regen.text) + "</div>" : "") +
-      stundenLeiste(w, [7, 8, 9, 12, 15, 18].map(function (st) { return new Date(tag.getFullYear(), tag.getMonth(), tag.getDate(), st, 30).getTime(); })) +
+      stundenLeiste(w, [7, 8, 9, 11, 13, 15, 17, 19].map(function (st) { return new Date(tag.getFullYear(), tag.getMonth(), tag.getDate(), st, 30).getTime(); })) +
       "</div>";
   }
 
   // ---------- Bahn ----------
   function badge(line, color, text) {
     return '<span class="tb-badge"' + (color ? ' style="background:#' + esc(color) + ";color:#" + esc(text || "ffffff") + '"' : "") + ">" + esc(line) + "</span>";
+  }
+
+  // Fahrplan der Arbeitslinie rund um die empfohlene Bahn: eine davor, die
+  // empfohlene, zwei danach – je mit Losgehzeit, Ankunft und "pünktlich /
+  // knapp / N min zu spät". Beantwortet die Frage nach dem ersten Blick:
+  // "Und wenn ich die nicht schaffe?"
+  function fahrplanHtml(deps, pick, ptMin, walkMin, tag) {
+    if (!deps || !pick || ptMin == null) return "";
+    const t = String(CONFIG.workArrivalTarget || "").split(":");
+    if (t.length !== 2) return "";
+    const ziel = new Date(tag.getFullYear(), tag.getMonth(), tag.getDate(), parseInt(t[0], 10) || 0, parseInt(t[1], 10) || 0).getTime();
+    const i = deps.indexOf(pick);
+    if (i === -1) return "";
+    const von = Math.max(0, i - 1);
+    const zeilen = deps.slice(von, von + 4);
+    if (zeilen.length < 2) return "";
+    return '<div class="tb-plan"><div class="tb-plan-kopf">Ankunft bei der Arbeit · Ziel ' + hhmm(ziel) + "</div>" +
+      zeilen.map(function (d) {
+        const an = d.whenMs + ptMin * 60000;
+        const spaet = Math.round((an - ziel) / 60000);
+        let cls, text;
+        if (spaet > 0) { cls = "is-spaet"; text = spaet + " min zu spät"; }
+        else if (spaet > -5) { cls = "is-knapp"; text = "knapp"; }
+        else { cls = "is-ok"; text = "pünktlich"; }
+        const los = d.leaveByMs || d.whenMs - walkMin * 60000;
+        // Lage zur empfohlenen Bahn – halbhohe Karten zeigen nur pick + nach-1.
+        const k = zeilen.indexOf(d) - zeilen.indexOf(pick);
+        const lage = k === 0 ? " is-pick" : (k < 0 ? " is-vor" : " is-nach-" + k);
+        return '<div class="tb-plan-row ' + cls + lage + '">' +
+          '<span class="tb-plan-t num">' + hhmm(d.whenMs) + "</span>" +
+          '<span class="tb-plan-los num">los ' + hhmm(los) + "</span>" +
+          '<span class="tb-plan-an num">an ' + hhmm(an) + "</span>" +
+          '<span class="tb-plan-s">' + text + "</span></div>";
+      }).join("") + "</div>";
   }
 
   function arbeitsKarte(s, ab) {
@@ -196,7 +249,8 @@
       '<div class="tb-bahn-main">' + badge(d.line, d.color, d.textColor) + '<span class="tb-big num">' + esc(d.clock) + "</span></div>" +
       '<div class="tb-bahn-dest">→ ' + esc(d.dest) + "</div>" +
       (inMin <= 4 ? '<div class="tb-pill' + (inMin <= 1 ? " is-now" : " is-soon") + '">' + (inMin <= 1 ? "jetzt los" : "in " + inMin + " min los") + "</div>" : "") +
-      '<div class="tb-line">Los um ' + hhmm(d.leaveByMs) + " · Arbeit ca. " + hhmm(ab.ankunftMs) + (ab.spaet ? " (zu spät)" : "") + "</div>" +
+      '<div class="tb-line tb-bahn-sum">Los um ' + hhmm(d.leaveByMs) + " · Arbeit ca. " + hhmm(ab.ankunftMs) + (ab.spaet ? " (zu spät)" : "") + "</div>" +
+      fahrplanHtml(ab.alle, d, ab.ptMin, s.walkMinutes || 0, startOfDay(new Date())) +
       "</div>";
   }
 
@@ -237,22 +291,24 @@
     const los = losgehzeit(tag);
     const ab = morgen.deps.filter(function (d) { return d.whenMs - walk * 60000 >= los.getTime() - 3 * 60000; });
     // Bevorzugt die Bahn des Arbeitswegs (Linie + Richtung).
-    const dep = ab.filter(function (d) {
+    const istArbeit = function (d) {
       return typeof istArbeitsBahn === "function" && typeof lastCommuteFirstLine !== "undefined" && lastCommuteFirstLine && istArbeitsBahn(d.line, d.dest);
-    })[0] || ab[0];
+    };
+    const dep = ab.filter(istArbeit)[0] || ab[0];
     if (!dep) return "";
     return '<div class="tb-card tb-bahn">' +
       '<div class="tb-eyebrow">Bahn morgen früh</div>' +
       '<div class="tb-bahn-main">' + badge(dep.line, dep.color, dep.textColor) + '<span class="tb-big num">' + hhmm(dep.whenMs) + "</span></div>" +
       '<div class="tb-bahn-dest">→ ' + esc(dep.dest) + "</div>" +
-      '<div class="tb-line">Los um ' + hhmm(dep.whenMs - walk * 60000) + (s.commutePtMinutes != null ? " · Arbeit ca. " + hhmm(dep.whenMs + s.commutePtMinutes * 60000) : "") + "</div>" +
+      '<div class="tb-line tb-bahn-sum">Los um ' + hhmm(dep.whenMs - walk * 60000) + (s.commutePtMinutes != null ? " · Arbeit ca. " + hhmm(dep.whenMs + s.commutePtMinutes * 60000) : "") + "</div>" +
+      fahrplanHtml(morgen.deps.filter(istArbeit), dep, s.commutePtMinutes, walk, tag) +
       "</div>";
   }
 
   // Erste Abfahrten morgen ab der gewohnten Losgehzeit (eigener Abruf mit
   // Uhrzeit, höchstens alle 30 Minuten, mit Zeitdeckel).
   function holeBahnMorgen(tag) {
-    holeAbfahrten(morgen, String(tag.getTime()), losgehzeit(tag).getTime() - 5 * 60000);
+    holeAbfahrten(morgen, String(tag.getTime()), losgehzeit(tag).getTime() - 15 * 60000);
   }
 
   // Abfahrten ab einem Zeitpunkt (Losgehen; die Gehzeit wird
@@ -264,7 +320,7 @@
     const walk = typeof walkMinutesToStop !== "undefined" && walkMinutesToStop != null ? walkMinutesToStop : 0;
     const t = new Date(abMs + walk * 60000).toISOString();
     const abrufe = resolvedStopIds.map(function (id) {
-      const url = API_BASE + "/v6/stoptimes?stopId=" + encodeURIComponent(id) + "&n=12&time=" + encodeURIComponent(t);
+      const url = API_BASE + "/v6/stoptimes?stopId=" + encodeURIComponent(id) + "&n=40&time=" + encodeURIComponent(t);
       return Promise.race([
         fetch(url).then(function (r) { return r.ok ? r.json() : { stopTimes: [] }; }),
         new Promise(function (resolve) { setTimeout(function () { resolve({ stopTimes: [] }); }, 10000); }),
@@ -346,12 +402,17 @@
     if (!HA || !HA.isConnected()) return "";
     const g = HA.model().global;
     const an = g.lightsAll.filter(function (id) { const st = HA.state(id); return st && st.state === "on"; }).length;
-    const zeilen = [];
-    zeilen.push(an ? an + (an === 1 ? " Licht an" : " Lichter an") : "Alle Lichter aus");
+    // Wo brennt Licht? Räume mit Lampenzahl, hellste Räume zuerst.
+    const raeume = HA.model().rooms.map(function (r) {
+      return { name: r.name, an: HA.roomSummary(r).lightsOn };
+    }).filter(function (r) { return r.an > 0; }).sort(function (a, b) { return b.an - a.an; });
     const hinweise = window.TafelHAUI ? TafelHAUI.hints().filter(function (h) { return h.prio <= 2 && !h.vorschlag; }) : [];
-    hinweise.slice(0, 2).forEach(function (h) { zeilen.push(h.text); });
     return '<div class="tb-card tb-zuhause"><div class="tb-eyebrow">Zuhause</div>' +
-      zeilen.map(function (z, i) { return '<div class="' + (i === 0 ? "tb-mid" : "tb-line is-hinweis") + '">' + esc(z) + "</div>"; }).join("") +
+      '<div class="tb-mid">' + esc(an ? an + (an === 1 ? " Licht an" : " Lichter an") : "Alle Lichter aus") + "</div>" +
+      (raeume.length ? '<div class="tb-raeume">' + raeume.slice(0, 4).map(function (r) {
+        return '<div class="tb-raum"><span class="tb-raum-dot"></span><span class="tb-raum-n">' + esc(r.name) + '</span><span class="tb-raum-z num">' + r.an + "</span></div>";
+      }).join("") + "</div>" : "") +
+      hinweise.slice(0, 2).map(function (h) { return '<div class="tb-line is-hinweis">' + esc(h.text) + "</div>"; }).join("") +
       "</div>";
   }
 
@@ -390,11 +451,42 @@
     const karten = [wetterKarte(s, m, tag), warnKarte(), bahnKarte(s, m, tag), terminKarte(s, m, tag), muellKarte(s, m, tag), zuhauseKarte()]
       .filter(function (k) { return !!k; })
       .slice(0, 5); // mehr passt nicht lesbar auf 1024×768 (Reihenfolge = Wichtigkeit)
+    // Ohne Wetterkarte übernimmt die erste Karte deren hohen Platz links.
+    const mitWetter = karten.length && karten[0].indexOf("tb-wetter") !== -1;
     const html = '<div class="tb-head"><div class="tb-title">' + esc(kopf) + '</div><div class="tb-sub">' + esc(datum) + "</div></div>" +
-      '<div class="tb-grid n-' + karten.length + '">' + karten.join("") + "</div>";
-    if (bodyEl._html !== html) {
-      bodyEl._html = html;
+      '<div class="tb-grid n-' + karten.length + (mitWetter ? "" : " kein-wetter") + '">' + karten.join("") + "</div>";
+    // Höhe gehört zum Vergleich: kommt die Hinweiszeile unten dazu oder
+    // geht sie, wird neu gezeichnet und neu eingepasst.
+    const key = html + "|" + bodyEl.clientHeight;
+    if (bodyEl._html !== key) {
+      bodyEl._html = key;
       bodyEl.innerHTML = html;
+      einpassen();
+    }
+  }
+
+  function letztes(el, sel) {
+    const alle = el.querySelectorAll(sel);
+    return alle.length ? alle[alle.length - 1] : null;
+  }
+
+  // Jede Karte so kürzen, dass nichts unten abgeschnitten wird (Hinweis-
+  // zeile, lange Termine, 5 Karten): zuerst die Bahn davor, dann von
+  // hinten Fahrplan-, Stunden- und Raumzeilen. Nur sichtbar messbar.
+  function einpassen() {
+    if (!bodyEl.clientHeight) return;
+    const karten = bodyEl.querySelectorAll(".tb-card");
+    for (let k = 0; k < karten.length; k++) {
+      const karte = karten[k];
+      for (let n = 0; n < 12 && karte.scrollHeight > karte.clientHeight + 1; n++) {
+        // Die Zusammenfassung "Los um … · Arbeit ca. …" steht auch in der
+        // markierten Fahrplanzeile – lieber sie opfern als die nächste Bahn.
+        const sum = karte.querySelector(".tb-plan-row.is-pick") && karte.querySelector(".tb-plan-row.is-nach-1") ? karte.querySelector(".tb-bahn-sum") : null;
+        const weg = karte.querySelector(".tb-plan-row.is-vor") || letztes(karte, ".tb-plan-row.is-nach-3, .tb-plan-row.is-nach-2") ||
+          letztes(karte, ".tb-hour") || sum || letztes(karte, ".tb-plan-row:not(.is-pick)") || letztes(karte, ".tb-raum") || karte.querySelector(".tb-plan");
+        if (!weg) break;
+        weg.parentNode.removeChild(weg);
+      }
     }
   }
 

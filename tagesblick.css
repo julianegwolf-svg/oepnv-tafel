@@ -69,6 +69,13 @@
   overflow: hidden;
 }
 
+/* Inhalte nie stauchen: Zeilen mit overflow:hidden (Ziel, Termin) würden
+   im Flex-Spalten-Layout sonst auf 0 px schrumpfen statt unten
+   abgeschnitten zu werden. */
+.tb-card > * {
+  flex-shrink: 0;
+}
+
 /* Bei 5 Karten darf das Wetter breit: es ist die meistgestellte Frage. */
 .tb-grid.n-5 .tb-wetter {
   grid-column: span 2;
@@ -354,4 +361,217 @@
    oder Bahn) oben breit, darunter zwei — keine leere Zelle. */
 .tb-grid.n-4 .tb-card:nth-child(2) {
   grid-column: span 2;
+}
+
+/* Fahrplan der Arbeitslinie (Bahnkarte): davor · empfohlen · danach, je
+   mit Ankunft und Ampel. Sitzt unten in der Karte und füllt sie. */
+.tb-plan {
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.tb-plan-kopf {
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-text-3);
+}
+
+.tb-plan-row {
+  display: flex;
+  align-items: center;
+  height: 46px;
+  border-top: 1px solid rgba(239, 233, 223, 0.08);
+  font-size: 18px;
+  color: var(--c-text-2);
+  white-space: nowrap;
+}
+
+.tb-plan-row.is-pick {
+  margin: 0 -12px;
+  padding: 0 12px;
+  border-top-color: transparent;
+  border-radius: var(--r-m);
+  background: rgba(226, 166, 90, 0.12);
+}
+
+.tb-plan-row.is-pick + .tb-plan-row {
+  border-top-color: transparent;
+}
+
+.tb-plan-t {
+  width: 86px;
+  flex-shrink: 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.tb-plan-los {
+  width: 98px;
+  flex-shrink: 0;
+}
+
+.tb-plan-an {
+  width: 92px;
+  flex-shrink: 0;
+}
+
+.tb-plan-s {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tb-plan-row.is-ok .tb-plan-s { color: var(--c-ok); }
+.tb-plan-row.is-knapp .tb-plan-s { color: var(--c-warn); }
+.tb-plan-row.is-spaet .tb-plan-s { color: var(--c-alert); }
+
+/* Halbe Kartenhöhe (3–4 Karten): nur empfohlen + die nächste. Bei fünf
+   Karten ist die Bahnkarte zu klein für einen Fahrplan. */
+.tb-grid.n-3 .tb-plan-row.is-vor,
+.tb-grid.n-3 .tb-plan-row.is-nach-2,
+.tb-grid.n-3 .tb-plan-row.is-nach-3,
+.tb-grid.n-4 .tb-plan-row.is-vor,
+.tb-grid.n-4 .tb-plan-row.is-nach-2,
+.tb-grid.n-4 .tb-plan-row.is-nach-3,
+.tb-grid.n-5 .tb-plan {
+  display: none;
+}
+
+/* Wetterzeile an trockenen Tagen: Beschreibung statt leerer Regenbalken. */
+.tb-hour-d {
+  flex: 1;
+  min-width: 0;
+  margin-left: 10px;
+  font-size: 18px;
+  color: var(--c-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Zuhause: Räume, in denen Licht brennt. */
+.tb-raeume {
+  margin-top: 10px;
+}
+
+.tb-raum {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  border-top: 1px solid rgba(239, 233, 223, 0.08);
+  font-size: 19px;
+  color: var(--c-text-2);
+}
+
+.tb-raum-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-right: 12px;
+  border-radius: 50%;
+  background: #f3c46e;
+  box-shadow: 0 0 8px rgba(243, 196, 110, 0.6);
+}
+
+.tb-raum-n {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tb-raum-z {
+  margin-left: 12px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+/* Volle Kartenhöhe (zwei Karten): größere Zeilen, aus 3 m lesbar. */
+.tb-grid.n-2 .tb-plan-row {
+  height: 58px;
+  font-size: 20px;
+}
+
+.tb-grid.n-2 .tb-plan-t {
+  width: 98px;
+  font-size: 30px;
+}
+
+.tb-grid.n-2 .tb-plan-los {
+  width: 100px;
+}
+
+.tb-grid.n-2 .tb-plan-an {
+  width: 94px;
+}
+
+.tb-grid.n-2 .tb-plan-s {
+  font-size: 18px;
+}
+
+/* Ohne Wetter (Wetterdaten für den Tag fehlen): die erste Karte steht
+   links über zwei Reihen, wie sonst das Wetter – keine leere Zelle. */
+.tb-grid.n-3.kein-wetter > .tb-card:first-child,
+.tb-grid.n-4.kein-wetter > .tb-card:first-child,
+.tb-grid.n-5.kein-wetter > .tb-card:first-child {
+  grid-row: span 2;
+}
+
+.tb-grid.n-4.kein-wetter > .tb-card:nth-child(2) {
+  grid-column: auto;
+}
+
+.tb-grid.n-4.kein-wetter > .tb-card:nth-child(3) {
+  grid-row: span 2;
+}
+
+/* Schmale Wetterspalte (4–5 Karten): kleineres Symbol, Text bleibt einzeilig. */
+.tb-grid.n-4 .tb-wetter-icon,
+.tb-grid.n-5 .tb-wetter-icon {
+  width: 64px;
+  height: 64px;
+  margin-right: 6px;
+}
+
+.tb-grid.n-4 .tb-wetter-text,
+.tb-grid.n-5 .tb-wetter-text {
+  min-width: 0;
+  margin-left: 14px;
+}
+
+.tb-grid.n-4 .tb-wetter-text span,
+.tb-grid.n-5 .tb-wetter-text span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Steht die Bahnkarte ohne Wetter links in voller Höhe, zeigt sie den
+   ganzen Fahrplan. */
+.tb-grid.kein-wetter > .tb-card:first-child .tb-plan {
+  display: block;
+}
+
+.tb-grid.kein-wetter > .tb-card:first-child .tb-plan-row {
+  display: flex;
+}
+
+/* Halbe Kartenhöhe: Fahrplan etwas dichter, damit empfohlen + nächste
+   auch mit Hinweiszeile unten Platz haben. */
+.tb-grid.n-3 .tb-plan,
+.tb-grid.n-4 .tb-plan {
+  padding-top: 10px;
+}
+
+.tb-grid.n-3 .tb-plan-row,
+.tb-grid.n-4 .tb-plan-row {
+  height: 42px;
 }
