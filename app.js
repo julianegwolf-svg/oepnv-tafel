@@ -66,6 +66,7 @@ const els = {
   weatherBigTemp: document.getElementById("weatherBigTemp"),
   weatherBigDesc: document.getElementById("weatherBigDesc"),
   weatherBigMinMax: document.getElementById("weatherBigMinMax"),
+  weatherBigMoon: document.getElementById("weatherBigMoon"),
   weatherTip: document.getElementById("weatherTip"),
   weatherHours: document.getElementById("weatherHours"),
   weatherDetails: document.getElementById("weatherDetails"),
@@ -1509,6 +1510,10 @@ function updateWeather() {
       const hi = Math.round(data.daily.temperature_2m_max[0]);
       const lo = Math.round(data.daily.temperature_2m_min[0]);
       els.weatherBigMinMax.textContent = "H: " + hi + "°  T: " + lo + "°";
+    }
+    if (els.weatherBigMoon) {
+      const moon = moonPhase(new Date());
+      els.weatherBigMoon.innerHTML = moonPhaseSvg(moon) + "<span>" + moon.name + " · " + Math.round(moon.lit * 100) + " %</span>";
     }
 
     if (els.weatherHours && data.hourly && data.hourly.time) {
@@ -3648,6 +3653,38 @@ const WASTE_LABELS = {
   restbio: { icon: "🗑️", text: "Restmüll & Bioabfall" },
   papier: { icon: "♻️", text: "Papier & Gelber Sack" },
 };
+
+// ---------- Mondphase (AUSBAU D21) ----------
+// Rein rechnerisch: Alter seit einem bekannten Neumond (6.1.2000 18:14 UTC)
+// modulo synodischem Monat — auf wenige Stunden genau, für die Anzeige
+// "zunehmend/abnehmend, x % beleuchtet" mehr als genug.
+function moonPhase(date) {
+  const SYN = 29.530588853;
+  const ref = Date.UTC(2000, 0, 6, 18, 14);
+  let age = ((date.getTime() - ref) / 86400000) % SYN;
+  if (age < 0) age += SYN;
+  const lit = (1 - Math.cos(2 * Math.PI * age / SYN)) / 2;
+  const names = [
+    [1.85, "Neumond"], [7.38, "Zunehmende Sichel"], [9.23, "Erstes Viertel"], [14.77, "Zunehmender Mond"],
+    [16.61, "Vollmond"], [22.15, "Abnehmender Mond"], [23.99, "Letztes Viertel"], [27.68, "Abnehmende Sichel"], [SYN + 1, "Neumond"],
+  ];
+  let name = "Neumond";
+  for (let i = 0; i < names.length; i++) { if (age < names[i][0]) { name = names[i][1]; break; } }
+  return { age: age, lit: lit, waxing: age < SYN / 2, name: name };
+}
+
+// Kleines Mondsymbol: beleuchteter Teil aus Halbkreis + Ellipsenbogen.
+function moonPhaseSvg(m) {
+  const r = 9;
+  const k = m.lit;
+  const rx = Math.abs(1 - 2 * k) * r;
+  const lightRight = m.waxing;
+  const sweepOuter = lightRight ? 1 : 0;
+  const sweepInner = (k > 0.5) === lightRight ? 1 : 0;
+  const d = "M12 3 A" + r + " " + r + " 0 0 " + sweepOuter + " 12 21 A" + rx.toFixed(2) + " " + r + " 0 0 " + sweepInner + " 12 3 Z";
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>' +
+    '<path d="' + d + '" fill="#efe9df"/></svg>';
+}
 
 // ---------- Feiertage Bremen (D19) ----------
 // Gesetzliche Feiertage im Land Bremen: feste Tage plus die von Ostern

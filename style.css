@@ -2928,3 +2928,21 @@ html, body {
   font-size: 14px;
   color: #7d8796;
 }
+
+
+/* Mondphase dezent unter Höchst-/Tiefstwert (AUSBAU D21). */
+.weather-big-moon {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.weather-big-moon svg {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
