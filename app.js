@@ -81,6 +81,7 @@ const els = {
   commuteHero: document.getElementById("commuteHero"),
   commuteRace: document.getElementById("commuteRace"),
   commuteMapWrap: document.getElementById("commuteMapWrap"),
+  commuteUnten: document.getElementById("commuteUnten"),
   commuteMapImg: document.getElementById("commuteMapImg"),
   commuteMapRoute: document.getElementById("commuteMapRoute"),
   wasteLine: document.getElementById("wasteLine"),
@@ -3616,8 +3617,11 @@ function fetchTomTomRoute(from, to, travelMode, departDate) {
     "/json?key=" + encodeURIComponent(CONFIG.tomtomApiKey) +
     "&travelMode=" + travelMode + "&routeType=fastest" +
     (wantsTraffic ? "&traffic=true" : "") +
-    (departDate ? "&departAt=" + encodeURIComponent(departDate.toISOString()) : "") +
-    "&_=" + Date.now();
+    (departDate ? "&departAt=" + encodeURIComponent(departDate.toISOString()) : "");
+  // Kein "&_=<Zeit>"-Cache-Brecher wie bei den anderen Quellen: die Routing-
+  // API lehnt jeden unbekannten Parameter mit HTTP 400 ab ("parameter [_]
+  // not supported") – Auto und Rad liefen dadurch seit Juli immer über die
+  // Ersatzroute. TomTom schickt selbst "Cache-Control: no-cache".
 
   return fetch(url, { cache: "no-store" }).then(function (res) {
     if (!res.ok) throw new Error("TomTom-Routenabruf (" + travelMode + ") fehlgeschlagen (" + res.status + ")");
@@ -3945,7 +3949,7 @@ function renderCommuteHero(results) {
   } else if (winner.source === "tomtom") {
     const live = document.createElement("span");
     live.className = "commute-hero-live";
-    live.textContent = "Live-Verkehr";
+    live.textContent = verkehrsArt(results);
     big.appendChild(live);
   }
   textWrap.appendChild(big);
@@ -3965,6 +3969,14 @@ function renderCommuteHero(results) {
   }
 
   els.commuteHero.appendChild(textWrap);
+}
+
+// TomTom rechnet für den Abfahrtszeitpunkt (departAt): kurz davor mit der
+// echten Lage, Tage vorher mit der üblichen Lage zu dieser Zeit. "Live"
+// stimmt also nur, wenn die Fahrt bald ansteht.
+function verkehrsArt(results) {
+  const ab = results && results.forecastDate;
+  return !ab || ab.getTime() - Date.now() < 90 * 60000 ? "Live-Verkehr" : "Verkehrsprognose";
 }
 
 function renderCommuteRace(results) {
@@ -4010,6 +4022,13 @@ function renderCommuteRace(results) {
       badge.textContent = "Schnellster";
       head.appendChild(badge);
     }
+
+    // Neben der Karte ist die Spalte zu schmal für Balken – dort steht die
+    // Zeit direkt in der Kopfzeile (CSS blendet je nach Ansicht um).
+    const kopfZeit = document.createElement("span");
+    kopfZeit.className = "commute-race-kopfzeit";
+    kopfZeit.textContent = available ? (res.minutes + " min") : "–";
+    head.appendChild(kopfZeit);
 
     row.appendChild(head);
 
@@ -4063,8 +4082,8 @@ function renderCommuteRace(results) {
       const extra = document.createElement("div");
       extra.className = "commute-race-extra";
       extra.textContent = res.delayMin > 0
-        ? ("inkl. " + res.delayMin + " Min. Stau · Live-Verkehr")
-        : "keine Verzögerung · Live-Verkehr";
+        ? ("inkl. " + res.delayMin + " Min. Stau · " + verkehrsArt(results))
+        : "keine Verzögerung · " + verkehrsArt(results);
       row.appendChild(extra);
     } else if (res && res.estimated) {
       const extra = document.createElement("div");
@@ -4147,6 +4166,19 @@ function zoomForBounds(minLon, minLat, maxLon, maxLat, mapW, mapH) {
 // Statisches Kartenbild von TomToms Static-Image-API + eine SVG-Linie
 // darüber, deren Koordinaten aus den echten Routen-Punkten (falls
 // vorhanden) oder sonst einer geraden Start→Ziel-Linie berechnet werden.
+let letzteArbeitswegKarte = null;
+
+// Beim Zeigen des Panels: Hat sich das Kartenfeld seit dem Zeichnen in der
+// Größe geändert (Hinweiszeile kam oder ging), Bild neu anfordern – sonst
+// wäre die Karte gestaucht.
+function pruefeArbeitswegKarte() {
+  const k = letzteArbeitswegKarte;
+  if (!k || !els.commuteMapWrap || !els.commuteUnten || !els.commuteUnten.classList.contains("mit-karte")) return;
+  const w = els.commuteMapWrap.offsetWidth, h = els.commuteMapWrap.offsetHeight;
+  if (!w || !h) return;
+  if (Math.abs(w - k.w) > 6 || Math.abs(h - k.h) > 6) renderCommuteMap(k.coords, k.results);
+}
+
 function renderCommuteMap(coords, results) {
   if (!els.commuteMapImg || !els.commuteMapRoute) return;
 
@@ -4164,8 +4196,7 @@ function renderCommuteMap(coords, results) {
   if (!winner || !coords || !hasRealRoute) {
     els.commuteMapImg.removeAttribute("src");
     els.commuteMapRoute.innerHTML = "";
-    if (els.commuteMapWrap) els.commuteMapWrap.style.display = "none";
-    if (els.commuteRace) els.commuteRace.style.display = "";
+    zeigeArbeitswegKarte(false);
     return;
   }
 
@@ -4183,9 +4214,19 @@ function renderCommuteMap(coords, results) {
   const padLat = Math.max((maxLat - minLat) * 0.18, 0.002);
   minLon -= padLon; maxLon += padLon; minLat -= padLat; maxLat += padLat;
 
-  const W = 900;
-  const H = 460;
+  // Bild genau in der Größe des Kartenfelds anfordern: Bild und SVG werden
+  // ungleichmäßig gestreckt, ein anderes Seitenverhältnis verzerrt die
+  // Karte. Ist das Panel gerade ausgehängt (display:none), gelten die Maße
+  // aus style.css (.commute-unten.mit-karte).
+  const W = Math.round(els.commuteMapWrap.offsetWidth) || 600;
+  const H = Math.round(els.commuteMapWrap.offsetHeight) || 396;
+  letzteArbeitswegKarte = { coords: coords, results: results, w: W, h: H };
   const color = (CONFIG.commuteModeColors && CONFIG.commuteModeColors[winner.key]) || "#5b6b78";
+  // Dunkle Farbwelt: TomToms Nachtstil statt einer hellen Fläche mitten im
+  // dunklen Panel; die Linie dort kräftig und hell (gleicher Farbton), sonst
+  // verschwindet das Braun des Autos zwischen den beigen Hauptstraßen.
+  const nacht = document.body.classList.contains("farbe-dunkel");
+  const linie = nacht ? farbeLeuchtend(color) : color;
 
   // center+zoom statt bbox — siehe Kommentar bei zoomForBounds() weiter
   // oben für den Grund (bbox+width/height gibt bei TomTom immer HTTP 400).
@@ -4196,15 +4237,14 @@ function renderCommuteMap(coords, results) {
   const imgUrl = "https://api.tomtom.com/map/1/staticimage" +
     "?key=" + encodeURIComponent(CONFIG.tomtomApiKey) +
     "&center=" + centerLon.toFixed(5) + "," + centerLat.toFixed(5) + "&zoom=" + zoom +
-    "&format=jpg&layer=basic&style=main&width=" + W + "&height=" + H +
+    "&format=jpg&layer=basic&style=" + (nacht ? "night" : "main") + "&width=" + W + "&height=" + H +
     "&view=Unified&language=de-DE&_=" + Date.now();
 
   els.commuteMapImg.onload = function () {
     if (els.commuteMapWrap) els.commuteMapWrap.classList.remove("is-empty");
     // Falls ein vorheriger Versuch auf die Balken zurückgefallen war (siehe
     // onerror unten), bei Erfolg wieder auf die Kartenansicht umschalten.
-    if (els.commuteMapWrap) els.commuteMapWrap.style.display = "";
-    if (els.commuteRace) els.commuteRace.style.display = "none";
+    zeigeArbeitswegKarte(true);
   };
   els.commuteMapImg.onerror = function () {
     // Kartenbild nicht verfügbar (Netzwerk, Kontingent, ungültiger Key) —
@@ -4214,8 +4254,7 @@ function renderCommuteMap(coords, results) {
     // das Panel auf einen bloßen Text-Hinweis zu reduzieren.
     els.commuteMapRoute.innerHTML = "";
     if (els.commuteMapWrap) els.commuteMapWrap.classList.add("is-empty");
-    if (els.commuteMapWrap) els.commuteMapWrap.style.display = "none";
-    if (els.commuteRace) els.commuteRace.style.display = "";
+    zeigeArbeitswegKarte(false);
   };
   els.commuteMapImg.src = imgUrl;
 
@@ -4242,10 +4281,48 @@ function renderCommuteMap(coords, results) {
 
   els.commuteMapRoute.setAttribute("viewBox", "0 0 " + W + " " + H);
   els.commuteMapRoute.innerHTML =
-    '<path d="' + pathD + '" fill="none" stroke="' + color + '" stroke-width="6" ' +
-    'stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.92"></path>' +
-    '<circle cx="' + homeXY[0].toFixed(1) + '" cy="' + homeXY[1].toFixed(1) + '" r="8" fill="#fff" stroke="' + color + '" stroke-width="4"></circle>' +
-    '<circle cx="' + workXY[0].toFixed(1) + '" cy="' + workXY[1].toFixed(1) + '" r="8" fill="' + color + '" stroke="#fff" stroke-width="3"></circle>';
+    (nacht ? '<path d="' + pathD + '" fill="none" stroke="#0b0f16" stroke-width="11" ' +
+      'stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.75"></path>' : '') +
+    '<path d="' + pathD + '" fill="none" stroke="' + linie + '" stroke-width="6" ' +
+    'stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.95"></path>' +
+    '<circle cx="' + homeXY[0].toFixed(1) + '" cy="' + homeXY[1].toFixed(1) + '" r="8" fill="#fff" stroke="' + linie + '" stroke-width="4"></circle>' +
+    '<circle cx="' + workXY[0].toFixed(1) + '" cy="' + workXY[1].toFixed(1) + '" r="8" fill="' + linie + '" stroke="#fff" stroke-width="3"></circle>';
+}
+
+// Gleicher Farbton, aber satt und hell (HSL: Sättigung ≥ 80 %, Helligkeit
+// 62 %) – "#a9793f" (Auto-Braun) wird zu kräftigem Bernstein.
+function farbeLeuchtend(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  let h = 0;
+  if (d) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+  }
+  h = (h * 60 + 360) % 360;
+  const sat = 0.8, hell = 0.62;
+  const c = (1 - Math.abs(2 * hell - 1)) * sat;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const o = hell - c / 2;
+  const rgb = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return "#" + rgb.map(function (v) {
+    const k = Math.round((v + o) * 255);
+    return (k < 16 ? "0" : "") + k.toString(16);
+  }).join("");
+}
+
+// Karte und Verkehrsmittel-Liste nebeneinander, solange es ein Kartenbild
+// mit echter Route gibt; sonst die Balken über die volle Breite. Vorher
+// ersetzte die Karte die Liste ganz – mit ihr verschwand die "Bahn zur
+// Arbeit", die Tagesblick und Morgengruß nennen.
+function zeigeArbeitswegKarte(mitKarte) {
+  if (els.commuteMapWrap) els.commuteMapWrap.style.display = mitKarte ? "" : "none";
+  if (els.commuteRace) els.commuteRace.style.display = "";
+  if (els.commuteUnten) els.commuteUnten.classList.toggle("mit-karte", !!mitKarte);
 }
 
 // Bus-Zeile im Arbeitsweg: werktags vor der Arbeit dieselbe Bahn wie
@@ -4271,7 +4348,9 @@ function aktualisiereBusZeile() {
     tagText = " " + prognose.toLocaleDateString("de-DE", { weekday: "short" }).replace(/\.$/, "");
   }
   if (ab && ab.dep && !ab.spaet) {
-    text = "Bahn zur Arbeit" + tagText + ": " + ab.dep.line + " um " + ab.dep.clock + " · los " + hm(ab.dep.leaveByMs) + " · an " + hm(ab.ankunftMs);
+    // Geschützte Leerzeichen: neben der Karte bricht die Zeile sonst
+    // mitten in "los 07:27" um.
+    text = "Bahn zur Arbeit" + tagText + ": " + ab.dep.line + "\u00a0um\u00a0" + ab.dep.clock + " · los\u00a0" + hm(ab.dep.leaveByMs) + " · an\u00a0" + hm(ab.ankunftMs);
   } else if (ab && !ab.dep && ab.losMs && tagText) {
     text = "Bahn zur Arbeit" + tagText + ": " + (ab.linie ? ab.linie + ", " : "") + "spätestens " + hm(ab.losMs) + " los";
   }
@@ -4325,12 +4404,10 @@ function updateCommute() {
       // einen bloßen Text-Hinweis zu reduzieren.
       renderCommuteRace(results);
       if (CONFIG.tomtomApiKey) {
-        if (els.commuteRace) els.commuteRace.style.display = "none";
-        if (els.commuteMapWrap) els.commuteMapWrap.style.display = "";
+        zeigeArbeitswegKarte(true);
         renderCommuteMap(coords, results);
       } else {
-        if (els.commuteMapWrap) els.commuteMapWrap.style.display = "none";
-        if (els.commuteRace) els.commuteRace.style.display = "";
+        zeigeArbeitswegKarte(false);
       }
     });
   }).catch(function (err) {
@@ -5322,7 +5399,7 @@ function showPanel(name) {
     updateRiddle();
   }
 
-  if (name === "commute") aktualisiereBusZeile();
+  if (name === "commute") { aktualisiereBusZeile(); pruefeArbeitswegKarte(); }
 
   if (name === "news") {
     startNewsSlideshow();

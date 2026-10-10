@@ -4234,6 +4234,75 @@ body.wetter-ruhig .weather-hour-icon {
   color: var(--ink);
 }
 
+/* Arbeitsweg mit echter Route: Karte links, die drei Verkehrsmittel rechts
+   als kompakte Liste (Zeit in der Kopfzeile statt Balken). Vorher ersetzte
+   die Karte die Liste ganz. Ohne Kartenbild bleibt es bei den Balken über
+   die volle Breite. Maße passen zu renderCommuteMap (Ersatzwerte 600×396). */
+.commute-unten {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.commute-unten .commute-race {
+  flex: 1;
+  min-width: 0;
+}
+
+.commute-unten .commute-map-wrap {
+  min-width: 0;
+}
+
+.commute-unten.mit-karte .commute-race {
+  flex: none;
+  width: 360px;
+  margin-left: 16px;
+}
+
+.commute-race-kopfzeit {
+  display: none;
+}
+
+.commute-unten.mit-karte .commute-race-kopfzeit {
+  display: block;
+  flex-shrink: 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.commute-unten.mit-karte .commute-race-trackrow,
+.commute-unten.mit-karte .commute-race-badge {
+  display: none;
+}
+
+.commute-unten.mit-karte .commute-race-row {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px 18px;
+}
+
+.commute-unten.mit-karte .commute-race-head {
+  margin-bottom: 0;
+}
+
+.commute-unten.mit-karte .commute-race-label {
+  font-size: 17px;
+}
+
+.commute-unten.mit-karte .commute-race-extra {
+  margin-top: 6px;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+body.farbe-dunkel .commute-map-wrap {
+  background: #20273a;
+}
+
 /* Spruch: „ ganz sichtbar statt am unteren Kartenrand angeschnitten. */
 #panel-quote .panel-watermark {
   right: 44px;
