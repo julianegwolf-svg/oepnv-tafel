@@ -48,7 +48,7 @@
 <body>
 <div class="wrap">
 
-<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 06:45</div>
+<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 07:00</div>
 <h1>Deine Tafel ist jetzt eine Smart-Home-Zentrale.</h1>
 <p class="lead">Kurz und ehrlich, was diese Nacht entstanden ist – alles gegen einen Home-Assistant-<b>Simulator</b> mit deinem echten Haushalt getestet, nie gegen dein echtes HA. Die Bilder zeigen Desktop-WebKit bei 1024×768 (wie das iPad), nicht das iPad selbst.</p>
 
@@ -126,6 +126,11 @@
   <figure><img src="belege/2026-10-10/tagesblick-2/nachher-mitha-kal-112030-01-tagesblick.png" alt=""><figcaption><b>Vier Karten</b> (mit Termin): kurze Wetterwörter passen auch in die schmale Spalte („Wolkig“ statt „Teilweise b…“).</figcaption></figure>
 </div>
 
+<div class="pair">
+  <figure><img src="belege/2026-10-10/tagesblick-2/vorher-sa-ohneha.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Samstag 06:40: „Nächste Bahn 41 – <b>jetzt los</b>“ in Rot. An einem freien Tag nur Unruhe.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/tagesblick-2/nachher-sa-ohneha-01-tagesblick.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Am freien Tag die nächsten vier Bahnen in ihren Linienfarben, ohne Dringlichkeit (die Farben fehlten im Tagesblick bisher ganz).</figcaption></figure>
+</div>
+
 <h3>Die Tafel merkt, wenn deine Automation nichts tut</h3>
 <p class="note">Home Assistant meldet Fehler in Automationen nicht zurück – <i>Bett Fertig</i> bricht bei dir vermutlich an der ersten Licht-Aktion ab, und die Tafel zeigte trotzdem „erledigt“ und dunkelte ab. Jetzt prüft sie, ob danach irgendein Gerät mit dem Kontext dieser Automation reagiert hat (bis 5 s). Geprüft mit einem Simulator-Modus, der wie echtes HA abbricht (<code>HA_SIM_STRENG=1</code>), und der Gegenprobe ohne Fehler: <code>node tool/pruefe-wirkung.js</code>.</p>
 <div class="pair">
@@ -133,6 +138,23 @@
   <figure><img src="belege/2026-10-10/wirkung/streng/04-hinweis-danach.png" alt=""><figcaption><span class="tag vorher">danach</span><br>Der Hinweis bleibt im Band, bis die Aktion wieder wirkt (höchstens 12 h). Antippen führt zum Zuhause-Panel.</figcaption></figure>
 </div>
 <p class="note">Kein Fehlalarm: Wirkt die Automation (Simulator ohne Fehler, oder „Ich geh raus“, die bei dir korrekt ist), steht wie bisher „erledigt“ und „Gute Nacht“ dunkelt ab (<code>belege/2026-10-10/wirkung/locker/</code>, <code>streng-raus/</code>). Die volle HA-Probe ist weiterhin grün.</p>
+
+<h3>Wetter: die nächsten 5 Tage, keine Wolken mehr über dem Text</h3>
+<p class="note">Die fünf Stundenkacheln unten wiederholten nur die 12-h-Kurve darüber – einen Blick über heute hinaus hatte die Tafel nicht. Und die Deko-Wolken trieben endlos über Symbol und Legende (deine Regel in AUSBAU 4: nichts Endloses). Beides umschaltbar (FRAGEN 22).</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/wetter-3/vorher-sa0650.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Eine Wolke liegt über dem Symbol (sieht aus wie zwei), eine über „Temperatur“; unten 07–11 Uhr, alles „11°, Wolke“.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/wetter-3/nachher-sa-01-weather.png" alt=""><figcaption><span class="tag nachher">nachher (wetterEffekte „ruhig“)</span><br>Heute/Morgen/Mo/Di/Mi mit Höchst-/Tiefstwert und Regen ab 30 % – flacher als vorher, die Legende ist frei.</figcaption></figure>
+</div>
+
+<h3>Rätsel, Quiz, „Auf den Tag genau“</h3>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/raten/vorher-02-quiz.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>„Antwort antippen zum Mitraten“ als 13-px-Pille in Grau auf Grau – sah aus wie ein deaktivierter Knopf; dünne Antwort-Umrisse; abgeschnittenes „ (vom Spruch-Panel) unten rechts.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/raten/nachher-02-quiz.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Gefüllte Antwortknöpfe (28 px), Hinweis als ruhige Zeile direkt darunter – erst, wenn die Antworten dastehen; Frage 36 px; „?“ als Wasserzeichen.</figcaption></figure>
+</div>
+<div class="grid">
+  <figure><img src="belege/2026-10-10/raten/nachher-quiz-getippt.png" alt=""><figcaption>Antippen durchgespielt: deine Wahl rot, richtig grün, Rest durchgestrichen, Zähler „0/1 richtig“.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/los-spur/vergleich-oben-vorher-unten-nachher.png" alt=""><figcaption><b>Abfahrten</b> (oben vorher, unten nachher): Der fast abgelaufene LOS-Balken war nur ein weißer Fleck – jetzt mit Spur. Deine Arbeitslinie 23 hat bei Transitous keine Farbe und verschwand fast – jetzt mit hellem Rand.</figcaption></figure>
+</div>
 
 <h3>Datenquellen – wichtig für den Umzug nach HA</h3>
 <p class="note">Beim Prüfen aller Quellen mit der Herkunft <code>http://homeassistant.local:8123</code> fiel auf: <b>Nur dein Kalender-Worker</b> lässt sie nicht zu (er erlaubt nur github.io). Ohne Änderung im Worker fehlen nach dem Umzug die Termine – still. Die Einstellungsseite (lange auf die Uhr drücken) zeigt jetzt je Quelle, wann sie zuletzt geladen hat, und bei fehlendem Kalender die Adresse, die freigegeben werden muss.</p>
@@ -227,6 +249,7 @@
   <figure><img src="belege/2026-10-10/ideen/ue1-uebersicht.png" alt=""><figcaption><b>Übersicht:</b> Symbole statt Emoji, Schließen-Knopf, Smart-Home zuerst.</figcaption></figure>
   <figure><img src="belege/2026-10-10/ideen/e23-stand-01-departures.png" alt=""><figcaption><b>Datenalter:</b> hängt eine Quelle, steht ehrlich „Stand 07:11“ in der Kopfzeile.</figcaption></figure>
 </div>
+<p class="note">Nach allen Änderungen von heute früh erneut: 24-h-Zeitraffer ohne Wachstum (<code>belege/2026-10-10/zeitraffer-4.log</code>).</p>
 <p class="note">Dauerbetrieb: 24-h-Zeitraffer der ganzen Tafel (Playwright-Uhr, 5× Selbst-Neuladen) – DOM, Listener, Timer, Bilder wachsen nicht (<code>tool/pruefe-zeitraffer.js</code>, <code>belege/2026-10-10/zeitraffer.log</code>); HA-Dauerlauf mit Verbindungsabbrüchen ebenso.</p>
 
 <h2>7c · Alle übrigen Panels</h2>
