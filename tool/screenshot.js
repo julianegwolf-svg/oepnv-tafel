@@ -35,6 +35,8 @@
 //                        (mit CORS-Freigabe). .js-Datei: module.exports = (url) => text.
 //                        Bsp.: --attrappe kalender-worker=tool/attrappen/kalender.js
 //                        Alte CSS-Fassung zeigen: --attrappe style.css=/tmp/style-alt.css
+//                        Alte JS-Fassung (Endung .roh.js = unverändert ausliefern):
+//                        git show HEAD:app.js > /tmp/app.roh.js; --attrappe app.js=/tmp/app.roh.js
 //   --video              Video des ganzen Laufs aufnehmen (<prefix>video.webm)
 //   --safari12-sim       grobe Safari-12-Simulation: liefert die lokalen *.css ohne die
 //                        Angaben aus, die tool/pruefe-safari12.js als FEHLER meldet
@@ -302,7 +304,11 @@ async function main() {
       const url = route.request().url();
       let body;
       let typ = typen[path.extname(datei)] || "text/plain";
-      if (path.extname(datei) === ".js") {
+      if (/\.roh\.js$/.test(datei)) {
+        // Alte Fassung einer Seiten-Datei unverändert ausliefern (z. B. app.js aus git)
+        body = fs.readFileSync(datei);
+        typ = "application/javascript";
+      } else if (path.extname(datei) === ".js") {
         delete require.cache[datei];
         const erg = require(datei)(url);
         body = typeof erg === "string" ? erg : erg.body;

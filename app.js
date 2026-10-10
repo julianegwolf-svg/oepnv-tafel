@@ -2597,65 +2597,9 @@ function updateEvents() {
 // Siehe CONFIG.calendarWorkerUrl für den Grund, warum der Umweg über einen
 // eigenen Worker nötig ist (Apple liefert keinen CORS-Header).
 //
-// Minimaler ICS-Parser statt einer Bibliothek — deckt nur ab, was für
-// diese Anzeige gebraucht wird (SUMMARY/DTSTART/DTEND/LOCATION). KEINE
-// RRULE-Expansion: wiederkehrende Termine erscheinen nur mit ihrem
-// ursprünglichen ersten Termin, nicht mit allen künftigen Wiederholungen
-// — für eine spätere Runde, falls das gebraucht wird.
-function unescapeIcsText(s) {
-  return s
-    .replace(/\\n/gi, "\n")
-    .replace(/\\,/g, ",")
-    .replace(/\\;/g, ";")
-    .replace(/\\\\/g, "\\");
-}
-
-function parseIcsDate(value, rawKey) {
-  // Ganztägig: DTSTART;VALUE=DATE:YYYYMMDD
-  if (rawKey.indexOf("VALUE=DATE") !== -1 && value.length === 8) {
-    return {
-      date: new Date(value.slice(0, 4) + "-" + value.slice(4, 6) + "-" + value.slice(6, 8) + "T00:00:00"),
-      allDay: true,
-    };
-  }
-  // YYYYMMDDTHHMMSSZ (UTC) oder ohne Z (lokal — TZID wird ignoriert, für
-  // eine fest an einem Ort hängende Tafel reicht das).
-  const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/.exec(value);
-  if (!m) return null;
-  const iso = m[1] + "-" + m[2] + "-" + m[3] + "T" + m[4] + ":" + m[5] + ":" + m[6] + (m[7] ? "Z" : "");
-  return { date: new Date(iso), allDay: false };
-}
-
-function parseIcsEvents(icsText) {
-  // Zeilenumbrüche vereinheitlichen + gefaltete Zeilen (Fortsetzungszeile
-  // mit führendem Leerzeichen/Tab) wieder zu einer Zeile zusammenziehen —
-  // beides Teil des ICS-Formats (RFC 5545), sonst reißt z.B. eine lange
-  // LOCATION mitten im Wert ab.
-  const unfolded = icsText.replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
-  const lines = unfolded.split("\n");
-
-  const events = [];
-  let current = null;
-
-  lines.forEach(function (line) {
-    if (line === "BEGIN:VEVENT") { current = {}; return; }
-    if (line === "END:VEVENT") { if (current) events.push(current); current = null; return; }
-    if (!current) return;
-
-    const colonIdx = line.indexOf(":");
-    if (colonIdx === -1) return;
-    const rawKey = line.slice(0, colonIdx);
-    const value = line.slice(colonIdx + 1);
-    const key = rawKey.split(";")[0];
-
-    if (key === "SUMMARY") current.summary = unescapeIcsText(value);
-    else if (key === "LOCATION") current.location = unescapeIcsText(value);
-    else if (key === "DTSTART") current.start = parseIcsDate(value, rawKey);
-  });
-
-  return events;
-}
-
+// Lesen der ICS-Datei: kalender.js (Wiederholungen, Zeitzonen, abgesagte
+// und mehrtägige Termine) – vorher stand hier ein Parser, der nur DTSTART
+// las, siehe Kommentar dort.
 function updateCalendar() {
   if (!els.calendarList || !CONFIG.calendarWorkerUrl) return;
 
@@ -2668,14 +2612,39 @@ function updateCalendar() {
   }).then(function (text) {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
+    const heuteMs = startOfToday.getTime();
+    const jetztMs = Date.now();
 
-    const upcoming = parseIcsEvents(text)
-      .filter(function (ev) { return ev.summary && ev.start && ev.start.date.getTime() >= startOfToday.getTime(); })
-      .sort(function (a, b) { return a.start.date.getTime() - b.start.date.getTime(); })
-      .slice(0, CONFIG.calendarCount || 6);
+    // Nur, was noch kommt oder gerade läuft: ganztägige bis Tagesende,
+    // Termine mit Uhrzeit bis zu ihrem Ende (ohne Ende: 30 min nach Beginn).
+    // Ein laufender mehrtägiger Termin steht unter "Heute" mit "bis …".
+    const upcoming = window.kalenderTermine(text, heuteMs, heuteMs + 62 * 86400000)
+      .filter(function (t) {
+        if (!t.titel) return false;
+        if (t.ganztags) return t.ende > heuteMs;
+        return t.ende > t.start ? t.ende > jetztMs : t.start > jetztMs - 30 * 60000;
+      })
+      .slice(0, CONFIG.calendarCount || 6)
+      .map(function (t) {
+        const laeuft = t.start < heuteMs;
+        const mehrtaegig = t.ganztags ? t.ende - t.start > 26 * 3600000 : new Date(t.ende - 1).toDateString() !== new Date(t.start).toDateString();
+        let bis = "";
+        if (mehrtaegig) {
+          const e = new Date(t.ganztags ? t.ende - 12 * 3600000 : t.ende);
+          bis = "bis " + e.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "numeric" }) +
+            (t.ganztags ? "" : " " + e.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }));
+        }
+        return {
+          summary: t.titel,
+          location: [bis, t.ort].filter(function (x) { return !!x; }).join(" · "),
+          // Läuft schon seit gestern: unter "Heute" einordnen, wie ganztägig
+          start: { date: new Date(laeuft ? heuteMs : t.start), allDay: t.ganztags || laeuft },
+          ende: t.ende,
+        };
+      });
 
     lastCalendarEvents = upcoming.map(function (ev) {
-      return { title: ev.summary, start: ev.start.date.getTime(), allDay: !!ev.start.allDay, location: ev.location || "" };
+      return { title: ev.summary, start: ev.start.date.getTime(), allDay: !!ev.start.allDay, location: ev.location || "", ende: ev.ende };
     });
     // Abruf hat geklappt – auch wenn gerade nichts ansteht (Einstellungen → Datenquellen).
     dataStand.calendar = Date.now();
