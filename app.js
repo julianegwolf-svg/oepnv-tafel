@@ -953,6 +953,26 @@ function renderDepartures(departures) {
 // lange Transition verwirft (passiert beim ersten Zeichnen nach dem Laden).
 const PILL_BAR_SPAN_MS = 5 * 60 * 1000;
 
+// Fahrtziel für die Anzeige (Daten bleiben unverändert – istArbeitsBahn
+// vergleicht weiter das Original): "via …" und "/ 39 Weserpark-Süd"
+// (Weiterfahrt als andere Linie) wandern in die Unterzeile, "Bremen "
+// vor Zielen in der eigenen Stadt fällt weg, "Bahnhof" → "Bf",
+// Klammerzusätze ("Otterstedt(Ottersberg) Nord") entfallen. Vorher wurden
+// lange Ziele mitten im Wort abgeschnitten ("Weidedamm-Süd via Strese…").
+function zielAnzeige(headsign) {
+  let haupt = String(headsign || "").trim();
+  let zusatz = "";
+  const via = /^(.+?)\s+via\s+(.+)$/i.exec(haupt);
+  if (via) { haupt = via[1]; zusatz = "via " + via[2]; }
+  const weiter = /^(.+?)\s*\/\s*(\d+[A-Za-z]?\s+\S.*)$/.exec(haupt);
+  if (weiter) { haupt = weiter[1]; zusatz = "weiter als " + weiter[2]; }
+  const stadt = String(CONFIG.stopQuery || "").split(",")[1];
+  const st = stadt ? stadt.trim() : "";
+  if (st && haupt.indexOf(st + " ") === 0 && haupt.length > st.length + 4) haupt = haupt.slice(st.length + 1);
+  haupt = haupt.replace(/\s*\([^)]*\)\s*/g, " ").replace(/\bBahnhof\b/g, "Bf").replace(/\s+/g, " ").trim();
+  return { haupt: haupt || String(headsign || ""), zusatz: zusatz };
+}
+
 // Sehr dunkle Linienfarben (z. B. die 23) verschwinden fast auf der
 // dunklen Karte – solche Schilder bekommen einen feinen hellen Rand.
 function istDunkleFarbe(hex) {
@@ -1009,11 +1029,13 @@ function updateDepartureRow(row, dep, now, isNext) {
   badge.style.background = dep.routeColor ? "#" + dep.routeColor : "";
   badge.style.color = dep.routeColor ? "#" + (dep.routeTextColor || "ffffff") : "";
 
-  row.querySelector(".dest").textContent = cancelled ? (dep.headsign || "") + " (fällt aus)" : (dep.headsign || "—");
+  const ziel = zielAnzeige(dep.headsign);
+  row.querySelector(".dest").textContent = cancelled ? ziel.haupt + " (fällt aus)" : (ziel.haupt || "—");
 
   // Unterzeile: "Los bis …"; bei der nächsten Bahn zusätzlich Regen und
   // Ankunft bei der Arbeit (was früher im Banner stand).
   const subParts = [];
+  if (ziel.zusatz) subParts.push(ziel.zusatz);
   if (minutesUntilLeave != null && !cancelled) {
     subParts.push("Los bis " + new Date(whenDate.getTime() - walkMinutesToStop * 60000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }));
   }

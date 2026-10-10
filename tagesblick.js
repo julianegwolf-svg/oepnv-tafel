@@ -197,6 +197,10 @@
   }
 
   // ---------- Bahn ----------
+  function zielText(dest) {
+    return typeof zielAnzeige === "function" ? zielAnzeige(dest).haupt : dest;
+  }
+
   function badge(line, color, text) {
     const dunkel = typeof istDunkleFarbe === "function" && istDunkleFarbe(color);
     return '<span class="tb-badge' + (dunkel ? " is-dunkel" : "") + '"' + (color ? ' style="background:#' + esc(color) + ";color:#" + esc(text || "ffffff") + '"' : "") + ">" + esc(line) + "</span>";
@@ -248,7 +252,7 @@
     return '<div class="tb-card tb-bahn">' +
       '<div class="tb-eyebrow">Bahn zur Arbeit</div>' +
       '<div class="tb-bahn-main">' + badge(d.line, d.color, d.textColor) + '<span class="tb-big num">' + esc(d.clock) + "</span></div>" +
-      '<div class="tb-bahn-dest">→ ' + esc(d.dest) + "</div>" +
+      '<div class="tb-bahn-dest">→ ' + esc(zielText(d.dest)) + "</div>" +
       (inMin <= 4 ? '<div class="tb-pill' + (inMin <= 1 ? " is-now" : " is-soon") + '">' + (inMin <= 1 ? "jetzt los" : "in " + inMin + " min los") + "</div>" : "") +
       '<div class="tb-line tb-bahn-sum">Los um ' + hhmm(d.leaveByMs) + " · Arbeit ca. " + hhmm(ab.ankunftMs) + (ab.spaet ? " (zu spät)" : "") + "</div>" +
       fahrplanHtml(ab.alle, d, ab.ptMin, s.walkMinutes || 0, startOfDay(new Date())) +
@@ -260,7 +264,7 @@
       deps.map(function (d) {
         const inMin = Math.max(0, Math.round((d.whenMs - Date.now()) / 60000));
         return '<div class="tb-abf-row">' + badge(d.line, d.color, d.textColor) +
-          '<span class="tb-abf-dest">' + esc(d.dest) + "</span>" +
+          '<span class="tb-abf-dest">' + esc(zielText(d.dest)) + "</span>" +
           '<span class="tb-abf-in num">' + (inMin < 1 ? "jetzt" : inMin + " min") + "</span></div>";
       }).join("") + "</div></div>";
   }
@@ -287,7 +291,7 @@
       return '<div class="tb-card tb-bahn">' +
         '<div class="tb-eyebrow">Nächste Bahn</div>' +
         '<div class="tb-bahn-main">' + badge(dep.line, dep.color, dep.textColor) + '<span class="tb-big num">' + esc(dep.clock) + "</span></div>" +
-        '<div class="tb-bahn-dest">→ ' + esc(dep.dest) + "</div>" +
+        '<div class="tb-bahn-dest">→ ' + esc(zielText(dep.dest)) + "</div>" +
         '<div class="tb-pill' + (inMin <= 1 ? " is-now" : (inMin <= 4 ? " is-soon" : "")) + '">' + (inMin <= 1 ? "jetzt los" : "in " + inMin + " min los") + "</div>" +
         arbeit + "</div>";
     }
@@ -314,7 +318,7 @@
     return '<div class="tb-card tb-bahn">' +
       '<div class="tb-eyebrow">Bahn morgen früh</div>' +
       '<div class="tb-bahn-main">' + badge(dep.line, dep.color, dep.textColor) + '<span class="tb-big num">' + hhmm(dep.whenMs) + "</span></div>" +
-      '<div class="tb-bahn-dest">→ ' + esc(dep.dest) + "</div>" +
+      '<div class="tb-bahn-dest">→ ' + esc(zielText(dep.dest)) + "</div>" +
       '<div class="tb-line tb-bahn-sum">Los um ' + hhmm(dep.whenMs - walk * 60000) + (s.commutePtMinutes != null ? " · Arbeit ca. " + hhmm(dep.whenMs + s.commutePtMinutes * 60000) : "") + "</div>" +
       fahrplanHtml(morgen.deps.filter(istArbeit), dep, s.commutePtMinutes, walk, tag) +
       "</div>";
