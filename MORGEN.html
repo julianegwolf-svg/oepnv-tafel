@@ -48,7 +48,7 @@
 <body>
 <div class="wrap">
 
-<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 07:20</div>
+<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 07:25</div>
 <h1>Deine Tafel ist jetzt eine Smart-Home-Zentrale.</h1>
 <p class="lead">Kurz und ehrlich, was diese Nacht entstanden ist – alles gegen einen Home-Assistant-<b>Simulator</b> mit deinem echten Haushalt getestet, nie gegen dein echtes HA. Die Bilder zeigen Desktop-WebKit bei 1024×768 (wie das iPad), nicht das iPad selbst.</p>
 
@@ -157,10 +157,21 @@
   <figure><img src="belege/2026-10-10/los-spur/vergleich-oben-vorher-unten-nachher.png" alt=""><figcaption><b>Abfahrten</b> (oben vorher, unten nachher): Der fast abgelaufene LOS-Balken war nur ein weißer Fleck – jetzt mit Spur. Deine Arbeitslinie 23 hat bei Transitous keine Farbe und verschwand fast – jetzt mit hellem Rand.</figcaption></figure>
 </div>
 
-<h3>Eine Bahn für alle: Arbeitsweg, Tagesblick, Morgengruß</h3>
+<h3>Einkaufsliste: Abgehaktes mit einem Tipp zurück</h3>
+<p class="note">An der Wand tippt niemand gern auf der iPad-Tastatur – aber die meisten Einkäufe wiederholen sich. HA behält abgehakte Einträge; die Tafel bietet die letzten davon als „+ Butter“ an. Durchgespielt: Tipp auf „+ Toilettenpapier“ → steht sofort wieder auf der Liste, in HA <code>needs_action</code>.</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/wirkung/pruefe-ha/03-zuhause.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Unter der Liste 200 px leer.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/einkauf/nachher-zuhause.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>„Wieder auf die Liste“: Toilettenpapier, Butter, Eier.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/einkauf/03-danach.png" alt=""><figcaption>Nach dem Tipp: 6 offen, die Vorschläge rücken nach – und weichen, wenn die Liste sonst abgeschnitten würde.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/einkauf/extras-01-home.png" alt=""><figcaption>Als kleine Kachel (mehr als 4 Räume, Simulator <code>--extras</code>): „+1 weitere“ statt eines halb sichtbaren Eintrags.</figcaption></figure>
+</div>
+
+<h3>Eine Bahn für alle: Arbeitsweg, Tagesblick, Morgengruß, Lern-Vorschlag</h3>
 <div class="pair">
   <figure><img src="belege/2026-10-10/arbeitsweg/vorher-mo0720.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Arbeitsweg: „Linie 23 · ab 07:45“ in 12 px – der Tagesblick sagte gleichzeitig „nimm die 23 um 07:35“.</figcaption></figure>
   <figure><img src="belege/2026-10-10/arbeitsweg/nachher-commute.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>„Bahn zur Arbeit: 23 um 07:35 · los 07:27 · an 07:55“ – dieselbe Rechnung wie überall, 17 px.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/lernen/werktag-morgens.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Lern-Vorschlag: „Du gehst werktags meist um 07:32 los – Linie … um 07:37“ (irgendeine Linie).</figcaption></figure>
+  <figure><img src="belege/2026-10-10/lernen-2/werktag-morgens.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>„… meist um 07:30 los – für die 23 um 07:35 los in 15 Min“.</figcaption></figure>
 </div>
 
 <h3>Fußball und Raumansicht</h3>
