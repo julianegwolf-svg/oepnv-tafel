@@ -4677,6 +4677,9 @@ function fetchTeamMatches(teamName) {
       teamName: teamName,
       next: nextSoon ? next : null,
       last: (!nextSoon && lastRecent) ? last : null,
+      // Unter dem letzten Ergebnis: wann es weitergeht (auch wenn das
+      // nächste Spiel noch außerhalb des Relevanz-Fensters liegt).
+      danach: (!nextSoon && lastRecent && next) ? next : null,
     };
   }).catch(function (err) {
     console.error(err);
@@ -4805,6 +4808,26 @@ function buildSportSlide(entry, index) {
   meta.className = "sport-slide-meta";
   meta.textContent = formatMatchDate(match.matchDateTime);
   content.appendChild(meta);
+
+  // Letztes Ergebnis: darunter, gegen wen und wann es weitergeht – vorher
+  // stand dort nur das Datum des vergangenen Spiels über viel Leerfläche.
+  if (!useNext && entry.danach) {
+    const n = entry.danach;
+    const heim = isFollowedTeam(n.team1, followedName);
+    const gegner = heim ? n.team2 : n.team1;
+    const weiter = document.createElement("div");
+    weiter.className = "sport-slide-danach";
+    weiter.innerHTML = '<span class="sport-slide-danach-label">Als Nächstes</span>' +
+      '<span class="sport-slide-danach-text"></span>';
+    const k = new Date(n.matchDateTime);
+    const wann = kickoffLabel(k).indexOf(" · in ") !== -1
+      ? k.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "numeric" }) + ", " +
+        k.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+      : kickoffLabel(k);
+    weiter.lastChild.textContent = wann + " · " + (heim ? "gegen " : "bei ") +
+      ((gegner && (gegner.shortName || gegner.teamName)) || "?");
+    content.appendChild(weiter);
+  }
 
   slide.appendChild(content);
   return slide;
