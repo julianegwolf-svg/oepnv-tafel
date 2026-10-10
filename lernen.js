@@ -282,7 +282,14 @@
         const bahn = snap && snap.departures ? snap.departures.filter(function (x) {
           return x.leaveByMs && x.leaveByMs >= ab;
         })[0] : null;
-        if (bahn) {
+        // Werktags dieselbe Bahn wie Morgengruß/Tagesblick (Arbeitslinie in
+        // der richtigen Richtung, späteste pünktliche) – vorher stand hier
+        // irgendeine Linie ("Linie 29 um 07:37"), dort "die 23 um 07:35".
+        const arbeit = weg.wann !== "wochenende" && typeof arbeitsBahnHeute === "function" ? arbeitsBahnHeute() : null;
+        if (arbeit && arbeit.dep) {
+          const inMin = Math.max(0, Math.round((arbeit.dep.leaveByMs - Date.now()) / 60000));
+          text += " – für die " + arbeit.dep.line + " um " + arbeit.dep.clock + (inMin <= 1 ? ": jetzt los" : " los in " + inMin + " Min");
+        } else if (bahn) {
           const inMin = Math.max(0, Math.round((bahn.leaveByMs - Date.now()) / 60000));
           text += " – Linie " + bahn.line + " um " + bahn.clock + (inMin <= 1 ? ": jetzt los" : ", in " + inMin + " Min los");
         }

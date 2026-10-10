@@ -21,7 +21,7 @@ const OUT = arg("out", "belege/lernen");
 const FAELLE = [
   { name: "werktag-morgens", jetzt: "2026-10-12T07:12", erwartet: /werktags meist um 07:[23]\d los/, panel: "departures" },
   { name: "abends", jetzt: "2026-10-12T22:14", erwartet: /Wie jeden Abend: Gute Nacht/, panel: "home" },
-  { name: "samstag-vormittag", jetzt: "2026-10-17T09:51", erwartet: /Arbeiten\?.*(samstags|wochenende).*10:/i, panel: "home" },
+  { name: "samstag-vormittag", jetzt: "2026-10-17T09:51", erwartet: /Arbeiten\?.*(samstags|wochenende).*(09:[3-5]\d|10:[0-3]\d)/i, panel: "home" }, // Verlauf ist zufällig: um 10 Uhr
   { name: "werktag-nachmittags", jetzt: "2026-10-12T14:30", erwartet: null, panel: "home" },
 ];
 
