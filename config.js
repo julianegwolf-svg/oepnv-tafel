@@ -502,6 +502,7 @@ const CONFIG = {
     feuchteGrenze: 65, // % Luftfeuchte → "lüften" (Bad/Küche +10)
     batterieGrenze: 20, // % → "Batterie fast leer" (auf dem Zuhause-Panel)
     batterieDringend: 10, // % → Hinweis auf allen Panels
+    medienPauseMin: 30, // so lange bleibt "Pausiert" im Karussell (danach nur über die Übersicht)
     stromWarnungW: 3000, // Gesamtverbrauch, ab dem ein Hinweis kommt
     reaktionen: {
       bewegungWeckt: true, // Bewegung (Melder im Schlafzimmer) weckt aus Ambient/Tiefschlaf

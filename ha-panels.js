@@ -326,13 +326,26 @@
     return !!since && Date.now() - since < OFFLINE_HIDE_MS;
   }
 
-  function anyMediaActive() {
+  // Pausiert zählt fürs Karussell nur eine Weile (Standard 30 min): Ein
+  // HomePod bleibt nach dem Anhalten oft stundenlang "paused" – sonst käme
+  // "Pausiert im Büro – Levitating" in jeder Runde. In der Übersicht bleibt
+  // das Panel (auchAltePause), damit man weiterhören kann.
+  function anyMediaActive(auchAltePause) {
     const g = HA.model().global;
+    const pauseMs = (CFG.medienPauseMin != null ? CFG.medienPauseMin : 30) * 60000;
     for (let i = 0; i < g.media.length; i++) {
       const st = HA.state(g.media[i]);
-      if (st && (st.state === "playing" || st.state === "paused")) return true;
+      if (!st) continue;
+      if (st.state === "playing") return true;
+      if (st.state === "paused" && (auchAltePause || Date.now() - changedAt(st) < pauseMs)) return true;
     }
     return false;
+  }
+
+  // Übersicht: wie panelAvailable, nur dass länger Pausiertes erreichbar bleibt.
+  function panelErreichbar(name) {
+    if (name === "medien") return usable() && anyMediaActive(true);
+    return panelAvailable(name);
   }
 
   function panelAvailable(name) {
@@ -3250,6 +3263,7 @@
   window.TafelHAUI = {
     init: init,
     panelAvailable: panelAvailable,
+    panelErreichbar: panelErreichbar,
     onPanelShown: onPanelShown,
     radioUmleiten: radioUmleiten,
     openSetup: openSetup,

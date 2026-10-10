@@ -5804,6 +5804,12 @@ const PANEL_NAV_ICONS = {
   tagesblick: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
 };
 
+// Übersicht: Panels, die nicht in der automatischen Runde laufen, aber
+// erreichbar bleiben sollen (länger pausierter HomePod → weiterhören).
+const PANEL_IN_UEBERSICHT = {
+  medien: function () { return !!(window.TafelHAUI && TafelHAUI.panelErreichbar && TafelHAUI.panelErreichbar("medien")); },
+};
+
 function buildPanelNavGrid() {
   if (!els.panelNavGrid) return;
   els.panelNavGrid.innerHTML = "";
@@ -5813,7 +5819,7 @@ function buildPanelNavGrid() {
   const seq = first.concat((CONFIG.panelSequence || []).filter(function (n) { return first.indexOf(n) === -1; }));
 
   seq.forEach(function (name) {
-    const check = PANEL_AVAILABILITY[name];
+    const check = PANEL_IN_UEBERSICHT[name] || PANEL_AVAILABILITY[name];
     if (check && !check()) return;
     const meta = PANEL_NAV_META[name];
     if (!meta) return;
