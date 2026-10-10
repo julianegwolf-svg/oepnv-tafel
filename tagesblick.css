@@ -237,35 +237,35 @@
 
 .tb-hours {
   display: flex;
+  flex-direction: column;
   margin-top: auto;
-  padding-top: 14px;
+  padding-top: 12px;
 }
 
+/* Stundenzeile (Wetterkarte, hoch über zwei Reihen): Zeit · Symbol ·
+   Temperatur · Regenbalken · Prozent. Farbe trägt nur der Balken, die
+   Zahlen bleiben in Textfarbe. */
 .tb-hour {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  flex: 1;
   min-width: 0;
-  padding: 8px 0;
-  border-radius: 12px;
-  background: var(--c-bg-2);
-}
-
-.tb-hour + .tb-hour {
-  margin-left: 8px;
+  padding: 7px 0;
+  border-top: 1px solid rgba(239, 233, 223, 0.08);
 }
 
 .tb-hour-t {
-  font-size: 14px;
-  color: var(--c-text-3);
+  width: 76px;
+  flex-shrink: 0;
+  font-size: 20px;
+  color: var(--c-text-2);
 }
 
 .tb-hour-i {
   display: block;
-  width: 34px;
-  height: 34px;
-  margin: 4px 0;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  margin-right: 12px;
 }
 
 .tb-hour-i svg {
@@ -275,17 +275,42 @@
 }
 
 .tb-hour-v {
-  font-size: 20px;
+  width: 58px;
+  flex-shrink: 0;
+  font-size: 28px;
   font-weight: 700;
 }
 
+.tb-hour-bar {
+  position: relative;
+  flex: 1;
+  min-width: 40px;
+  height: 10px;
+  margin: 0 12px 0 6px;
+  border-radius: 4px;
+  background: rgba(111, 179, 214, 0.16);
+  overflow: hidden;
+}
+
+.tb-hour-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  border-radius: 4px;
+  background: var(--c-cool);
+}
+
 .tb-hour-p {
-  font-size: 13px;
+  width: 62px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 18px;
   color: var(--c-text-3);
 }
 
-.tb-hour-p.is-nass {
-  color: var(--c-cool);
+.tb-hour.is-nass .tb-hour-p {
+  color: var(--c-text);
   font-weight: 700;
 }
 

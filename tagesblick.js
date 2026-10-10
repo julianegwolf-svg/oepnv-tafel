@@ -125,9 +125,13 @@
       const i = stundenIndex(h, ms);
       if (i === -1) return;
       const st = new Date(h.time[i]).getHours();
-      zellen.push('<div class="tb-hour"><span class="tb-hour-t">' + st + ' Uhr</span><span class="tb-hour-i">' +
+      // Eine Zeile je Stunde: Zeit, Symbol, Temperatur, Regenbalken (Länge =
+      // Regenwahrscheinlichkeit) – füllt die hohe Karte und ist aus 3 m lesbar.
+      const pp = h.pp[i] != null ? Math.max(0, Math.min(100, h.pp[i])) : null;
+      zellen.push('<div class="tb-hour' + ((pp || 0) >= 50 ? " is-nass" : "") + '"><span class="tb-hour-t num">' + st + ' Uhr</span><span class="tb-hour-i">' +
         iconHtml(h.code[i], st >= 7 && st < 19) + '</span><span class="tb-hour-v num">' + Math.round(h.temp[i]) + "°</span>" +
-        '<span class="tb-hour-p' + ((h.pp[i] || 0) >= 50 ? " is-nass" : "") + '">' + (h.pp[i] != null ? h.pp[i] + " %" : "") + "</span></div>");
+        '<span class="tb-hour-bar"><span class="tb-hour-fill" style="width:' + (pp || 0) + '%"></span></span>' +
+        '<span class="tb-hour-p num">' + (pp != null ? pp + " %" : "") + "</span></div>");
     });
     return zellen.length ? '<div class="tb-hours">' + zellen.join("") + "</div>" : "";
   }
@@ -146,7 +150,7 @@
         '<span class="tb-wetter-text"><b>' + esc(w.desc) + "</b>" +
         (w.hi != null ? "<span>bis " + esc(w.hi) + "° · nachts " + esc(w.lo) + "°</span>" : "") + "</span></div>" +
         (regen ? '<div class="tb-line' + (regen.nass ? " is-nass" : "") + '">' + (regen.nass ? "☔ " : "") + esc(regen.text) + "</div>" : "") +
-        stundenLeiste(w, [1, 2, 3, 5, 8].map(function (n) { return Date.now() + n * 3600000; })) +
+        stundenLeiste(w, [1, 2, 3, 4, 6, 9].map(function (n) { return Date.now() + n * 3600000; })) +
         "</div>";
     }
     // Abends: Wetter zur gewohnten Losgehzeit morgen bzw. um 9 Uhr am freien Tag.
@@ -169,7 +173,7 @@
       '<span class="tb-wetter-text"><b>' + esc(wetterBeschreibung(h.code[i])) + "</b>" +
       (maxT > -99 ? "<span>tagsüber bis " + Math.round(maxT) + "°</span>" : "") + "</span></div>" +
       (regen ? '<div class="tb-line' + (regen.nass ? " is-nass" : "") + '">' + (regen.nass ? "☔ " : "") + esc(regen.text) + "</div>" : "") +
-      stundenLeiste(w, [7, 9, 12, 15, 18].map(function (st) { return new Date(tag.getFullYear(), tag.getMonth(), tag.getDate(), st, 30).getTime(); })) +
+      stundenLeiste(w, [7, 8, 9, 12, 15, 18].map(function (st) { return new Date(tag.getFullYear(), tag.getMonth(), tag.getDate(), st, 30).getTime(); })) +
       "</div>";
   }
 
