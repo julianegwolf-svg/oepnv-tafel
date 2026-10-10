@@ -148,7 +148,15 @@ const ZAEHLER = `
   const basis = proben[Math.min(1, proben.length - 1)];
   const ende = proben[proben.length - 1];
   const checks = [
-    ["DOM-Knoten stabil (±10 %)", Math.abs(ende.dom - basis.dom) <= basis.dom * 0.1],
+    // Leck = stetiges Wachsen: das Maximum der zweiten Hälfte darf das der
+    // ersten nicht übersteigen (+5 %). Der alte Vergleich mit Minute 2 schlug
+    // an, wenn Inhalte (Verlauf, Diashows) erst in Minute 3 ankamen und
+    // danach flach blieben.
+    ["DOM-Knoten wachsen nicht (2. Hälfte ≤ 1. Hälfte + 5 %)", (function () {
+      const h = Math.floor(proben.length / 2);
+      const max = (l) => Math.max.apply(null, l.map((x) => x.dom));
+      return h > 0 && max(proben.slice(h)) <= max(proben.slice(0, h)) * 1.05;
+    })()],
     ["Intervalle wachsen nicht", ende.intervalle <= basis.intervalle],
     ["Timeouts wachsen nicht (±15)", ende.timeouts <= basis.timeouts + 15],
     ["Listener wachsen nicht (±20)", ende.listener <= basis.listener + 20],
