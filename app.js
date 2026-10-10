@@ -2843,6 +2843,7 @@ function startTriviaReveal() {
   });
   attachChoiceInteractivity(choicesEl, function () {
     if (triviaRevealTimer) { clearTimeout(triviaRevealTimer); triviaRevealTimer = null; }
+    stopRevealCountdown(els.triviaBlock);
   });
 
   const full = triviaFullText;
@@ -2855,9 +2856,12 @@ function startTriviaReveal() {
       triviaTypeTimer = null;
       if (cursorEl) cursorEl.className = "typewriter-cursor done";
       choicesEl.classList.add("is-shown");
+      const triviaDelay = 6000;
+      startRevealCountdown(els.triviaBlock, triviaDelay);
       triviaRevealTimer = setTimeout(function () {
         choicesEl.classList.add("is-revealed");
-      }, 3000);
+        stopRevealCountdown(els.triviaBlock);
+      }, triviaDelay);
     }
   }, 35);
 }
@@ -2947,6 +2951,37 @@ function renderQuizShell() {
   els.quizBlock.appendChild(choices);
 }
 
+// Auflösung mit Ansage (IDEEN T1/RÄ1): ein dünner Balken läuft bis zur
+// Auflösung ab, dazu "Auflösung in 10 s" — statt dass die Antwort ohne
+// Vorwarnung auftaucht. Ein Element je Block, wird wiederverwendet.
+function startRevealCountdown(block, ms) {
+  if (!block) return;
+  block.classList.remove("is-revealed-block");
+  let box = block.querySelector(".reveal-countdown");
+  if (!box) {
+    box = document.createElement("div");
+    box.className = "reveal-countdown";
+    box.innerHTML = '<span class="reveal-label"></span><span class="reveal-track"><span class="reveal-fill"></span></span>';
+    block.appendChild(box);
+  }
+  const fill = box.querySelector(".reveal-fill");
+  const label = box.querySelector(".reveal-label");
+  label.textContent = "Auflösung in " + Math.round(ms / 1000) + " s";
+  box.classList.add("is-running");
+  fill.style.transition = "none";
+  fill.style.transform = "scaleX(1)";
+  void fill.offsetWidth;
+  fill.style.transition = "transform " + ms + "ms linear";
+  fill.style.transform = "scaleX(0)";
+}
+
+function stopRevealCountdown(block) {
+  const box = block ? block.querySelector(".reveal-countdown") : null;
+  if (box) box.classList.remove("is-running");
+  // Aufgelöst: Mitrate-Hinweis ausblenden (CSS .is-revealed-block).
+  if (block) block.classList.add("is-revealed-block");
+}
+
 function startQuizReveal() {
   if (!quizQuestion || !quizChoices) return;
   const typedEl = document.getElementById("quizTypedText");
@@ -2971,6 +3006,7 @@ function startQuizReveal() {
   });
   attachChoiceInteractivity(choicesEl, function () {
     if (quizRevealTimer) { clearTimeout(quizRevealTimer); quizRevealTimer = null; }
+    stopRevealCountdown(els.quizBlock);
   });
 
   // Auflösung erst zur Hälfte der gesamten Panel-Anzeigezeit statt fix 3s
@@ -2995,8 +3031,10 @@ function startQuizReveal() {
       choicesEl.classList.add("is-shown");
       const elapsed = Date.now() - startedAt;
       const revealDelay = Math.max(halfMs - elapsed, 1500);
+      startRevealCountdown(els.quizBlock, revealDelay);
       quizRevealTimer = setTimeout(function () {
         choicesEl.classList.add("is-revealed");
+        stopRevealCountdown(els.quizBlock);
       }, revealDelay);
     }
   }, 35);
@@ -3019,7 +3057,12 @@ function updateQuiz(retryCount) {
 
   // Cache-Buster wie bei allen anderen Feeds hier — sonst liefert ein
   // zwischengeschalteter Cache stur dieselbe Frage über Stunden hinweg.
-  fetch("https://opentdb.com/api.php?amount=1&type=multiple&_=" + Date.now(), { cache: "no-store" }).then(function (res) {
+  // Nur Allgemeinwissen, Naturwissenschaft, Geografie, Geschichte (IDEEN
+  // Q1) statt Anime-/Videospiel-Spezialfragen; abschaltbar per
+  // CONFIG.quizKategorien = [].
+  const cats = CONFIG.quizKategorien || [9, 17, 22, 23];
+  const cat = cats.length ? "&category=" + cats[Math.floor(Math.random() * cats.length)] : "";
+  fetch("https://opentdb.com/api.php?amount=1&type=multiple" + cat + "&_=" + Date.now(), { cache: "no-store" }).then(function (res) {
     if (!res.ok) throw new Error("Quiz-Abruf fehlgeschlagen (" + res.status + ")");
     return res.json();
   }).then(function (data) {
@@ -3147,8 +3190,10 @@ function startRiddleReveal() {
       if (cursorEl) cursorEl.className = "typewriter-cursor done";
       const elapsed = Date.now() - startedAt;
       const revealDelay = Math.max(halfMs - elapsed, 1500);
+      startRevealCountdown(els.riddleBlock, revealDelay);
       riddleRevealTimer = setTimeout(function () {
         answerEl.classList.add("is-shown");
+        stopRevealCountdown(els.riddleBlock);
       }, revealDelay);
     }
   }, 35);

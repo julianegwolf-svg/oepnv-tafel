@@ -3782,3 +3782,68 @@ html, body {
   color: rgba(239, 233, 223, 0.7);
   font-variant-numeric: tabular-nums;
 }
+
+
+/* ---------- Auflösung mit Ansage (IDEEN T1/RÄ1) + größere Antworten ---------- */
+.reveal-countdown {
+  display: flex;
+  align-items: center;
+  margin-top: 26px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.reveal-countdown.is-running {
+  opacity: 1;
+}
+
+.reveal-label {
+  flex-shrink: 0;
+  margin-right: 14px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.reveal-track {
+  position: relative;
+  width: 260px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(127, 127, 127, 0.25);
+  overflow: hidden;
+}
+
+.reveal-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+}
+
+.trivia-choice {
+  font-size: 22px;
+  min-height: 60px;
+}
+
+/* Aufgelöst: falsche Antworten lesbar statt 40 % Deckkraft (IDEEN T1),
+   der Mitrate-Hinweis verschwindet. */
+.trivia-choices.is-revealed .trivia-choice:not(.correct):not(.is-wrong-pick) {
+  opacity: 1;
+  color: var(--ink-dim);
+  background: transparent;
+  border-color: var(--panel-edge);
+  text-decoration: line-through;
+}
+
+.trivia-block.is-revealed-block .knowledge-score-badge {
+  opacity: 0;
+}
+
+.knowledge-score-badge {
+  transition: opacity 0.4s ease;
+}

@@ -264,6 +264,9 @@ const CONFIG = {
   // (die API bietet kein Deutsch an) — gleiches Prinzip wie beim
   // Spruch-des-Tages-Panel, das ebenfalls englische Inhalte zeigt.
   refreshQuizMs: 60 * 60 * 1000,
+  // Open-Trivia-Kategorien: 9 Allgemeinwissen, 17 Natur & Wissenschaft,
+  // 22 Geografie, 23 Geschichte. Leere Liste = alle Kategorien (bisher).
+  quizKategorien: [9, 17, 22, 23],
 
   // Rätsel-des-Tages-Panel — keine externe API: eine Recherche nach einer
   // kostenlosen, keylosen, deutschsprachigen Rätsel-API mit Lösung blieb
