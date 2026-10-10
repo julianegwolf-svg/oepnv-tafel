@@ -236,6 +236,9 @@ const CONFIG = {
   // in der URL der Playlist.
   musicPlaylistId: "1111143121",
   musicCount: 5,
+  // "zweispaltig" = Nr. 1 groß links, Plätze 2–10 rechts mit Auf-/Absteigern
+  // (IDEEN M1); "karten" = bisherige fünf Karten.
+  musikLayout: "zweispaltig",
   refreshMusicMs: 60 * 60 * 1000,
 
   // Zitat-Panel

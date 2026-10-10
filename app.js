@@ -2065,6 +2065,59 @@ function fetchJsonp(url, timeoutMs) {
   });
 }
 
+// ---------- Musik zweispaltig (IDEEN M1) ----------
+// Links die Nr. 1 groß, rechts die Plätze 2–10 als dichte Liste — statt
+// fünf Karten, die zu 60 % leer waren. Aufsteiger/Neueinsteiger per
+// Vergleich mit dem gestrigen Stand (localStorage, nur 10 IDs).
+const MUSIC_RANK_KEY = "tafelMusikRang";
+
+function musicMovement(results) {
+  let prev = null;
+  try { prev = JSON.parse(localStorage.getItem(MUSIC_RANK_KEY) || "null"); } catch (e) { prev = null; }
+  const today = new Date().toDateString();
+  const ids = results.map(function (r) { return r.id; });
+  // Vergleichsbasis = Stand von einem früheren Tag; einmal täglich fortschreiben.
+  let base = prev && prev.day !== today ? prev : (prev && prev.base ? prev.base : null);
+  if (!prev || prev.day !== today) {
+    try { localStorage.setItem(MUSIC_RANK_KEY, JSON.stringify({ day: today, ids: ids, base: prev ? { day: prev.day, ids: prev.ids } : null })); } catch (e) { /* egal */ }
+    base = prev ? { day: prev.day, ids: prev.ids } : null;
+  }
+  return function (id, rank) {
+    if (!base || !base.ids) return "";
+    const before = base.ids.indexOf(id);
+    if (before === -1) return "neu";
+    if (before > rank) return "auf";
+    if (before < rank) return "ab";
+    return "";
+  };
+}
+
+function renderMusicTwoColumns(results) {
+  const move = musicMovement(results);
+  const top = results[0];
+  let html = '<div class="music2"><div class="music2-hero">' +
+    '<img class="music2-cover" alt="" src="' + (top.artworkBig || "") + '">' +
+    '<span class="music2-tag">Nr. 1 in Deutschland</span>' +
+    '<span class="music2-title"></span><span class="music2-artist"></span></div><div class="music2-list">';
+  results.slice(1, 10).forEach(function (song, i) {
+    const m = move(song.id, i + 1);
+    html += '<div class="music2-row"><span class="music2-rank">' + (i + 2) + "</span>" +
+      '<span class="music2-move' + (m ? " is-" + m : "") + '">' + (m === "auf" ? "▲" : (m === "ab" ? "▼" : (m === "neu" ? "neu" : ""))) + "</span>" +
+      '<img class="music2-art" alt="" src="' + (song.artworkUrl100 || "") + '">' +
+      '<span class="music2-text"><span class="music2-t"></span><span class="music2-a"></span></span></div>';
+  });
+  html += "</div></div>";
+  els.musicList.innerHTML = html;
+  // Texte per textContent setzen (Titel können Sonderzeichen enthalten).
+  els.musicList.querySelector(".music2-title").textContent = top.name || "";
+  els.musicList.querySelector(".music2-artist").textContent = top.artistName || "";
+  const rows = els.musicList.querySelectorAll(".music2-row");
+  for (let i = 0; i < rows.length; i++) {
+    rows[i].querySelector(".music2-t").textContent = results[i + 1].name || "";
+    rows[i].querySelector(".music2-a").textContent = results[i + 1].artistName || "";
+  }
+}
+
 function updateMusic() {
   if (!els.musicList) return;
 
@@ -2077,7 +2130,7 @@ function updateMusic() {
   // echtem Browser-fetch()-Test verifiziert, nicht nur curl: "Failed to
   // fetch"). JSONP (siehe fetchJsonp oben) umgeht das vollständig.
   const url = "https://api.deezer.com/playlist/" + CONFIG.musicPlaylistId +
-    "/tracks?limit=" + CONFIG.musicCount;
+    "/tracks?limit=" + ((CONFIG.musikLayout || "zweispaltig") === "zweispaltig" ? 10 : CONFIG.musicCount);
 
   fetchJsonp(url).then(function (data) {
     if (data && data.error) throw new Error("Deezer-Fehler: " + (data.error.message || data.error.type));
@@ -2088,12 +2141,21 @@ function updateMusic() {
     const results = entries.map(function (t) {
       const album = t.album || {};
       return {
+        id: t.id,
         name: t.title,
         artistName: t.artist && t.artist.name,
         artworkUrl100: album.cover_medium || album.cover_big || album.cover,
+        artworkBig: album.cover_big || album.cover_medium || album.cover,
       };
     });
     if (!results.length) throw new Error("Keine Musikdaten erhalten");
+
+    if ((CONFIG.musikLayout || "zweispaltig") === "zweispaltig") {
+      renderMusicTwoColumns(results);
+      musicAvailable = true;
+      markFresh("music");
+      return;
+    }
 
     els.musicList.innerHTML = "";
     const top = results[0];
