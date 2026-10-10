@@ -233,6 +233,7 @@
   let overlayIdleTimer = null;
   let dragging = null;
   let lastTouchAt = 0;
+  let pendingSlide = null;
   let toastTimer = null;
   const thermostatPending = {};
   const sliderSend = {};
@@ -473,20 +474,46 @@
 
     // Schieberegler: Touch (iPad) und Maus (Test am Desktop). Nach einem
     // Touch feuert iOS zusätzlich Maus-Ereignisse — die werden ignoriert.
+    // Touch: erst die Richtung abwarten – waagerecht = Regler ziehen,
+    // senkrecht = Liste scrollen (ohne dass die Lampe sich verstellt);
+    // ein kurzer Tipp setzt den Wert an dieser Stelle (ein Aufruf).
     const sliderRoots = [els.overlay, els.medien];
     sliderRoots.forEach(function (root) {
       root.addEventListener("touchstart", function (ev) {
         lastTouchAt = Date.now();
+        pendingSlide = null;
         const t = ev.touches && ev.touches[0];
-        if (t) sliderStart(ev.target, t.clientX);
+        if (!t || ev.touches.length > 1) return;
+        const el = ev.target && ev.target.closest ? ev.target.closest(".ha-slider") : null;
+        if (el && !el.classList.contains("is-disabled")) pendingSlide = { target: ev.target, x: t.clientX, y: t.clientY };
       }, { passive: true });
       root.addEventListener("touchmove", function (ev) {
-        if (!dragging) return;
         const t = ev.touches && ev.touches[0];
-        if (t) { ev.preventDefault(); sliderMove(t.clientX); }
+        if (!t) return;
+        if (pendingSlide && !dragging) {
+          const dx = Math.abs(t.clientX - pendingSlide.x);
+          const dy = Math.abs(t.clientY - pendingSlide.y);
+          if (dx < 4 && dy < 4) return; // noch unentschieden
+          if (dx > dy) sliderStart(pendingSlide.target, pendingSlide.x);
+          pendingSlide = null;
+        }
+        if (!dragging) return;
+        ev.preventDefault();
+        sliderMove(t.clientX);
       }, { passive: false });
-      root.addEventListener("touchend", function () { if (dragging) sliderEnd(); });
-      root.addEventListener("touchcancel", function () { if (dragging) sliderEnd(); });
+      root.addEventListener("touchend", function () {
+        if (dragging) { sliderEnd(); return; }
+        if (pendingSlide) {
+          const p = pendingSlide;
+          pendingSlide = null;
+          sliderStart(p.target, p.x, true);
+          sliderEnd();
+        }
+      });
+      root.addEventListener("touchcancel", function () {
+        pendingSlide = null;
+        if (dragging) sliderEnd();
+      });
       root.addEventListener("mousedown", function (ev) {
         if (Date.now() - lastTouchAt < 800) return;
         sliderStart(ev.target, ev.clientX);
@@ -655,7 +682,8 @@
   // <div class="ha-slider" data-slider="hell|ct|vol|raum" data-id="…">.
   // Während des Ziehens wird alle 350 ms gesendet (live sichtbare Lampe),
   // beim Loslassen garantiert der Endwert.
-  function sliderStart(target, x) {
+  // quiet: nur den Wert setzen, noch nichts senden (Tipp – sliderEnd sendet).
+  function sliderStart(target, x, quiet) {
     const el = target && target.closest ? target.closest(".ha-slider") : null;
     if (!el || el.classList.contains("is-disabled")) return;
     const rect = el.getBoundingClientRect();
@@ -668,10 +696,10 @@
       value: null,
     };
     el.classList.add("is-dragging");
-    sliderMove(x);
+    sliderMove(x, quiet);
   }
 
-  function sliderMove(x) {
+  function sliderMove(x, quiet) {
     if (!dragging) return;
     const f = clamp((x - dragging.left) / dragging.width, 0, 1);
     dragging.value = f;
@@ -681,7 +709,7 @@
     if (fill) fill.style.transform = "scaleX(" + f.toFixed(3) + ")";
     if (knob) knob.style.left = (f * 100).toFixed(1) + "%";
     if (label) label.textContent = sliderLabel(dragging.kind, dragging.id, f);
-    sliderQueue(dragging.kind, dragging.id, f, false);
+    if (!quiet) sliderQueue(dragging.kind, dragging.id, f, false);
   }
 
   function sliderEnd() {
@@ -853,22 +881,37 @@
   // Erkennung über den Namen: Julians eigene Automationen/Skripte/Szenen
   // (z. B. "Rausgehen", "Gute Nacht", "Arbeiten") werden ausgelöst,
   // statt dass die Tafel eigene Logik nachbaut.
+  // Nur am Wortanfang: "raus" soll "Rausgehen" finden, nicht "Licht
+  // draußen"; "arbeit" nicht "Arbeitszimmer". Ausgelöst wird mit
+  // skip_condition – eine falsche Zuordnung wäre also teuer.
+  function wortAnfang(alternativen) {
+    return new RegExp("(^|[^a-z0-9äöüß])(" + alternativen + ")", "i");
+  }
+
   const STANDARD_AKTIONEN = [
-    { id: "raus", name: "Ich geh raus", icon: "out", muster: /raus|verlassen|abwesend|tsch(ü|ue)ss|leave|away/i },
-    { id: "nacht", name: "Gute Nacht", icon: "moon", muster: /gute.?nacht|good.?night|bett|schlafen/i },
-    { id: "arbeit", name: "Arbeiten", icon: "work", muster: /arbeit|work|homeoffice/i },
-    { id: "da", name: "Ich bin da", icon: "home", muster: /bin.?da|heimkommen|ankommen|willkommen|welcome|arriv/i },
+    { id: "raus", name: "Ich geh raus", icon: "out", muster: wortAnfang("raus|verlass|abwesend|tsch(ü|ue)ss|leav|away") },
+    { id: "nacht", name: "Gute Nacht", icon: "moon", muster: wortAnfang("gute.?nacht|good.?night|bett(?!zimmer)|schlafen") },
+    { id: "arbeit", name: "Arbeiten", icon: "work", muster: wortAnfang("arbeit(?!szimmer)|work(?!space)|home.?office") },
+    { id: "da", name: "Ich bin da", icon: "home", muster: wortAnfang("bin.?da|heimkommen|ankommen|willkommen|welcome|arriv") },
   ];
 
+  // Erste Quelle mit Treffern (Automationen vor Skripten vor Szenen), dort
+  // der kürzeste Name – "Arbeitsmodus" vor "Arbeit: Licht im Flur an".
   function findActionTarget(pattern) {
     const g = HA.model().global;
     const pools = [g.automations, g.scripts, g.scenes];
     for (let p = 0; p < pools.length; p++) {
+      let best = null;
       for (let i = 0; i < pools[p].length; i++) {
         const id = pools[p][i];
         if (id === "scene." + UNDO_SCENE) continue;
-        if (pattern.test(HA.name(id)) || pattern.test(id.replace(/_/g, " "))) return id;
+        const name = HA.name(id);
+        const objekt = id.slice(id.indexOf(".") + 1).replace(/_/g, " ");
+        if (pattern.test(name) || pattern.test(objekt)) {
+          if (!best || name.length < HA.name(best).length) best = id;
+        }
       }
+      if (best) return best;
     }
     return null;
   }
@@ -943,6 +986,18 @@
 
   function executeAction(action) {
     if (window.TafelLernen) TafelLernen.merkeAktion(action.id);
+    let undoable = false;
+    function fertig(text) {
+      const st = { phase: "done", undoable: undoable, timer: null };
+      st.timer = setTimeout(function () { delete actionState[action.id]; renderActions(); }, 20000);
+      actionState[action.id] = st;
+      toast(action.name + " – " + text, "ok");
+      renderActions();
+      // "Gute Nacht": Tafel dunkelt danach sanft in den Nachtmodus ab.
+      if (action.id === "nacht" && typeof tafelGuteNacht === "function") {
+        setTimeout(function () { setActionsMenuOpen(false); tafelGuteNacht(); }, 1500);
+      }
+    }
     actionState[action.id] = { phase: "busy" };
     renderActions();
     // Kacheln gehen gestaffelt aus — man sieht, dass wirklich alles aus ist.
@@ -956,7 +1011,6 @@
     m.rooms.forEach(function (r) {
       r.climates.forEach(function (id) { if (!HA.isUnavailable(HA.state(id))) snapshot.push(id); });
     });
-    let undoable = false;
     const snap = snapshot.length
       ? HA.callService("scene", "create", { scene_id: UNDO_SCENE, snapshot_entities: snapshot }).then(function () { undoable = true; }).catch(noop)
       : Promise.resolve();
@@ -974,16 +1028,15 @@
       if (dom === "scene") return HA.callService("scene", "turn_on", null, { entity_id: action.ziel });
       return HA.callService("homeassistant", "turn_on", null, { entity_id: action.ziel });
     }).then(function () {
-      const st = { phase: "done", undoable: undoable, timer: null };
-      st.timer = setTimeout(function () { delete actionState[action.id]; renderActions(); }, 20000);
-      actionState[action.id] = st;
-      toast(action.name + " – erledigt", "ok");
-      renderActions();
-      // "Gute Nacht": Tafel dunkelt danach sanft in den Nachtmodus ab.
-      if (action.id === "nacht" && typeof tafelGuteNacht === "function") {
-        setTimeout(function () { setActionsMenuOpen(false); tafelGuteNacht(); }, 1500);
-      }
+      fertig("erledigt");
     }).catch(function (err) {
+      // Echtes HA antwortet auf automation.trigger/script.turn_on erst,
+      // wenn alles durchgelaufen ist – mit Verzögerungen oder Push dauert
+      // das länger als unser Zeitlimit. Dann läuft sie trotzdem.
+      if (err && /Zeitüberschreitung/.test(err.message || "") && action.ziel && /^(automation|script)\./.test(action.ziel)) {
+        fertig("gestartet, läuft noch");
+        return;
+      }
       delete actionState[action.id];
       toast(action.name + " fehlgeschlagen" + (err && err.message ? " (" + err.message + ")" : ""), "fehler");
       renderActions();

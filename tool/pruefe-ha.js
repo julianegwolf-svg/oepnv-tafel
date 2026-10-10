@@ -99,6 +99,10 @@ async function sim(pfad, body) {
   if (arg("nacht", "aus") === "aus") {
     await evalSafe(() => { CONFIG.nightDim = null; CONFIG.nightSleep = null; tickClock(); });
   }
+  // Morgengruß gilt als heute schon gezeigt – sonst legt er sich zwischen
+  // 5 und 11 Uhr bei zufälliger Simulator-Bewegung 9 s über die Knöpfe
+  // (eigene Probe: tool/pruefe-morgengruss.js).
+  await evalSafe(() => { const d = new Date(); localStorage.setItem("tafelMorgengruss", d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate()); });
   const loginShown = await waitFor(() => !!document.querySelector("#haLogin.is-open"), 8000);
   log(loginShown, "Login-Bildschirm erscheint von selbst (Tafel aus HA geladen, keine Anmeldung)");
   await page.waitForTimeout(900);

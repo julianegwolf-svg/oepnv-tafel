@@ -5045,11 +5045,16 @@ const PANEL_IDS = ["departures", "commute", "weather", "news", "music", "sport",
 // Panel wird sofort sichtbar gemacht, alle anderen erst NACH Ablauf ihrer
 // Crossfade-Transition (siehe .panel-view: 0.7s) per display:none komplett
 // aus dem Renderbaum genommen, statt nur unsichtbar zu bleiben.
+// Nie das gerade aktive Panel ausblenden – auch wenn ein älterer Timer
+// (Wechsel kurz hintereinander, z. B. Karussell + Sprung durch HA) für
+// ein anderes Panel feuert.
+let unmountTimer = null;
+
 function unmountInactivePanels(activeName) {
   for (let i = 0; i < PANEL_IDS.length; i++) {
     if (PANEL_IDS[i] === activeName) continue;
     const el = document.getElementById("panel-" + PANEL_IDS[i]);
-    if (el) el.style.display = "none";
+    if (el && !el.classList.contains("active")) el.style.display = "none";
   }
 }
 
@@ -5072,7 +5077,8 @@ function showPanel(name) {
     // würden (className = "..." ersetzt IMMER alles).
     el.classList.toggle("active", ids[i] === name);
   }
-  setTimeout(function () { unmountInactivePanels(name); }, 750);
+  if (unmountTimer) clearTimeout(unmountTimer);
+  unmountTimer = setTimeout(function () { unmountTimer = null; unmountInactivePanels(name); }, 750);
 
   if (name === "quote") {
     // Jede Runde ein neuer Spruch (lokal, kostet nichts).
