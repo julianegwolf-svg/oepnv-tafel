@@ -1,5 +1,8 @@
 // Probe Musik-Charts (Sitzung 6): Apple-Music-Liste über den HA-REST-Sensor.
-//   1. ohne HA (GitHub-Pages-Fall, kein Proxy): Panel fällt weg, kein Deezer
+//   0. GitHub-Pages-Herkunft (Seite per page.route aus dem Repo unter
+//      https://julianegwolf-svg.github.io/oepnv-tafel/ ausgeliefert, der
+//      Kalender-Worker wird echt gefragt): Charts über musikProxy, Termine da
+//   1. ohne HA von fremder Herkunft (Worker lehnt ab): Panel fällt weg, kein Deezer
 //   2. HA ohne Sensor (Julians HA heute): Panel fällt weg
 //   3. HA mit Sensor (Simulator --charts): Liste = Sensor, Reihenfolge,
 //      Beschriftung "Apple Music · meistgespielt · Stand …"
@@ -76,12 +79,39 @@ const liste = (page) => page.evaluate(() => {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await webkit.launch();
 
-  // 1. ohne HA
+  // 0. GitHub Pages: gleiche Herkunft wie auf Julians iPad heute
   let page = await neueSeite(browser);
+  const PAGES_URL = "https://julianegwolf-svg.github.io/oepnv-tafel/";
+  const wurzel = path.join(__dirname, "..");
+  const typen = { ".html": "text/html", ".js": "application/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json" };
+  await page.route(PAGES_URL + "**", (route) => {
+    const rel = decodeURIComponent(new URL(route.request().url()).pathname.replace("/oepnv-tafel/", "")) || "index.html";
+    const datei = path.join(wurzel, rel);
+    if (!datei.startsWith(wurzel) || !fs.existsSync(datei) || fs.statSync(datei).isDirectory()) return route.fulfill({ status: 404, body: "" });
+    route.fulfill({ status: 200, contentType: typen[path.extname(datei)] || "application/octet-stream", body: fs.readFileSync(datei) });
+  });
+  await page.goto(PAGES_URL + "index.html");
+  await page.waitForFunction(() => panelVerfuegbar("music"), null, { timeout: 20000 }).catch(() => {});
+  await page.evaluate(() => jumpToPanel("music"));
+  await page.waitForTimeout(2500);
+  const p0 = await liste(page);
+  const proxyAnfrage = page.anfragen.some((u) => /kalender-worker.*musik=de/.test(u));
+  log(proxyAnfrage, "GitHub Pages: Charts über den Kalender-Worker abgefragt (?musik=de)");
+  log(!!p0 && p0.verfuegbar && p0.titel.length >= 10, "GitHub Pages: Musik-Panel mit " + (p0 ? p0.titel.length : 0) + " Titeln: " + (p0 ? p0.titel.slice(0, 3).join(" / ") + " …" : "—"));
+  log(!!p0 && /Apple Music · meistgespielt · Stand/.test(p0.quelle), "GitHub Pages: Quelle + Stand sichtbar: „" + (p0 && p0.quelle) + "“");
+  log(!page.anfragen.some((u) => /deezer/.test(u)), "GitHub Pages: keine Deezer-Anfrage");
+  const termine = await page.evaluate(() => panelVerfuegbar("calendar"));
+  log(termine, "GitHub Pages: Termine vom Kalender-Worker geladen");
+  await page.screenshot({ path: path.join(OUT, "pages-01-music.png") });
+  log(!page.codeFehler.length, "GitHub Pages: keine Code-Fehler" + (page.codeFehler.length ? " – " + page.codeFehler.join(" | ") : ""));
+  await page.context().close();
+
+  // 1. ohne HA von fremder Herkunft
+  page = await neueSeite(browser);
   await page.goto(PAGES);
   await page.waitForTimeout(6000);
   const ohneHa = { v: await page.evaluate(() => panelVerfuegbar("music")), deezer: page.anfragen.some((u) => /deezer/.test(u)) };
-  log(!ohneHa.v && !ohneHa.deezer, "Ohne HA und ohne Proxy: Musik-Panel fällt weg, keine Deezer-Anfrage");
+  log(!ohneHa.v && !ohneHa.deezer, "Ohne HA, Worker lehnt fremde Herkunft ab: Musik-Panel fällt weg, keine Deezer-Anfrage");
   log(!page.codeFehler.length, "ohne HA: keine Code-Fehler" + (page.codeFehler.length ? " – " + page.codeFehler.join(" | ") : ""));
   await page.context().close();
 

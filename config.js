@@ -248,7 +248,7 @@ const CONFIG = {
   // ehrlich als "Deezer · Top Germany" beschriftet.
   musikQuelle: "apple",
   musikSensor: "sensor.musik_charts",
-  musikProxy: "",
+  musikProxy: "https://kalender-worker.julian-e-g-wolf.workers.dev/?musik=de",
   musicPlaylistId: "1111143121",
   musicCount: 5,
   // "zweispaltig" = Nr. 1 groß links, Plätze 2–10 rechts mit Auf-/Absteigern

@@ -44,7 +44,9 @@ Wichtig: Eine Home-Bildschirm-App hat auf iOS **eigenen Speicher** – die Anmel
 
 Fertig. Oben rechts in der Uhr-Pille erscheint ein **Haus-Knopf** mit kleinem Statuspunkt (grün = verbunden).
 
-### 5. Kalender-Worker: die neue Adresse erlauben (sonst fehlen die Termine)
+### 5. ✅ Kalender-Worker: die neue Adresse erlauben (sonst fehlen die Termine)
+**Erledigt (Julian, 10.10. 11:31):** Der Worker erlaubt jetzt beide Adressen. Gegenprobe am 10.10. um 11:33 mit `curl -H "Origin: …"`: `https://julianegwolf-svg.github.io` und `http://homeassistant.local:8123` bekommen je ihre eigene Adresse als `Access-Control-Allow-Origin` zurück, dazu `Vary: Origin`, Termine und Charts. Fremde Herkünfte bekommen weiter nur die GitHub-Adresse. Der Rest dieses Abschnitts bleibt zum Nachlesen stehen.
+
 Alle anderen Datenquellen der Tafel (Abfahrten, Wetter, Nachrichten, Radar …) erlauben jede Adresse. **Nur dein Kalender-Worker** (`kalender-worker….workers.dev`) antwortet ausschließlich `https://julianegwolf-svg.github.io` – geprüft am 10.10. mit `curl -H "Origin: http://homeassistant.local:8123"`. Aus Home Assistant geöffnet, verschwinden deshalb still das Termine-Panel, der Termin im Tagesblick und im Morgengruß.
 
 Im Cloudflare-Dashboard → Workers → dein Kalender-Worker → **Code bearbeiten**: dort, wo `Access-Control-Allow-Origin` gesetzt wird, statt der festen Adresse eine kleine Liste verwenden:
@@ -62,7 +64,9 @@ const allowOrigin = ERLAUBT.indexOf(origin) !== -1 ? origin : ERLAUBT[0];
 ```
 **Prüfen am iPad:** lange auf die Uhr drücken → Einstellungen → **Datenquellen**. Jede Quelle zeigt, wann sie zuletzt geladen hat; „Termine – lädt nicht“ samt der Adresse, die der Worker erlauben muss, heißt: dieser Schritt fehlt noch.
 
-### 6. Musik-Charts: ein Sensor in Home Assistant (sonst bleibt das Panel weg)
+### 6. ✅ Musik-Charts: ein Sensor in Home Assistant (sonst bleibt das Panel weg)
+**Erledigt (Julian, 10.10. 11:31):** `sensor.musik_charts` steht in deiner configuration.yaml, der Kalender-Worker liefert die Liste zusätzlich unter `?musik=de`. `config.js` hat jetzt `musikProxy` gesetzt. Damit bekommt auch die GitHub-Pages-Fassung die Charts (geprüft: `belege/2026-10-10/s7/musik/pruefung.log`). In HA nimmt die Tafel zuerst den Sensor, fehlt er, den Worker.
+
 Die bisherigen „Charts“ waren Deezers Hörer-Playlist „Top Germany“. Am 10.10. standen davon nur 2 der Top 10 auch in den **Offiziellen Deutschen Charts**, dafür viel US-Country. Apple Music „Meistgespielt – Deutschland“ trifft 9 von 10, auch die Nr. 1 stimmt (Vergleich: `belege/2026-10-10/s6/musik/vergleich-charts.txt`). Apple erlaubt aber keinen Abruf direkt aus dem Browser. Deshalb holt Home Assistant die Liste einmal pro Stunde, und die Tafel liest sie über die bestehende Verbindung mit. **Ohne diesen Sensor zeigt die Tafel kein Musik-Panel.** Lieber keins als falsche Charts.
 
 In `configuration.yaml` ergänzen (Datei-Editor oder Samba), dann **Entwicklerwerkzeuge → YAML → Alle YAML-Konfigurationen neu laden**, bei Bedarf HA neu starten:
@@ -149,7 +153,7 @@ Die Tafel erkennt alles selbst aus deinen HA-Bereichen. Feinsteuerung (optional)
 | Raum fehlt | Raum hat in HA keine Geräte, die die Tafel anzeigen kann (z. B. Küche ohne Licht/Sensor) – absichtlich |
 | Schnellaktion meldet „hat nichts geschaltet“ (Chip „… wirkt nicht – in HA prüfen“) | HA hat die Automation zwar gestartet, aber kein Gerät hat reagiert – meist bricht sie an einer ungültigen Aktion ab (HA meldet das nicht zurück). In HA: Einstellungen → Automationen → die Automation → **Ablaufverfolgung** zeigt die Stelle. Bei *Bett Fertig*/*Arbeitsmodus*: je Lampe nur `color_temp_kelvin` **oder** `rgb_color` (FRAGEN 19) |
 | Keine Termine mehr (seit dem Umzug nach HA) | Kalender-Worker erlaubt die neue Adresse nicht → Schritt 5; Einstellungen → Datenquellen zeigt „Termine – lädt nicht“ |
-| Kein Musik-Panel | Absichtlich, solange `sensor.musik_charts` fehlt oder älter als 4 Tage ist → Schritt 6 |
+| Kein Musik-Panel | Absichtlich, solange weder `sensor.musik_charts` (höchstens 4 Tage alt) noch der Kalender-Worker (`?musik=de`) eine Liste liefert → Schritt 6 |
 
 ---
 
