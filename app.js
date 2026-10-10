@@ -3967,7 +3967,8 @@ function renderCommuteRace(results) {
       const extraText = [lineText, depText, noteText].filter(function (s) { return !!s; }).join(" · ");
       if (extraText) {
         const extra = document.createElement("div");
-        extra.className = "commute-race-extra";
+        extra.className = "commute-race-extra is-bus";
+        extra._standard = extraText;
         extra.textContent = extraText;
         row.appendChild(extra);
       }
@@ -3988,6 +3989,7 @@ function renderCommuteRace(results) {
     }
 
     els.commuteRace.appendChild(row);
+    if (m.key === "bus") aktualisiereBusZeile();
   });
 
   // Balken erst NACH dem Einfügen ins DOM auf die Zielbreite setzen (wie
@@ -4159,6 +4161,23 @@ function renderCommuteMap(coords, results) {
     'stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.92"></path>' +
     '<circle cx="' + homeXY[0].toFixed(1) + '" cy="' + homeXY[1].toFixed(1) + '" r="8" fill="#fff" stroke="' + color + '" stroke-width="4"></circle>' +
     '<circle cx="' + workXY[0].toFixed(1) + '" cy="' + workXY[1].toFixed(1) + '" r="8" fill="' + color + '" stroke="#fff" stroke-width="3"></circle>';
+}
+
+// Bus-Zeile im Arbeitsweg: werktags vor der Arbeit dieselbe Bahn wie
+// Tagesblick und Morgengruß (späteste pünktliche) – vorher stand hier
+// "ab 07:45" (Prognose fürs Losgehen um 07:30), dort "die 23 um 07:35".
+// Wird auch beim Zeigen des Panels erneuert: die gezielt geholten
+// Abfahrten kommen oft erst nach dem Routenabruf.
+function aktualisiereBusZeile() {
+  const el = document.querySelector(".commute-race-extra.is-bus");
+  if (!el) return;
+  let text = el._standard || "";
+  const ab = arbeitsBahnHeute();
+  if (ab && ab.dep && !ab.spaet) {
+    const hm = function (ms) { return new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }); };
+    text = "Bahn zur Arbeit: " + ab.dep.line + " um " + ab.dep.clock + " · los " + hm(ab.dep.leaveByMs) + " · an " + hm(ab.ankunftMs);
+  }
+  if (el.textContent !== text) el.textContent = text;
 }
 
 function updateCommute() {
@@ -4533,11 +4552,14 @@ function arbeitsBahnHeute() {
   const liste = (lastDepartureSnapshot || []).slice();
   let bis = 0;
   liste.forEach(function (d) { if (d.whenMs > bis) bis = d.whenMs; });
-  // Auch wenn die Abfahrtsliste schon weit genug reicht: die gezielt
-  // geholten Abfahrten ergänzen die Bahnen davor/danach (Tagesblick-Fahrplan).
+  // Die gezielt geholten Abfahrten (bis 30 min alt) ergänzen nur, was
+  // HINTER der Live-Liste liegt – innerhalb gilt die Live-Liste (Ausfälle,
+  // Verspätungen); sonst käme eine inzwischen gestrichene Bahn zurück.
   if (window.TafelTag && TafelTag.bahnenAb) {
+    const liveBis = bis;
     const frueh = TafelTag.bahnenAb(spaetestens - walkMs - 15 * 60000);
     (frueh || []).forEach(function (f) {
+      if (f.whenMs <= liveBis) return;
       const doppelt = liste.some(function (d) { return d.line === f.line && Math.abs(d.whenMs - f.whenMs) < 90000; });
       if (!doppelt) liste.push({ line: f.line, dest: f.dest, whenMs: f.whenMs, clock: fmt(f.whenMs), leaveByMs: f.whenMs - walkMs, color: f.color, textColor: f.textColor });
       if (f.whenMs > bis) bis = f.whenMs;
@@ -4618,8 +4640,14 @@ function matchOutcome(match, score, teamName) {
   return "draw";
 }
 
-function formatMatchDate(iso) {
-  const d = new Date(iso);
+// Anstoß als Date: matchDateTimeUTC (mit "Z") – matchDateTime hat keine
+// Zeitzone, und Safari 12 liest so etwas als UTC (auf dem iPad 2 h
+// verschoben, derselbe Effekt wie bei parseOpenMeteoLocal).
+function anstoss(m) {
+  return new Date(m.matchDateTimeUTC || m.matchDateTime);
+}
+
+function formatMatchDate(d) {
   return d.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" }) +
     ", " + d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr";
 }
@@ -4637,7 +4665,7 @@ function fetchTeamMatches(teamName) {
     });
 
     matches.sort(function (a, b) {
-      return new Date(a.matchDateTime).getTime() - new Date(b.matchDateTime).getTime();
+      return anstoss(a).getTime() - anstoss(b).getTime();
     });
 
     // BUG (IDEEN F1): OpenLigaDB setzt matchIsFinished oft erst Stunden
@@ -4647,7 +4675,7 @@ function fetchTeamMatches(teamName) {
     // + Verlängerung/Elfmeter mit Puffer).
     const overMs = 135 * 60 * 1000;
     const isOver = function (m) {
-      return m.matchIsFinished || (Date.now() - new Date(m.matchDateTime).getTime() > overMs);
+      return m.matchIsFinished || (Date.now() - anstoss(m).getTime() > overMs);
     };
 
     let next = null;
@@ -4668,8 +4696,8 @@ function fetchTeamMatches(teamName) {
     // mehr Platz lassen (siehe CONFIG.sportRelevanceDays).
     const windowMs = (CONFIG.sportRelevanceDays || 5) * 24 * 60 * 60 * 1000;
     const now = Date.now();
-    const nextSoon = next && (new Date(next.matchDateTime).getTime() - now) <= windowMs;
-    const lastRecent = last && (now - new Date(last.matchDateTime).getTime()) <= windowMs;
+    const nextSoon = next && (anstoss(next).getTime() - now) <= windowMs;
+    const lastRecent = last && (now - anstoss(last).getTime()) <= windowMs;
 
     if (!nextSoon && !lastRecent) return null;
 
@@ -4798,7 +4826,7 @@ function buildSportSlide(entry, index) {
   // Anstoß als Fern-Info (IDEEN F2): "Morgen 15:30" / "Heute 20:30" /
   // "Sa 15:30 · in 3 Tagen" groß, das genaue Datum klein darunter.
   if (useNext) {
-    const kick = new Date(match.matchDateTime);
+    const kick = anstoss(match);
     const big = document.createElement("div");
     big.className = "sport-slide-kickoff";
     big.textContent = kickoffLabel(kick);
@@ -4806,7 +4834,7 @@ function buildSportSlide(entry, index) {
   }
   const meta = document.createElement("div");
   meta.className = "sport-slide-meta";
-  meta.textContent = formatMatchDate(match.matchDateTime);
+  meta.textContent = formatMatchDate(anstoss(match));
   content.appendChild(meta);
 
   // Letztes Ergebnis: darunter, gegen wen und wann es weitergeht – vorher
@@ -4819,7 +4847,7 @@ function buildSportSlide(entry, index) {
     weiter.className = "sport-slide-danach";
     weiter.innerHTML = '<span class="sport-slide-danach-label">Als Nächstes</span>' +
       '<span class="sport-slide-danach-text"></span>';
-    const k = new Date(n.matchDateTime);
+    const k = anstoss(n);
     const wann = kickoffLabel(k).indexOf(" · in ") !== -1
       ? k.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "numeric" }) + ", " +
         k.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
@@ -5182,6 +5210,8 @@ function showPanel(name) {
     // Tages-Rätsel erneut abzuspielen.
     updateRiddle();
   }
+
+  if (name === "commute") aktualisiereBusZeile();
 
   if (name === "news") {
     startNewsSlideshow();

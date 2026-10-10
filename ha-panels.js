@@ -973,34 +973,67 @@
   // Kontext mit parent_id = Kontext unseres Aufrufs (bei Skripten direkt
   // dessen id). Kommt binnen 5 s keine einzige solche Änderung, obwohl
   // eine zu erwarten war, hat die Automation vermutlich nichts bewirkt.
-  let wirkungsBeobachter = null;
+  // Mehrere Aktionen können sich überschneiden – je Aufruf ein Beobachter.
+  const wirkungsBeobachter = [];
   const ohneWirkung = {}; // Aktions-id → { name, at } für den Hinweis
 
   function beobachteWirkung(zielId) {
-    wirkungsBeobachter = { ziel: zielId, kontexte: [] };
-    return wirkungsBeobachter;
+    const b = { ziel: zielId, kontexte: [] };
+    wirkungsBeobachter.push(b);
+    return b;
   }
 
+  function beendeBeobachter(b) {
+    const i = wirkungsBeobachter.indexOf(b);
+    if (i !== -1) wirkungsBeobachter.splice(i, 1);
+  }
+
+  // Nur Kontexte mit Auslöser (parent_id/user_id) merken – Geräte-Updates
+  // haben keinen und würden in einem großen HA die Liste füllen. Die eigene
+  // Änderung der Automation zählt nicht als Wirkung, verrät aber deren
+  // Kontext (für Ketten: Automation löst Automation aus).
   function merkeWirkung(entityId, neu) {
-    const b = wirkungsBeobachter;
-    if (!b || entityId === b.ziel || !neu || !neu.context || b.kontexte.length >= 200) return;
-    b.kontexte.push(neu.context);
+    if (!wirkungsBeobachter.length || !neu || !neu.context) return;
+    const c = neu.context;
+    if (!c.parent_id && !c.user_id) return;
+    for (let i = 0; i < wirkungsBeobachter.length; i++) {
+      const b = wirkungsBeobachter[i];
+      if (b.kontexte.length < 200) b.kontexte.push({ id: c.id, parent_id: c.parent_id, eigen: entityId === b.ziel });
+    }
+  }
+
+  // Wirkung = irgendeine fremde Änderung, deren Kontext (über beliebig viele
+  // Glieder) auf unseren Aufruf zurückgeht.
+  function hatWirkung(b, kontextId) {
+    const kette = {};
+    kette[kontextId] = true;
+    let neu = true;
+    while (neu) {
+      neu = false;
+      for (let i = 0; i < b.kontexte.length; i++) {
+        const c = b.kontexte[i];
+        if (c.parent_id && kette[c.parent_id] && !kette[c.id]) { kette[c.id] = true; neu = true; }
+      }
+    }
+    return b.kontexte.some(function (c) { return !c.eigen && (kette[c.id] || (c.parent_id && kette[c.parent_id])); });
   }
 
   function pruefeWirkung(b, kontextId, warteMs) {
     return new Promise(function (resolve) {
       if (!kontextId) { resolve(true); return; } // nicht feststellbar → nicht warnen
-      const treffer = function () {
-        return b.kontexte.some(function (c) { return c.id === kontextId || c.parent_id === kontextId; });
-      };
-      if (treffer()) { resolve(true); return; }
+      if (hatWirkung(b, kontextId)) { resolve(true); return; }
       const start = Date.now();
       const iv = setInterval(function () {
-        if (treffer()) { clearInterval(iv); resolve(true); }
-        else if (Date.now() - start > warteMs) { clearInterval(iv); resolve(false); }
+        if (hatWirkung(b, kontextId)) { clearInterval(iv); resolve(true); return; }
+        if (Date.now() - start <= warteMs) return;
+        clearInterval(iv);
+        // Skripte kehren in HA sofort zurück; läuft es noch (z. B. Verzögerung
+        // am Anfang), ist das kein Fehler.
+        const st = HA.state(b.ziel);
+        resolve(!!(st && HA.domainOf(b.ziel) === "script" && st.state === "on"));
       }, 250);
     }).then(function (ok) {
-      if (wirkungsBeobachter === b) wirkungsBeobachter = null;
+      beendeBeobachter(b);
       return ok;
     });
   }
@@ -1017,6 +1050,9 @@
       return;
     }
     if (s && s.phase === "busy") return;
+    // Neustart aus "erledigt"/"nichts geschaltet": dessen 20-s-Timer würde
+    // sonst den neuen Countdown löschen.
+    if (s && s.timer) clearTimeout(s.timer);
     const action = quickActions().filter(function (a) { return a.id === actionId; })[0];
     if (!action) return;
     const secs = confirmSeconds() + (actionId === "raus" && openWindowNames().length ? 4 : 0);
@@ -1086,7 +1122,9 @@
       return HA.callService("homeassistant", "turn_on", null, { entity_id: action.ziel });
     }).then(function (res) {
       if (!beob) { fertig("erledigt"); return null; }
-      const erwartet = lichterVorher > 0 || action.id === "nacht" || action.id === "arbeit";
+      // Nur wenn vorher Licht an war: Ist schon alles aus bzw. im Zielzustand,
+      // meldet HA keine Änderung – das wäre ein Fehlalarm (und kein Abdunkeln).
+      const erwartet = lichterVorher > 0;
       return pruefeWirkung(beob, res && res.context ? res.context.id : null, 5000).then(function (ok) {
         if (ok || !erwartet) {
           delete ohneWirkung[action.id];
@@ -1097,7 +1135,7 @@
         }
       });
     }).catch(function (err) {
-      if (beob && wirkungsBeobachter === beob) wirkungsBeobachter = null;
+      if (beob) beendeBeobachter(beob);
       // Echtes HA antwortet auf automation.trigger/script.turn_on erst,
       // wenn alles durchgelaufen ist – mit Verzögerungen oder Push dauert
       // das länger als unser Zeitlimit. Dann läuft sie trotzdem.

@@ -349,7 +349,7 @@
       }).map(function (d) {
         const p = d.place || {};
         return {
-          line: d.routeShortName || d.displayName || "?",
+          line: d.routeShortName || d.tripShortName || d.displayName || "?",
           dest: d.headsign || "",
           whenMs: new Date(p.departure || p.scheduledDeparture).getTime(),
           color: d.routeColor || null,
@@ -480,9 +480,17 @@
     }
   }
 
+  // Nur sichtbare Kandidaten (per CSS ausgeblendete Zeilen zählen nicht).
   function letztes(el, sel) {
     const alle = el.querySelectorAll(sel);
-    return alle.length ? alle[alle.length - 1] : null;
+    for (let i = alle.length - 1; i >= 0; i--) if (alle[i].offsetHeight) return alle[i];
+    return null;
+  }
+
+  function erstes(el, sel) {
+    const alle = el.querySelectorAll(sel);
+    for (let i = 0; i < alle.length; i++) if (alle[i].offsetHeight) return alle[i];
+    return null;
   }
 
   // Jede Karte so kürzen, dass nichts unten abgeschnitten wird (Hinweis-
@@ -496,9 +504,9 @@
       for (let n = 0; n < 12 && karte.scrollHeight > karte.clientHeight + 1; n++) {
         // Die Zusammenfassung "Los um … · Arbeit ca. …" steht auch in der
         // markierten Fahrplanzeile – lieber sie opfern als die nächste Bahn.
-        const sum = karte.querySelector(".tb-plan-row.is-pick") && karte.querySelector(".tb-plan-row.is-nach-1") ? karte.querySelector(".tb-bahn-sum") : null;
-        const weg = karte.querySelector(".tb-plan-row.is-vor") || letztes(karte, ".tb-plan-row.is-nach-3, .tb-plan-row.is-nach-2") ||
-          letztes(karte, ".tb-hour") || sum || letztes(karte, ".tb-plan-row:not(.is-pick)") || letztes(karte, ".tb-raum") || letztes(karte, ".tb-abf-row") || karte.querySelector(".tb-plan");
+        const sum = erstes(karte, ".tb-plan-row.is-pick") && erstes(karte, ".tb-plan-row.is-nach-1") ? erstes(karte, ".tb-bahn-sum") : null;
+        const weg = erstes(karte, ".tb-plan-row.is-vor") || letztes(karte, ".tb-plan-row.is-nach-3, .tb-plan-row.is-nach-2") ||
+          letztes(karte, ".tb-hour") || sum || letztes(karte, ".tb-plan-row:not(.is-pick)") || letztes(karte, ".tb-raum") || letztes(karte, ".tb-abf-row") || erstes(karte, ".tb-plan");
         if (!weg) break;
         weg.parentNode.removeChild(weg);
       }

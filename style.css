@@ -4208,3 +4208,15 @@ body.wetter-ruhig .weather-hour-icon {
   font-weight: 700;
   color: #fff;
 }
+
+/* Arbeitsweg: Zusatzzeilen (Bahn zur Arbeit, Stau) lesbar – 12 px lag
+   unter der eigenen Grenze von 16 px; unten war Platz genug. */
+.commute-race-extra {
+  margin-top: 10px;
+  font-size: 17px;
+}
+
+.commute-race-extra.is-bus {
+  font-weight: 600;
+  color: var(--ink);
+}

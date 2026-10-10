@@ -12,7 +12,8 @@
 //   node tool/pruefe-wirkung.js --sim http://localhost:8126 --erwartung keine --out belege/…/wirkung/streng
 //   node tool/pruefe-wirkung.js --sim http://localhost:8125 --erwartung wirkt --out belege/…/wirkung/locker
 //
-// Optionen: --aktion nacht (Schnellaktion-id), --erwartung keine|wirkt
+// Optionen: --aktion nacht (Schnellaktion-id), --erwartung keine|wirkt|still
+//           (still = vorher alle Lichter aus: kein Fehlalarm, trotzdem abdunkeln)
 const { webkit } = require("playwright");
 const path = require("path");
 const fs = require("fs");
@@ -73,7 +74,9 @@ function log(ok, text) {
   await page.waitForTimeout(1500);
 
   // Drei Lampen an – eine wirkende Automation muss dann etwas schalten.
-  await page.evaluate(() => TafelHA.callService("light", "turn_on", null, { entity_id: TafelHA.model().global.lightsAll.slice(0, 3) }));
+  // ("still": alle aus – dann ist keine Änderung zu erwarten.)
+  if (ERWARTUNG === "still") await page.evaluate(() => TafelHA.callService("light", "turn_off", null, { entity_id: TafelHA.model().global.lightsAll }));
+  else await page.evaluate(() => TafelHA.callService("light", "turn_on", null, { entity_id: TafelHA.model().global.lightsAll.slice(0, 3) }));
   await page.waitForTimeout(800);
   const anVorher = await page.evaluate(() => TafelHA.model().global.lightsAll.filter((id) => TafelHA.state(id).state === "on"));
   await page.evaluate(() => jumpToPanel("home"));
@@ -114,6 +117,12 @@ function log(ok, text) {
     await shot("hinweis");
     await page.waitForTimeout(10000); // Toast (12 s) ist weg, Hinweis bleibt
     await shot("hinweis-danach");
+  } else if (ERWARTUNG === "still") {
+    log(anVorher.length === 0, "Vorher waren alle Lichter aus");
+    log(/erledigt/.test(toast) && !/nichts geschaltet/.test(toast), "Kein Fehlalarm, obwohl sich nichts ändern musste");
+    log(hinweis.length === 0, "Kein Hinweis im Band");
+    if (AKTION === "nacht") log(dunkel, "„Gute Nacht“ dunkelt die Tafel trotzdem ab");
+    await shot("danach");
   } else {
     log(geaendert, "Automation hat geschaltet (" + anVorher.length + " → " + anNachher.length + " Lichter an)");
     log(/erledigt/.test(toast) && !/nichts geschaltet/.test(toast), "Tafel meldet „erledigt“ – kein Fehlalarm");
