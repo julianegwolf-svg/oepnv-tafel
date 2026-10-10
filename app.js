@@ -253,7 +253,12 @@ function tickClock() {
   updateNightDim(now.getHours());
   applyFarbwelt(now);
   if (now.getSeconds() % 15 === 0) updateStaleBadge();
+  // Nicht an eine bestimmte Sekunde koppeln: fällt die mal aus (voller
+  // Hauptthread), liefe der Wächter sonst nicht.
+  if (now.getTime() - waechterZuletzt >= 15000) { waechterZuletzt = now.getTime(); karussellWaechter(); }
 }
+
+let waechterZuletzt = 0;
 
 // ---------- Farbwelt (IDEEN R1) ----------
 // "dunkel" = immer das dunkle Designsystem (wie die Home-Assistant-
@@ -2220,7 +2225,22 @@ function fetchJsonp(url, timeoutMs) {
     const script = document.createElement("script");
     let settled = false;
 
-    function cleanup() {
+    function cleanup(spaet) {
+      if (spaet) {
+        // Die Antwort kann nach dem Zeitlimit noch kommen (ein entferntes
+        // <script> bricht die Anfrage nicht ab) – dann bräuchte sie den
+        // Callback, sonst ReferenceError in der Konsole. Leerfunktion, bis
+        // das Skript geladen oder gescheitert ist (höchstens wenige Stück
+        // bis zum 3-h-Neuladen der Tafel).
+        const weg = function () {
+          delete window[cbName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+        };
+        window[cbName] = function () {};
+        script.onload = weg;
+        script.onerror = weg;
+        return;
+      }
       delete window[cbName];
       if (script.parentNode) script.parentNode.removeChild(script);
     }
@@ -2228,7 +2248,7 @@ function fetchJsonp(url, timeoutMs) {
     const timer = setTimeout(function () {
       if (settled) return;
       settled = true;
-      cleanup();
+      cleanup(true);
       reject(new Error("JSONP-Anfrage: Zeitüberschreitung"));
     }, timeoutMs || 8000);
 
@@ -5191,6 +5211,7 @@ function unmountInactivePanels(activeName) {
 }
 
 function showPanel(name) {
+  letzterPanelWechsel = Date.now();
   const ids = PANEL_IDS;
   for (let i = 0; i < ids.length; i++) {
     const el = document.getElementById("panel-" + ids[i]);
@@ -5422,11 +5443,17 @@ function pickNextAvailablePanel() {
     panelIndex = (panelIndex + 1) % activeSequence.length;
     if (panelIndex === 0) shuffleSequence();
     const name = activeSequence[panelIndex];
-    const check = PANEL_AVAILABILITY[name];
-    if (!check || check()) return name;
+    if (panelVerfuegbar(name)) return name;
     tries++;
   }
   return activeSequence[panelIndex];
+}
+
+// Verfügbarkeit; eine Prüfung, die wirft, gilt als "nicht verfügbar".
+function panelVerfuegbar(name) {
+  const check = PANEL_AVAILABILITY[name];
+  if (!check) return true;
+  try { return !!check(); } catch (e) { console.error("Verfügbarkeit " + name + ":", e); return false; }
 }
 
 // "Als Nächstes: Wetter" in den letzten 3 Sekunden (IDEEN R4): der
@@ -5436,8 +5463,7 @@ let nextHintTimer = null;
 function peekNextPanel() {
   for (let k = 1; k <= activeSequence.length; k++) {
     const name = activeSequence[(panelIndex + k) % activeSequence.length];
-    const check = PANEL_AVAILABILITY[name];
-    if (!check || check()) return name;
+    if (panelVerfuegbar(name)) return name;
   }
   return null;
 }
@@ -5457,6 +5483,22 @@ function setNextHint(ms) {
   }, Math.max(0, ms - 3000));
 }
 
+// Ein Panelwechsel. Wirft ein Panel oder eine Verfügbarkeitsprüfung eine
+// Ausnahme, läuft das Karussell trotzdem weiter – vorher hätte jeder
+// Fehler hier den Durchlauf für immer angehalten (genau das, was an der
+// Wand am meisten stört, FEEDBACK 10.10.).
+function carouselStep() {
+  // Immer erst einen laufenden Timer abräumen: ruft der Wächter das auf,
+  // während noch einer läuft, liefen sonst zwei Ketten parallel.
+  if (carouselTimer) { clearTimeout(carouselTimer); carouselTimer = null; }
+  try {
+    showPanel(pickNextAvailablePanel());
+  } catch (e) {
+    console.error("Karussell: Panelwechsel fehlgeschlagen –", e);
+  }
+  scheduleCarousel();
+}
+
 function scheduleCarousel() {
   const seq = activeSequence;
   if (!seq || seq.length < 2) return;
@@ -5467,11 +5509,25 @@ function scheduleCarousel() {
   setNextHint(duration);
 
   if (carouselTimer) clearTimeout(carouselTimer);
-  carouselTimer = setTimeout(function () {
-    const nextName = pickNextAvailablePanel();
-    showPanel(nextName);
-    scheduleCarousel();
-  }, duration);
+  carouselTimer = setTimeout(carouselStep, duration);
+}
+
+// Karussell-Wächter (alle 15 s aus tickClock): Steht das aktuelle Panel
+// länger als doppelt so lange wie vorgesehen (mindestens 3 min), ohne dass
+// es dafür einen Grund gibt (Antippen, Übersicht, Raumansicht, Nacht-
+// ansicht, Ambient), wird das Karussell neu angeworfen. Sicherheitsnetz
+// für alles, was den Wechsel-Timer unbemerkt verlieren könnte.
+let letzterPanelWechsel = Date.now();
+
+function karussellWaechter() {
+  if (recentlyTouched || panelNavOpen || ambientActive || nightViewActive || carouselIdleTimer) return;
+  if (window.TafelHAUI && TafelHAUI.blocksCarousel()) return;
+  if (!activeSequence || activeSequence.length < 2) return;
+  const soll = durationForPanel(activeSequence[panelIndex]);
+  if (Date.now() - letzterPanelWechsel <= Math.max(2 * soll, 3 * 60 * 1000)) return;
+  console.warn("Karussell stand " + Math.round((Date.now() - letzterPanelWechsel) / 1000) + " s – neu angeworfen");
+  letzterPanelWechsel = Date.now();
+  carouselStep();
 }
 
 // ---------- Panel-Übersicht (Direktsprung) + Touch-Pause ----------
@@ -5566,11 +5622,7 @@ function resumeCarouselFromFraction() {
 
   setNextHint(remaining);
   if (carouselTimer) clearTimeout(carouselTimer);
-  carouselTimer = setTimeout(function () {
-    const nextName = pickNextAvailablePanel();
-    showPanel(nextName);
-    scheduleCarousel();
-  }, remaining);
+  carouselTimer = setTimeout(carouselStep, remaining);
 }
 
 function deferCarouselAdvance() {
