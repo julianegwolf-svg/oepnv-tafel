@@ -203,6 +203,7 @@
       if (!radar.el) buildRadar(panel);
       void radar.el.offsetWidth;
       radar.el.classList.add("is-shown");
+      panel.classList.add("has-radar");
       radar.index = Math.max(0, frames.length - 8);
       if (radar.timer) clearTimeout(radar.timer);
       showFrame(radar.index);
@@ -211,6 +212,8 @@
 
   function radarHide() {
     radar.active = false;
+    const wp = document.getElementById("panel-weather");
+    if (wp) wp.classList.remove("has-radar");
     if (radar.timer) { clearTimeout(radar.timer); radar.timer = null; }
     if (!radar.el) return;
     // Bilder sofort freigeben, Element nach dem Ausblenden entfernen.

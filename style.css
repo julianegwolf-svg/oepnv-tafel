@@ -2975,3 +2975,109 @@ html, body {
 .night-overlay.is-slow {
   transition: opacity 3.5s ease;
 }
+
+
+/* ---------- Wetter: 12-h-Verlauf in der Mitte (IDEEN W1) ---------- */
+.weather-curve {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 214px;
+  height: 196px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.weather-curve:empty {
+  display: none;
+}
+
+.weather-curve svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: 170px;
+  overflow: visible;
+}
+
+.wc-line {
+  fill: none;
+  stroke: #e2a65a;
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.wc-rain {
+  fill: rgba(111, 179, 214, 0.45);
+}
+
+.wc-rain.is-wet {
+  fill: #6fb3d6;
+}
+
+.wc-plot {
+  position: relative;
+  height: 170px;
+}
+
+.wc-hour,
+.wc-temp,
+.wc-dot {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.wc-hour {
+  top: 152px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.wc-temp {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.wc-dot {
+  width: 9px;
+  height: 9px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.wc-legend {
+  display: flex;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.wc-key {
+  display: inline-block;
+  width: 14px;
+  height: 4px;
+  margin: 0 6px 0 14px;
+  border-radius: 2px;
+}
+
+.wc-key:first-child {
+  margin-left: 0;
+}
+
+.wc-key-t { background: #e2a65a; }
+.wc-key-r { background: #6fb3d6; height: 10px; }
+
+/* Radar sichtbar (clips.js setzt .has-radar): Verlauf weicht nach links aus. */
+#panel-weather.has-radar .weather-curve {
+  right: 440px;
+}

@@ -194,6 +194,9 @@ const CONFIG = {
 
   // Wetter-Panel: wie viele Stunden-Kacheln
   weatherHourCount: 5,
+  // Mitte des Wetter-Panels: "verlauf" = Temperaturkurve + Regen der
+  // nächsten 12 Stunden, "leer" = nur Himmel (bisher).
+  wetterMitte: "verlauf",
 
   // News-Panel: Mischung aus Bremen-Regionalmeldungen (regions=5) und
   // überregionalen/internationalen Meldungen (allgemeiner Feed + explizit

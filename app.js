@@ -1531,6 +1531,7 @@ function updateWeather() {
     }
 
     renderWeatherDetails(data);
+    renderWeatherCurve();
 
     if (els.weatherBigMinMax && data.daily && data.daily.temperature_2m_max && data.daily.temperature_2m_min
       && data.daily.temperature_2m_max[0] != null && data.daily.temperature_2m_min[0] != null) {
@@ -3685,6 +3686,67 @@ const WASTE_LABELS = {
   restbio: { icon: "🗑️", text: "Restmüll & Bioabfall" },
   papier: { icon: "♻️", text: "Papier & Gelber Sack" },
 };
+
+// ---------- Wetter: 12-Stunden-Verlauf in der Mitte (IDEEN W1) ----------
+// Die Mitte des Wetter-Panels war leerer Himmel. Jetzt: Temperaturkurve
+// der nächsten 12 Stunden mit Regenwahrscheinlichkeit als Balken —
+// beantwortet "wird's wärmer/kälter, wann regnet's" auf einen Blick.
+// CONFIG.wetterMitte: "verlauf" (Standard) | "leer".
+function renderWeatherCurve() {
+  const el = document.getElementById("weatherCurve");
+  const w = lastWeatherSnapshot;
+  if (!el) return;
+  if ((CONFIG.wetterMitte || "verlauf") !== "verlauf" || !w || !w.hourly) { el.innerHTML = ""; return; }
+  const h = w.hourly;
+  const now = Date.now();
+  let start = 0;
+  while (start < h.time.length - 1 && h.time[start] + 3600000 <= now) start++;
+  const idx = [];
+  for (let i = start; i < h.time.length && idx.length < 13; i++) idx.push(i);
+  if (idx.length < 4) { el.innerHTML = ""; return; }
+  const W = 940;
+  const H = 170;
+  const top = 26;
+  const bottom = 56;
+  const temps = idx.map(function (i) { return h.temp[i]; });
+  const lo = Math.min.apply(null, temps) - 1;
+  const hi = Math.max.apply(null, temps) + 1;
+  const x = function (k) { return 30 + k * (W - 60) / (idx.length - 1); };
+  const y = function (t) { return top + (1 - (t - lo) / (hi - lo)) * (H - top - bottom); };
+  let line = "";
+  idx.forEach(function (i, k) { line += (k ? "L" : "M") + x(k).toFixed(1) + " " + y(h.temp[i]).toFixed(1); });
+  const area = line + "L" + x(idx.length - 1).toFixed(1) + " " + (H - bottom) + "L" + x(0).toFixed(1) + " " + (H - bottom) + "Z";
+  // Linie, Fläche und Balken als SVG (darf sich in der Breite strecken);
+  // Beschriftungen und Punkte als HTML in Prozent — Schrift bleibt so in
+  // jeder Breite (z. B. neben dem Regenradar) unverzerrt.
+  const pct = function (k) { return (x(k) / W * 100).toFixed(2) + "%"; };
+  let bars = "";
+  let labels = "";
+  idx.forEach(function (i, k) {
+    const pp = h.pp[i] || 0;
+    if (pp >= 10) {
+      const bh = Math.max(2, pp / 100 * 30);
+      bars += '<rect x="' + (x(k) - 9).toFixed(1) + '" y="' + (H - bottom + 30 - bh).toFixed(1) + '" width="18" height="' + bh.toFixed(1) + '" rx="3" class="wc-rain' + (pp >= 50 ? " is-wet" : "") + '"/>';
+    }
+    if (k % 2 === 0) {
+      labels += '<span class="wc-hour" style="left:' + pct(k) + '">' + new Date(h.time[i]).getHours() + " Uhr</span>";
+    }
+  });
+  // Höchst- und Tiefstwert direkt an der Kurve beschriften.
+  let iMax = 0;
+  let iMin = 0;
+  temps.forEach(function (t, k) { if (t > temps[iMax]) iMax = k; if (t < temps[iMin]) iMin = k; });
+  const mark = function (k) {
+    return '<span class="wc-dot" style="left:' + pct(k) + ";top:" + y(temps[k]).toFixed(1) + 'px"></span>' +
+      '<span class="wc-temp" style="left:' + pct(k) + ";top:" + (y(temps[k]) - 30).toFixed(1) + 'px">' + Math.round(temps[k]) + "°</span>";
+  };
+  el.innerHTML = '<div class="wc-plot"><svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" aria-hidden="true">' +
+    '<defs><linearGradient id="wcFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e2a65a" stop-opacity="0.35"/><stop offset="1" stop-color="#e2a65a" stop-opacity="0"/></linearGradient></defs>' +
+    '<path d="' + area + '" fill="url(#wcFill)"/>' +
+    '<path d="' + line + '" class="wc-line"/>' + bars +
+    "</svg>" + labels + mark(iMax) + (iMin !== iMax ? mark(iMin) : "") + "</div>" +
+    '<div class="wc-legend"><span class="wc-key wc-key-t"></span>Temperatur <span class="wc-key wc-key-r"></span>Regenwahrscheinlichkeit · nächste 12 Stunden</div>';
+}
 
 // ---------- Mondphase (AUSBAU D21) ----------
 // Rein rechnerisch: Alter seit einem bekannten Neumond (6.1.2000 18:14 UTC)
