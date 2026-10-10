@@ -3755,3 +3755,30 @@ html, body {
 #panel-weather .weather-detail-chip {
   flex: 1;
 }
+
+
+/* ---------- Ambient (IDEEN AM1) ----------
+   Ruhiges Bild ohne Endlos-Animation (AUSBAU 4: im Ambient keine
+   Animationen), dunkler Grund, unter der Uhr eine Zeile mit Nutzen. */
+.ambient-overlay {
+  flex-direction: column;
+  background: #0d1219;
+}
+
+.ambient-overlay::before {
+  animation: none;
+  will-change: auto;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(226, 166, 90, 0.14), transparent 45%),
+    radial-gradient(circle at 70% 70%, rgba(111, 179, 214, 0.12), transparent 45%);
+}
+
+.ambient-info {
+  position: relative;
+  z-index: 1;
+  margin-top: 18px;
+  font-size: 28px;
+  font-weight: 600;
+  color: rgba(239, 233, 223, 0.7);
+  font-variant-numeric: tabular-nums;
+}

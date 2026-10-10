@@ -239,8 +239,9 @@ function tickClock() {
   const dayText = now.toLocaleDateString("de-DE", { day: "numeric", month: "long" });
   if (els.clockWeekday && els.clockWeekday.textContent !== weekday) els.clockWeekday.textContent = weekday;
   if (els.clockDay && els.clockDay.textContent !== dayText) els.clockDay.textContent = dayText;
-  if (els.ambientClock) {
+  if (els.ambientClock && ambientActive) {
     els.ambientClock.textContent = now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    updateAmbientInfo(now);
   }
   updateNightDim(now.getHours());
   applyFarbwelt(now);
@@ -5187,10 +5188,27 @@ function armAmbientTimer() {
   ambientTimer = setTimeout(enterAmbientMode, CONFIG.ambientAfterMs);
 }
 
+// Ruhebild mit Nutzen (IDEEN AM1): unter der Uhr Datum, Temperatur und
+// die nächste Bahn — die zwei Zahlen, die man im Vorbeigehen wissen will.
+function updateAmbientInfo(now) {
+  const el = document.getElementById("ambientInfo");
+  if (!el) return;
+  const parts = [now.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "long" })];
+  if (lastWeatherSnapshot && lastWeatherSnapshot.temp != null) parts.push(lastWeatherSnapshot.temp + "°");
+  const dep = (lastDepartureSnapshot || []).filter(function (d) { return d.whenMs && d.whenMs > now.getTime(); })[0];
+  if (dep) parts.push("Linie " + dep.line + " in " + Math.max(1, Math.round((dep.whenMs - now.getTime()) / 60000)) + " min");
+  const text = parts.join(" · ");
+  if (el.textContent !== text) el.textContent = text;
+}
+
 function enterAmbientMode() {
   if (ambientActive) return;
   ambientActive = true;
   pauseCarouselIndefinitely();
+  // Abwesenheit ist keine Berührung: Tiefschlaf darf weiter greifen.
+  recentlyTouched = false;
+  if (els.ambientClock) els.ambientClock.textContent = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  updateAmbientInfo(new Date());
   if (els.ambientOverlay) els.ambientOverlay.classList.add("is-active");
 }
 
