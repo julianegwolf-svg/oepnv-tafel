@@ -3582,6 +3582,34 @@ html, body {
 }
 
 
+/* ---------- Veranstaltungen in Bremen (Sitzung 6) ---------- */
+.fest-hinweis {
+  margin-top: 8px;
+  font-size: 17px;
+  color: var(--ink-dim);
+}
+
+.fest-row {
+  align-items: center;
+}
+
+.day-time.fest-datum {
+  width: 168px;
+  font-size: 21px;
+}
+
+.fest-row .day-text {
+  flex: 1;
+}
+
+.fest-bald {
+  flex-shrink: 0;
+  margin-left: 16px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink-dim);
+}
+
 /* ---------- Musik zweispaltig (IDEEN M1) ---------- */
 .music2 {
   display: flex;

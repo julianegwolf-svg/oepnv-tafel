@@ -2613,8 +2613,144 @@ function relativeIn(ms) {
   return "in " + d + (d === 1 ? " Tag" : " Tagen");
 }
 
+// ---------- Veranstaltungen in Bremen (Sitzung 6) ----------
+// FEEDBACK „Veranstaltungen stimmen meistens auch nicht“: InfraNode lieferte
+// zu 88 % Umland-Termine und für Bremen falsche Daten (siehe bremen-feste.js).
+// Jetzt: geprüfte Liste der großen Bremer Veranstaltungen + Werder-Heimspiele
+// aus den Fußball-Daten. Gezeigt wird, was läuft oder in den nächsten
+// 10 Wochen beginnt (mindestens die nächsten drei).
+const FEST_TAGE = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+
+function festDatum(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+}
+
+function festeAnstehend(jetztMs) {
+  const heute = new Date(jetztMs);
+  heute.setHours(0, 0, 0, 0);
+  const liste = [];
+  (window.BREMER_FESTE || []).forEach(function (e) {
+    const von = festDatum(e.von);
+    const bis = festDatum(e.bis);
+    if (!von || !bis) return;
+    const ende = new Date(bis.getFullYear(), bis.getMonth(), bis.getDate() + 1).getTime();
+    if (ende <= jetztMs) return;
+    liste.push({ name: e.name, ort: e.ort, hinweis: e.hinweis || "", von: von, bis: bis, ende: ende, zeit: false });
+  });
+  Object.keys(heimspiele).forEach(function (team) {
+    heimspiele[team].forEach(function (h) {
+      if (h.start.getTime() + 2 * 3600000 <= jetztMs) return;
+      // Weiter entfernte Spiele stehen bei OpenLigaDB noch mit einem
+      // Platzhalter (Sa 15:30), bis die DFL die Anstoßzeiten festlegt –
+      // keine erfundene Uhrzeit zeigen.
+      if (h.start.getTime() - jetztMs > 21 * 86400000) return;
+      const tag = new Date(h.start.getFullYear(), h.start.getMonth(), h.start.getDate());
+      liste.push({ name: h.name, ort: h.ort, hinweis: "", von: tag, bis: tag, start: h.start, ende: h.start.getTime() + 2 * 3600000, zeit: true });
+    });
+  });
+  liste.sort(function (a, b) { return (a.start || a.von) - (b.start || b.von); });
+  const grenze = heute.getTime() + 70 * 86400000;
+  return liste.filter(function (e, i) { return i < 3 || e.von.getTime() <= grenze; }).slice(0, 5);
+}
+
+function festTagKurz(d) {
+  return FEST_TAGE[d.getDay()] + " " + d.getDate() + "." + (d.getMonth() + 1) + ".";
+}
+
+function festSpanne(e) {
+  if (e.zeit) return festTagKurz(e.von);
+  if (e.von.getTime() === e.bis.getTime()) return festTagKurz(e.von);
+  const gleicherMonat = e.von.getMonth() === e.bis.getMonth();
+  return e.von.getDate() + "." + (gleicherMonat ? "" : (e.von.getMonth() + 1) + ".") + "–" + e.bis.getDate() + "." + (e.bis.getMonth() + 1) + ".";
+}
+
+// "Läuft · noch 12 Tage" / "Morgen" / "Ab Fr · in 6 Tagen" / "Sa 17.10. · 15:30 Uhr · in 7 Tagen"
+function festWann(e, jetztMs) {
+  const heute = new Date(jetztMs);
+  heute.setHours(0, 0, 0, 0);
+  const tageBis = Math.round((e.von.getTime() - heute.getTime()) / 86400000);
+  const uhr = e.zeit ? " · " + e.start.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr" : "";
+  if (tageBis <= 0) {
+    if (e.zeit) return "Heute" + uhr;
+    const rest = Math.round((e.bis.getTime() - heute.getTime()) / 86400000);
+    if (e.von.getTime() === e.bis.getTime()) return "Heute";
+    return rest <= 0 ? "Läuft · heute letzter Tag" : "Läuft · noch " + (rest + 1) + " Tage, bis " + festTagKurz(e.bis);
+  }
+  if (tageBis === 1) return "Morgen" + uhr;
+  const ab = e.von.getTime() === e.bis.getTime() || e.zeit ? festTagKurz(e.von) : "Ab " + festTagKurz(e.von);
+  return ab + uhr + " · in " + tageBis + " Tagen";
+}
+
+function renderFeste(liste, jetztMs) {
+  const box = els.eventsList;
+  box.innerHTML = "";
+  box.classList.remove("day-list");
+  const held = liste[0];
+  const card = document.createElement("div");
+  card.className = "cal-hero fest-hero";
+  const wann = document.createElement("div");
+  wann.className = "cal-hero-when";
+  wann.textContent = festWann(held, jetztMs);
+  const titel = document.createElement("div");
+  titel.className = "cal-hero-title";
+  titel.textContent = held.name;
+  const ort = document.createElement("div");
+  ort.className = "cal-hero-loc";
+  const einTag = held.zeit || held.von.getTime() === held.bis.getTime();
+  ort.textContent = (einTag ? "" : festSpanne(held) + " · ") + held.ort;
+  card.appendChild(wann);
+  card.appendChild(titel);
+  card.appendChild(ort);
+  if (held.hinweis) {
+    const h = document.createElement("div");
+    h.className = "fest-hinweis";
+    h.textContent = held.hinweis;
+    card.appendChild(h);
+  }
+  box.appendChild(card);
+  const rest = document.createElement("div");
+  rest.className = "day-list";
+  liste.slice(1).forEach(function (e) {
+    const row = document.createElement("div");
+    row.className = "day-row fest-row";
+    const d = document.createElement("span");
+    d.className = "day-time fest-datum";
+    d.textContent = festSpanne(e);
+    const text = document.createElement("span");
+    text.className = "day-text";
+    const t = document.createElement("span");
+    t.className = "day-title";
+    t.textContent = e.name;
+    const o = document.createElement("span");
+    o.className = "day-loc";
+    o.textContent = [e.zeit ? e.start.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr" : "", e.ort].filter(function (x) { return !!x; }).join(" · ");
+    text.appendChild(t);
+    text.appendChild(o);
+    const bald = document.createElement("span");
+    bald.className = "fest-bald";
+    const tage = Math.round((e.von.getTime() - new Date(jetztMs).setHours(0, 0, 0, 0)) / 86400000);
+    const mehrtaegig = !e.zeit && e.von.getTime() !== e.bis.getTime();
+    bald.textContent = tage < 0 || (tage === 0 && mehrtaegig) ? "läuft" : (tage === 0 ? "heute" : (tage === 1 ? "morgen" : "in " + tage + " T."));
+    row.appendChild(d);
+    row.appendChild(text);
+    row.appendChild(bald);
+    rest.appendChild(row);
+  });
+  box.appendChild(rest);
+}
+
 function updateEvents() {
   if (!els.eventsList) return;
+  if ((CONFIG.veranstaltungenQuelle || "bremen") === "bremen") {
+    const jetzt = Date.now();
+    const liste = festeAnstehend(jetzt);
+    if (!liste.length) { eventsAvailable = false; return; }
+    renderFeste(liste, jetzt);
+    eventsAvailable = true;
+    markFresh("events");
+    return;
+  }
 
   fetch("https://infranode.dev/api/v1/cities/bremen/events?_=" + Date.now(), { cache: "no-store" }).then(function (res) {
     if (!res.ok) throw new Error("Veranstaltungen-Abruf fehlgeschlagen (" + res.status + ")");
@@ -5129,6 +5265,8 @@ function formatMatchDate(d) {
     ", " + d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr";
 }
 
+const heimspiele = {}; // je verfolgtem Verein die nächsten Heimspiele
+
 function fetchTeamMatches(teamName) {
   const url = "https://api.openligadb.de/getmatchesbyteam/" + encodeURIComponent(teamName) + "/6/20";
 
@@ -5159,6 +5297,19 @@ function fetchTeamMatches(teamName) {
     for (let i = 0; i < matches.length; i++) {
       if (!isOver(matches[i])) { next = matches[i]; break; }
     }
+
+    // Heimspiele Bremer Vereine sind Bremer Veranstaltungen (Panel
+    // "Veranstaltungen") – die der anderen verfolgten Vereine nicht.
+    heimspiele[teamName] = !/bremen|bremer/i.test(teamName) ? [] : matches.filter(function (m) {
+      return !isOver(m) && m.team1 && isFollowedTeam(m.team1, teamName);
+    }).slice(0, 3).map(function (m) {
+      const loc = m.location || {};
+      return {
+        name: m.team1.teamName + " – " + (m.team2 ? m.team2.teamName : ""),
+        start: anstoss(m),
+        ort: loc.locationStadium || (/werder/i.test(teamName) ? "Weserstadion" : "Heimspiel"),
+      };
+    });
 
     let last = null;
     for (let i = matches.length - 1; i >= 0; i--) {
@@ -5567,6 +5718,8 @@ function updateSport() {
       return { type: "news", item: item };
     });
     renderSport(interleaveArrays(matchEntries, newsEntries));
+    // Heimspiele erscheinen auch unter "Veranstaltungen"
+    if ((CONFIG.veranstaltungenQuelle || "bremen") === "bremen") updateEvents();
   }).catch(function (err) {
     console.error(err);
     sportAvailable = false;
@@ -6382,7 +6535,9 @@ function init() {
   updateRiddle();
 
   updateEvents();
-  setInterval(updateEvents, CONFIG.refreshEventsMs);
+  // Eigene Liste: rechnet nur lokal – oft genug, dass "in 6 Tagen" nach
+  // Mitternacht stimmt.
+  setInterval(updateEvents, (CONFIG.veranstaltungenQuelle || "bremen") === "bremen" ? 15 * 60 * 1000 : CONFIG.refreshEventsMs);
 
   updateCalendar();
   setInterval(updateCalendar, CONFIG.refreshCalendarMs);

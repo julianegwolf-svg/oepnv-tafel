@@ -363,7 +363,12 @@ const CONFIG = {
     { name: "Italiano", url: "https://radioitaliasmi.akamaized.net/hls/live/2093120/RISMI/master.m3u8" },
   ],
 
-  // Veranstaltungen-Panel (Bremen) — InfraNode (infranode.dev), kostenlos,
+  // Veranstaltungen-Panel (Sitzung 6): "bremen" = geprüfte Liste großer
+  // Bremer Veranstaltungen (bremen-feste.js, Quelle je Termin) plus
+  // Werder-Heimspiele aus den Fußball-Daten. "infranode" = bisherige Quelle
+  // (s. u.) – am 10.10.2026 zu 88 % Umland-Termine, Bremer Daten falsch.
+  veranstaltungenQuelle: "bremen",
+  // Bisher: InfraNode (infranode.dev), kostenlos,
   // kein Key, CORS offen (access-control-allow-origin: *), Daten stammen
   // von open.destination.one (Lizenz CC0, geprüft per Testabruf). Erste
   // Recherche nach einer offiziellen bremen.de-Quelle (Transparenzportal,
