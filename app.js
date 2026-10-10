@@ -5289,7 +5289,9 @@ function updateHintBar() {
   // übrigen Einträge – sonst bliebe ein leeres Band stehen.
   const warnZahl = !warn ? 0 : (shell.classList.contains("warn-im-panel") ? warn.querySelectorAll('.ha-hint:not([data-warn="0"])').length : warn.children.length);
   const eil = document.getElementById("eilHints");
-  const has = !!((els.wasteLine && els.wasteLine.textContent) || (hints && hints.children.length) || warnZahl || (eil && eil.children.length));
+  const live = document.getElementById("liveHints");
+  const has = !!((els.wasteLine && els.wasteLine.textContent) || (hints && hints.children.length) || warnZahl ||
+    (eil && eil.children.length) || (live && live.children.length));
   if (shell.classList.contains("has-hintbar") !== has) shell.classList.toggle("has-hintbar", has);
 }
 
@@ -5474,6 +5476,9 @@ function fetchTeamMatches(teamName) {
       if (!isOver(matches[i])) { next = matches[i]; break; }
     }
 
+    // Live-Stand (fussball-live.js): Spiele um jetzt herum melden
+    if (window.FussballLive) FussballLive.melden(teamName, matches);
+
     // Wappen des Vereins für die News-Karten ohne Foto (kicker)
     for (let i = 0; i < matches.length && !vereinsWappen[teamName]; i++) {
       [matches[i].team1, matches[i].team2].forEach(function (t) {
@@ -5571,6 +5576,7 @@ function buildSportSlide(entry, index) {
   const slide = document.createElement("div");
   slide.className = "sport-slide" + (index === 0 ? " active" : "") + outcomeClass;
   slide.style.setProperty("--team-color", color);
+  slide.setAttribute("data-match", String(match.matchID));
 
   const glow = document.createElement("div");
   glow.className = "sport-slide-glow";
@@ -6006,6 +6012,8 @@ function renderSport(entries) {
 
   sportAvailable = true;
   markFresh("sport");
+  // Live-Stand gleich wieder eintragen (die Karten wurden neu gebaut)
+  if (window.FussballLive) FussballLive.render();
 }
 
 function updateSport() {

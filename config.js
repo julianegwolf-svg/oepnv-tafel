@@ -481,6 +481,10 @@ const CONFIG = {
   // während Großereignissen (WM, Tour de France) komplett von diesen
   // überschwemmt und zeigte praktisch nie etwas zu den eigenen Vereinen.
   sportNewsCount: 6,
+  // Live-Stand (fussball-live.js, Sitzung 6): ab 10 min vor Anstoß bis
+  // Abpfiff alle taktMs den Spieltag abrufen, Chip auf allen Panels; bei
+  // einem Tor eines verfolgten Vereins springt das Sport-Panel einmal vor.
+  fussballLive: { aktiv: true, taktMs: 45 * 1000, springen: true },
   // Sitzung 6: "kicker" = Vereins-Feeds des kicker (frisch, nur der Verein);
   // "tagesschau" = bisherige Volltextsuche (lieferte Altes und Fremdes).
   sportNewsQuelle: "kicker",

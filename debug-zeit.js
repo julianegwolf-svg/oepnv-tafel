@@ -195,6 +195,10 @@
   window.addEventListener("pagehide", merke);
   window.addEventListener("beforeunload", merke);
 
-  window.debugZeit = { aktiv: true, tempo: tempo, jetzt: fakeNow, echtesDate: OrigDate };
+  window.debugZeit = {
+    aktiv: true, tempo: tempo, jetzt: fakeNow, echtesDate: OrigDate,
+    // Nur für Proben: Uhr auf einen anderen Zeitpunkt (ms) springen lassen
+    springe: function (ms) { startFake = ms; startEcht = OrigDate.now(); merke(); },
+  };
   console.info("debug-zeit: Uhr verstellt auf " + new OrigDate(fakeNow()).toString() + (tempo !== 1 ? ", Tempo ×" + tempo : ""));
 })();

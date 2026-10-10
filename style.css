@@ -3639,6 +3639,115 @@ html, body {
 }
 
 
+/* ---------- Fußball live (fussball-live.js, Sitzung 6) ---------- */
+.ha-hint.fussball-hint {
+  max-width: 520px;
+  background: #13261b;
+  border-color: #2f6b45;
+  color: #e9f5ec;
+}
+
+.ha-hint.fussball-hint.is-vorlauf {
+  background: var(--glass-bg);
+  border-color: var(--panel-edge);
+  color: var(--steel-ink);
+}
+
+.fussball-hint .live-wort {
+  flex-shrink: 0;
+  margin-right: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ff6b5e;
+}
+
+.fussball-hint.is-halbzeit .live-wort,
+.fussball-hint.is-ende .live-wort {
+  color: #9fd8b0;
+}
+
+.fussball-hint .live-ball {
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+
+/* Der einzige Endlos-Effekt: ein kleiner Live-Punkt (AUSBAU 4) */
+.fussball-hint .live-punkt {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: #ff6b5e;
+  animation: livePunkt 1.6s ease-in-out infinite;
+}
+
+@keyframes livePunkt {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+.sport-slide-label.is-live {
+  background: #c64a3c;
+  color: #fff;
+}
+
+.sport-live-tore {
+  display: block;
+  max-width: 300px;
+  margin-top: 8px;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* „Tor!“: einmal groß herein, kurz stehen, ausblenden (nur transform/opacity) */
+.tor-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(8, 14, 20, 0.78) 0%, rgba(8, 14, 20, 0.55) 45%, rgba(8, 14, 20, 0) 75%);
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 0.35s ease-out, transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+
+.tor-overlay.is-an {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.tor-overlay .tor-wort {
+  font-size: 150px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 60px var(--team-color, #2e8b57), 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+.tor-overlay .tor-stand {
+  margin-top: 4px;
+  padding: 8px 22px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 34px;
+  font-weight: 800;
+  color: #fff;
+}
+
 /* ---------- Veranstaltungen in Bremen (Sitzung 6) ---------- */
 .fest-hinweis {
   margin-top: 8px;
