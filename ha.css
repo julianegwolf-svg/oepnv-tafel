@@ -2989,3 +2989,54 @@ body.ha-ruhe .ha-dot {
   margin-left: auto;
   margin-right: 16px;
 }
+
+/* Einkaufsliste: zuletzt abgehakte Einträge mit einem Tipp wieder auf die
+   Liste (statt an der Wand zu tippen). Sitzt unten in der Karte. */
+.ha-todo-wieder {
+  flex-shrink: 0;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--c-line);
+}
+
+.ha-todo-wieder-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-text-3);
+}
+
+.ha-todo-chips {
+  display: flex;
+  flex-wrap: wrap;
+  margin-left: -8px;
+}
+
+.ha-todo-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  margin: 8px 0 0 8px;
+  padding: 0 14px 0 10px;
+  border-radius: var(--r-pill);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-line-2);
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.ha-todo-chip .ha-ico {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  color: var(--c-accent);
+}
+
+/* Als Kachel im Raster (mehr als 4 Räume) ist kein Platz dafür. */
+.ha-todo-slot .ha-todo-wieder {
+  display: none;
+}

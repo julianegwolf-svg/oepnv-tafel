@@ -546,7 +546,8 @@ const BEWEGUNGSLICHT = {
 const TODO = {
   'todo.einkaufsliste': [
     ['Hafermilch', 'needs_action'], ['Brot', 'needs_action'], ['Kaffeebohnen', 'needs_action'],
-    ['Äpfel', 'needs_action'], ['Spülmittel', 'completed'], ['Nudeln', 'needs_action']
+    ['Äpfel', 'needs_action'], ['Spülmittel', 'completed'], ['Nudeln', 'needs_action'],
+    ['Eier', 'completed'], ['Butter', 'completed'], ['Toilettenpapier', 'completed']
   ]
 };
 

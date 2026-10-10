@@ -573,6 +573,7 @@
     else if (act === "einstellungen") { setActionsMenuOpen(false); openSetup(); }
     else if (act === "heizung-aus") setHvac(id, "off");
     else if (act === "todo") completeTodo(id, btn.getAttribute("data-uid"));
+    else if (act === "todo-wieder") reopenTodo(id, btn.getAttribute("data-uid"));
   }
 
   // ---------- Licht ----------
@@ -1397,12 +1398,20 @@
     return shop || list[0] || null;
   }
 
+  // Gerade wieder auf die Liste gesetzt (uid → Zeitpunkt): gilt sofort als
+  // offen, bis HA die Änderung zurückmeldet.
+  const todoReopen = {};
+
+  function istOffen(it) {
+    return it.status !== "completed" || !!todoReopen[it.uid];
+  }
+
   function openTodoItems(id) {
     const items = HA.todoItems(id);
     if (!items) return null;
     const now = Date.now();
     return items.filter(function (it) {
-      if (it.status !== "completed") return true;
+      if (istOffen(it)) return true;
       // Gerade abgehakt: noch kurz durchgestrichen zeigen.
       return todoDone[it.uid] && now - todoDone[it.uid] < 2500;
     });
@@ -1420,6 +1429,78 @@
     });
   }
 
+  // Abgehakte Einträge, die gerade nicht offen sind – mit einem Tipp wieder
+  // auf die Liste, statt an der Wand auf der iPad-Tastatur zu tippen. HA
+  // behält abgehakte Einträge, bis jemand "Erledigte löschen" wählt.
+  function wiederKaufen(id) {
+    const items = HA.todoItems(id) || [];
+    const offen = {};
+    items.forEach(function (it) { if (istOffen(it)) offen[String(it.summary || "").toLowerCase()] = true; });
+    const gesehen = {};
+    const out = [];
+    for (let i = items.length - 1; i >= 0 && out.length < 4; i--) {
+      const it = items[i];
+      const k = String(it.summary || "").toLowerCase();
+      if (istOffen(it) || !k || offen[k] || gesehen[k] || todoDone[it.uid]) continue;
+      gesehen[k] = true;
+      out.push(it);
+    }
+    return out;
+  }
+
+  function reopenTodo(id, uid) {
+    if (!id || !uid || todoReopen[uid]) return;
+    todoReopen[uid] = Date.now();
+    scheduleFlush(0);
+    setTimeout(function () { delete todoReopen[uid]; scheduleFlush(0); }, 8000);
+    call("todo", "update_item", { item: uid, status: "needs_action" }, { entity_id: id }, "Einkaufsliste").catch(function () {
+      delete todoReopen[uid];
+      scheduleFlush(0);
+    });
+  }
+
+  function wiederHtml(id, offenAnzahl) {
+    if (offenAnzahl > 7) return "";
+    const liste = wiederKaufen(id);
+    if (!liste.length) return "";
+    return '<div class="ha-todo-wieder"><span class="ha-todo-wieder-label">Wieder auf die Liste</span><div class="ha-todo-chips">' +
+      liste.map(function (it) {
+        return '<button type="button" class="ha-todo-chip ha-ctl" data-act="todo-wieder" data-id="' + esc(id) + '" data-uid="' + esc(it.uid) + '">' +
+          icon("plus") + "<span>" + esc(it.summary) + "</span></button>";
+      }).join("") + "</div></div>";
+  }
+
+  // Nach dem Zeichnen: Würde die Liste abgeschnitten, fallen zuerst die
+  // Vorschlags-Chips weg (von hinten), zuletzt der ganze Block.
+  // Reicht es dann immer noch nicht (kleine Kachel im Raster), werden die
+  // letzten Einträge zu "+n weitere" statt halb abgeschnitten.
+  function einpassenTodo(box) {
+    const list = box ? box.querySelector(".ha-todo-list") : null;
+    if (!list || !list.clientHeight) return;
+    const zuViel = function () { return list.scrollHeight > list.clientHeight + 1; };
+    const wieder = box.querySelector(".ha-todo-wieder");
+    for (let n = 0; wieder && n < 6 && zuViel(); n++) {
+      const chips = wieder.querySelectorAll(".ha-todo-chip");
+      if (chips.length > 1) chips[chips.length - 1].parentNode.removeChild(chips[chips.length - 1]);
+      else { wieder.parentNode.removeChild(wieder); break; }
+    }
+    if (!zuViel()) return;
+    const items = list.querySelectorAll(".ha-todo-item");
+    let more = box.querySelector(".ha-todo-more");
+    let schon = more ? parseInt(String(more.textContent).replace(/\D/g, ""), 10) || 0 : 0;
+    if (!more) {
+      more = document.createElement("div");
+      more.className = "ha-todo-more";
+      list.parentNode.insertBefore(more, list.nextSibling);
+    }
+    for (let i = items.length - 1; i > 0 && zuViel(); i--) {
+      list.removeChild(items[i]);
+      schon++;
+      more.textContent = "+" + schon + " weitere";
+    }
+    if (!schon) more.parentNode.removeChild(more);
+  }
+
   function todoCardHtml(id) {
     const items = openTodoItems(id);
     const st = HA.state(id);
@@ -1427,7 +1508,7 @@
     if (!items) {
       return '<div class="ha-todo"><div class="ha-todo-head"><span class="ds-eyebrow">' + icon("cart") + esc(name) + '</span></div><div class="ha-todo-empty">lädt …</div></div>';
     }
-    const open = items.filter(function (it) { return it.status !== "completed"; }).length;
+    const open = items.filter(istOffen).length;
     const shown = items.slice(0, 8);
     let html = '<div class="ha-todo"><div class="ha-todo-head"><span class="ds-eyebrow">' + icon("cart") + esc(name) + "</span>" +
       '<span class="ha-todo-count num">' + (open ? open + " offen" : "") + "</span></div>";
@@ -1435,7 +1516,7 @@
       html += '<div class="ha-todo-empty">' + icon("check") + "<span>Alles erledigt</span></div>";
     } else {
       html += '<div class="ha-todo-list">' + shown.map(function (it) {
-        const done = it.status === "completed" || !!todoDone[it.uid];
+        const done = !istOffen(it) || !!todoDone[it.uid];
         return '<button type="button" class="ha-todo-item ha-ctl' + (done ? " is-done" : "") + '" data-act="todo" data-id="' + esc(id) + '" data-uid="' + esc(it.uid) + '">' +
           '<span class="ha-todo-check">' + icon("check") + "</span>" +
           '<span class="ha-todo-text">' + esc(it.summary) + "</span></button>";
@@ -1443,7 +1524,7 @@
       if (items.length > shown.length) html += '<div class="ha-todo-more">+' + (items.length - shown.length) + " weitere</div>";
     }
     void st;
-    return html + "</div>";
+    return html + wiederHtml(id, open) + "</div>";
   }
 
   function renderHome() {
@@ -1466,7 +1547,7 @@
     const rows = Math.max(1, Math.ceil(cells / cols));
     els.rooms.className = "ha-rooms cols-" + cols + " rows-" + rows + (els.rooms.classList.contains("is-cascade") ? " is-cascade" : "");
     els.homeSide.style.display = side ? "" : "none";
-    if (side) setHtml(els.homeSide, todoCardHtml(todo));
+    if (side) { setHtml(els.homeSide, todoCardHtml(todo)); einpassenTodo(els.homeSide); }
     // Kacheln einzeln vergleichen/ersetzen (Struktur bleibt stehen).
     const keys = rooms.map(function (r) { return r.id; }).join("|") + (inGrid ? "|todo" : "");
     if (els.rooms._haKeys !== keys) {
@@ -1482,7 +1563,7 @@
       els.rooms._haKeys = keys;
     }
     for (let i = 0; i < n; i++) setHtml(els.rooms.children[i], roomTileHtml(rooms[i]));
-    if (inGrid) setHtml(els.rooms.children[n], todoCardHtml(todo));
+    if (inGrid) { setHtml(els.rooms.children[n], todoCardHtml(todo)); einpassenTodo(els.rooms.children[n]); }
 
     els.homeEyebrow.textContent = "Zuhause";
     const pl = personsLine();
