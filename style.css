@@ -2946,3 +2946,26 @@ html, body {
   margin-right: 8px;
   flex-shrink: 0;
 }
+
+
+/* Datenalter (AUSBAU E23): nur sichtbar, wenn die Quelle hängt. */
+.topbar-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.topbar-stand {
+  flex-shrink: 0;
+  margin-left: 14px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--warn);
+  color: #2b1d07;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.topbar-stand:empty {
+  display: none;
+}

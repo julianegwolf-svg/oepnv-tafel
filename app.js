@@ -244,6 +244,7 @@ function tickClock() {
   }
   updateNightDim(now.getHours());
   applyFarbwelt(now);
+  if (now.getSeconds() % 15 === 0) updateStaleBadge();
 }
 
 // ---------- Farbwelt (IDEEN R1) ----------
@@ -524,6 +525,7 @@ function workArrivalEstimate(departureDate) {
   if (lastCommutePtMinutes == null || !CONFIG.workArrivalTarget) return null;
   const day = departureDate.getDay();
   if (day === 0 || day === 6) return null;
+  if (holidayOn(departureDate)) return null; // Feiertag: kein Arbeitsweg (D19)
 
   const parts = CONFIG.workArrivalTarget.split(":");
   const targetDate = new Date(departureDate);
@@ -825,6 +827,10 @@ function updateDepartureRow(row, dep, now, isNext) {
       rainStartMinutes <= minutesUntilLeave + walkMinutesToStop + 15) {
     subParts.push(rainStartMinutes <= 0 ? "☔ es regnet" : "☔ Regen in " + rainStartMinutes + " Min");
   }
+  // Störungsmeldungen, falls Transitous sie an der Abfahrt mitliefert
+  // (GTFS-RT Service Alerts; BSAG/VBN haben keine offene Quelle, D20).
+  const alertsList = (place.alerts || dep.alerts || []);
+  if (alertsList.length && alertsList[0].headerText) subParts.unshift("⚠ " + alertsList[0].headerText);
   if (isNext && whenDate) {
     const est = workArrivalEstimate(whenDate);
     if (est) {
@@ -903,6 +909,7 @@ function updateDepartures() {
     });
 
     consecutiveFailures = 0;
+    markFresh("departures");
     renderDepartures(all);
     els.status.textContent = "Live · Daten von Transitous";
     els.lastUpdate.textContent = "Aktualisiert " + new Date().toLocaleTimeString("de-DE");
@@ -1468,6 +1475,7 @@ function updateWeather() {
     if (!res.ok) throw new Error("Wetter-Abruf fehlgeschlagen (" + res.status + ")");
     return res.json();
   }).then(function (data) {
+    markFresh("weather");
     const temp = Math.round(data.current.temperature_2m);
     const code = data.current.weather_code;
     const isDay = data.current.is_day !== 0;
@@ -1892,6 +1900,7 @@ function updateNews() {
     if (isActive) startNewsSlideshow();
 
     newsAvailable = true;
+    markFresh("news");
   }).catch(function (err) {
     console.error(err);
     newsAvailable = false;
@@ -2050,6 +2059,7 @@ function updateMusic() {
     });
 
     musicAvailable = true;
+    markFresh("music");
   }).catch(function (err) {
     console.error(err);
     musicAvailable = false;
@@ -2126,6 +2136,7 @@ function updateEvents() {
     });
 
     eventsAvailable = true;
+    markFresh("events");
   }).catch(function (err) {
     console.error(err);
     eventsAvailable = false;
@@ -2258,6 +2269,7 @@ function updateCalendar() {
     });
 
     calendarAvailable = true;
+    markFresh("calendar");
   }).catch(function (err) {
     console.error(err);
     calendarAvailable = false;
@@ -3431,6 +3443,7 @@ function renderCommuteRace(results) {
   }, 50);
 
   commuteAvailable = !!known.length;
+  if (commuteAvailable) markFresh("commute");
 }
 
 // Web-Mercator-Y (EPSG:3857) für eine Breitengrad — Standardformel, damit
@@ -4310,6 +4323,7 @@ function renderSport(entries) {
   if (isActive) startSportSlideshow();
 
   sportAvailable = true;
+  markFresh("sport");
 }
 
 function updateSport() {
@@ -4454,6 +4468,38 @@ function showPanel(name) {
 const PANELS_OHNE_KOPFTITEL = ["home", "klima", "medien", "tagesschau", "weather", "tagesblick"];
 const PANELS_VOLLBILD = ["weather", "news", "sport", "tagesschau"];
 
+// ---------- Datenalter (AUSBAU E23) ----------
+// Jede Quelle meldet ihren letzten erfolgreichen Abruf. Hängt die Quelle
+// des gerade sichtbaren Panels länger als üblich (WLAN weg, API down),
+// steht in der Kopfzeile ehrlich "Stand 07:12" statt still veralteter
+// Daten, die wie aktuell aussehen.
+const dataStand = {};
+const STALE_MS = {
+  departures: 3 * 60 * 1000,
+  weather: 45 * 60 * 1000,
+  commute: 35 * 60 * 1000,
+  news: 45 * 60 * 1000,
+  music: 3 * 3600 * 1000,
+  sport: 90 * 60 * 1000,
+  events: 13 * 3600 * 1000,
+  calendar: 90 * 60 * 1000,
+};
+
+function markFresh(src) {
+  dataStand[src] = Date.now();
+  updateStaleBadge();
+}
+
+function updateStaleBadge() {
+  const badge = document.getElementById("topbarStand");
+  if (!badge) return;
+  const name = activeSequence[panelIndex];
+  const at = dataStand[name];
+  const stale = !!(at && STALE_MS[name] && Date.now() - at > STALE_MS[name]);
+  const text = stale ? "Stand " + new Date(at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
+  if (badge.textContent !== text) badge.textContent = text;
+}
+
 function updateTopbarTitle(name) {
   if (!els.topbarTitle) return;
   const panelEl = document.getElementById("panel-" + name);
@@ -4470,6 +4516,7 @@ function updateTopbarTitle(name) {
   }
   const shell = document.querySelector(".panel");
   if (shell) shell.classList.toggle("is-fullbleed", PANELS_VOLLBILD.indexOf(name) !== -1);
+  updateStaleBadge();
 }
 
 const progressFillEl = document.getElementById("progressFill");
