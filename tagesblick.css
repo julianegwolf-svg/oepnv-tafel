@@ -358,6 +358,8 @@
   border: 1px solid rgba(var(--c-warn-rgb), 0.6);
   border-radius: var(--r-l);
   background: linear-gradient(90deg, rgba(var(--c-warn-rgb), 0.18), rgba(var(--c-warn-rgb), 0.05)), var(--c-surface);
+  cursor: pointer; /* iOS: sonst kein click auf einem div */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .tb-warnstreifen.stufe-3,

@@ -208,6 +208,7 @@
     kurz: kurz,
     stufe: function (a) { return STUFE[a.severity] || 1; },
     umweltHinweise: umweltHinweise,
+    zeigeDetail: zeigeDetail,
     // Nur für Tests/Belege: Umweltwerte setzen und neu zeichnen.
     _setUmwelt: function (u) { umwelt = u; render(); },
   };

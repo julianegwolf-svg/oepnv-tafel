@@ -2,7 +2,7 @@
 // eine Warnung im echten Bright-Sky-Format, heute 12–19 Uhr. Texte wie
 // die echte Windböen-Warnung für Bremen vom 10.10.2026.
 //
-//   ATTRAPPE_JETZT=2026-10-12T07:20 ATTRAPPE_STUFE=minor|severe \
+//   ATTRAPPE_JETZT=2026-10-12T07:20 ATTRAPPE_STUFE=minor|severe [ATTRAPPE_ZWEI=1] \
 //   node tool/screenshot.js --attrappe api.brightsky.dev/alerts=tool/attrappen/dwd.js …
 //
 // Bright Sky wird ohne Cache-Buster abgefragt, deshalb kommt "heute" aus
@@ -28,5 +28,17 @@ module.exports = function () {
     description_en: "", description_de: "Es treten Windböen mit Geschwindigkeiten um 55 km/h (15 m/s, 30 kn, Bft 7) aus südwestlicher Richtung auf.",
     instruction_en: "", instruction_de: "Hinweis auf: umherfliegende leichte Gegenstände. \nHandlungsempfehlungen: \nlose Gegenstände sichern; z.B. Zelte und Abdeckungen befestigen",
   };
-  return JSON.stringify({ alerts: [alert], location: { warn_cell_id: 804011000, name: "Stadt Bremen", name_short: "Bremen", district: "Bremen", state: "Bremen", state_short: "HB" } });
+  const alerts = [alert];
+  // ATTRAPPE_ZWEI=1: zusätzlich leichter Frost in der Nacht (Stufe 1).
+  if (process.env.ATTRAPPE_ZWEI) {
+    alerts.push({
+      id: 2, alert_id: "attrappe-frost", status: "actual", effective: um(6), onset: um(20), expires: um(23),
+      category: "met", response_type: "prepare", urgency: "future", severity: "minor", certainty: "likely",
+      event_code: 22, event_en: "frost", event_de: "FROST",
+      headline_en: "Official WARNING of FROST", headline_de: "Amtliche WARNUNG vor FROST",
+      description_en: "", description_de: "Es tritt leichter Frost um -2 °C auf.",
+      instruction_en: "", instruction_de: "",
+    });
+  }
+  return JSON.stringify({ alerts: alerts, location: { warn_cell_id: 804011000, name: "Stadt Bremen", name_short: "Bremen", district: "Bremen", state: "Bremen", state_short: "HB" } });
 };

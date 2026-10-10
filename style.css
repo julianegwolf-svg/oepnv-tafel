@@ -4242,8 +4242,9 @@ body.wetter-ruhig .weather-hour-icon {
 }
 
 
-/* Tagesblick zeigt die DWD-Warnung als Streifen – das Band unten
-   wiederholt sie dort nicht (tagesblick.js warnImPanel). */
-.panel.warn-im-panel #warnHints [data-warn] {
+/* Tagesblick zeigt die wichtigste DWD-Warnung als Streifen – das Band
+   unten wiederholt genau diese dort nicht (tagesblick.js warnImPanel);
+   eine zweite Warnung bleibt im Band. */
+.panel.warn-im-panel #warnHints [data-warn="0"] {
   display: none;
 }

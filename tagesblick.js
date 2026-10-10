@@ -22,9 +22,13 @@
   let bodyEl = null;
   let ticker = null;
   const morgen = { deps: null, fuer: "", laedt: false, stand: 0 };
-  // Heute früh: Abfahrten rund um die nötige Bahn zur Arbeit, solange sie
-  // noch nicht in der normalen Abfahrtsliste (nächste Stunde) steht.
-  const frueh = { deps: null, fuer: "", laedt: false, stand: 0 };
+  // Abfahrten rund um die nötige Bahn zur Arbeit (heute früh, solange sie
+  // noch nicht in der normalen Abfahrtsliste steht, oder am nächsten
+  // Arbeitstag). Ein Speicher je Zeitfenster, höchstens zwei: Mit nur
+  // einem verdrängten sich "heute" und "Montag" gegenseitig, und die
+  // Tafel holte ohne Pause neu (768 Abrufe in 45 s, Code-Review Sitzung 4).
+  const frueh = {};
+  const FRUEH_MAX = 2;
 
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -396,8 +400,20 @@
   // Liefert die schon geholten (oder null) und holt bei Bedarf neu.
   function bahnenAb(abMs) {
     const key = String(Math.floor(abMs / (15 * 60000)));
-    holeAbfahrten(frueh, key, abMs);
-    return frueh.fuer === key ? frueh.deps : null;
+    let sp = frueh[key];
+    if (!sp) {
+      const alle = Object.keys(frueh);
+      // Ältesten (am längsten nicht mehr gefragten) Speicher verwerfen.
+      if (alle.length >= FRUEH_MAX) {
+        alle.sort(function (a, b) { return frueh[a].gefragt - frueh[b].gefragt; });
+        if (!frueh[alle[0]].laedt) delete frueh[alle[0]];
+        else return null; // erst fertig laden lassen, sonst wieder ein Wettlauf
+      }
+      sp = frueh[key] = { deps: null, fuer: "", laedt: false, stand: 0, gefragt: 0 };
+    }
+    sp.gefragt = Date.now();
+    holeAbfahrten(sp, key, abMs);
+    return sp.fuer === key ? sp.deps : null;
   }
 
   // ---------- Termin ----------
@@ -634,6 +650,15 @@
   function init() {
     panel = document.getElementById("panel-tagesblick");
     bodyEl = panel ? panel.querySelector(".tb-body") : null;
+    // Tipp auf den Warnstreifen: voller DWD-Text (wie der Chip im Band).
+    if (bodyEl) {
+      bodyEl.addEventListener("click", function (ev) {
+        const t = ev.target && ev.target.closest ? ev.target.closest(".tb-warnstreifen") : null;
+        if (!t || !window.TafelWarn || !TafelWarn.zeigeDetail) return;
+        ev.stopPropagation();
+        TafelWarn.zeigeDetail(0);
+      });
+    }
   }
 
   window.TafelTag = {
