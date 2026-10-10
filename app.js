@@ -3039,10 +3039,14 @@ function updateQuote() {
 }
 
 // ---------- Trivia-Panel ("Auf den Tag genau") ----------
-// Wikipedia-REST-API (de.wikipedia.org/api/rest_v1/...), kostenlos, kein
-// Key, CORS-freundlich. Liefert historische Ereignisse zum heutigen
-// Kalendertag; die Tafel wählt eins zufällig aus und tippt es als Frage
-// ein (gleicher Schreibmaschinen-Mechanismus wie beim Spruch des Tages,
+// Quelle (Sitzung 6, FEEDBACK „Auf den Tag genau ist random und nicht
+// geil“): die von der Wikipedia-Redaktion ausgewählten Jahrestage der
+// deutschen Hauptseite (Wikipedia:Hauptseite/Jahrestage/<Monat>/<Tag>) –
+// fünf bekannte Ereignisse, Geburts- und Todestage, als ganzer deutscher
+// Satz formuliert, bevorzugt runde Jahrestage, oft mit Bild. Vorher kam ein
+// beliebiger Eintrag aus dem Rohfeed (z. B. „Erstausgabe des Gong“).
+// Dazu Ereignisse mit Bremen-/Werder-Bezug aus bremen-tage.js. Die Tafel
+// tippt das Ereignis als Frage (gleicher Schreibmaschinen-Mechanismus wie beim Spruch des Tages,
 // startQuoteTypewriter oben). Auflösung als echtes Multiple-Choice
 // (drei Jahreszahlen, eine davon richtig) statt einer nackten Zahl —
 // die Tafel hat kein Touch, also wird nach einer Denkpause automatisch
@@ -3056,6 +3060,8 @@ let triviaStapel = [];      // heutige Ereignisse, gemischt (jede Runde das näc
 let triviaStapelPos = 0;
 let triviaStapelTag = "";
 let triviaStapelDatum = null; // Date des Tages, aus dem der Stapel stammt
+let triviaLaedt = "";         // Tag, für den gerade geladen wird
+let triviaBremen = false;     // Ereignis aus bremen-tage.js
 let triviaTypeTimer = null;
 let triviaRevealTimer = null;
 
@@ -3071,7 +3077,10 @@ function buildTriviaChoices(correctYear) {
   // Abstände als Rückfall.
   for (let versuch = 0; offsets.length < 2 && versuch < 200; versuch++) {
     const sign = Math.random() < 0.5 ? -1 : 1;
-    const delta = sign * (10 + Math.floor(Math.random() * 70));
+    // In Fünferschritten (10–75 Jahre): Die Hauptseite nimmt runde
+    // Jahrestage, 2026 enden die richtigen Jahre also auf 1 oder 6 – mit
+    // beliebigen Abständen wäre die Lösung an der Endziffer zu erkennen.
+    const delta = sign * 5 * (2 + Math.floor(Math.random() * 14));
     const candidate = correctYear + delta;
     if (candidate === correctYear || candidate < 1 || candidate > thisYear) continue;
     if (offsets.indexOf(candidate) !== -1) continue;
@@ -3092,44 +3101,109 @@ function buildTriviaChoices(correctYear) {
 // Bild zum Ereignis: das erste Vorschaubild der verlinkten Artikel. Seiten
 // mit Jahreszahl im Titel ("Rugby-Union-Weltmeisterschaft 2003") fallen weg –
 // deren Bild ist oft ein Logo mit genau der Zahl, nach der gefragt wird.
-function triviaBildVon(ev) {
-  const pages = (ev && ev.pages) || [];
-  for (let i = 0; i < pages.length; i++) {
-    const p = pages[i];
-    const th = p && p.thumbnail;
-    if (!th || !th.source || !th.width || !th.height) continue;
-    const titel = (p.titles && p.titles.normalized) || p.normalizedtitle || "";
-    if (/\d{3,4}/.test(titel)) continue;
-    // Wikimedia rechnet nur Standardbreiten (330, 500, 960 …); 500 px ist
-    // auf dem Retina-iPad scharf genug und kostet ~60 KB. Kleinere Originale
-    // lassen sich nicht hochrechnen – dann bleibt es beim Vorschaubild.
-    const gross = th.width >= 330 ? th.source.replace(/\/\d+px-/, "/500px-") : th.source;
-    return { gross: gross, klein: th.source, w: th.width, h: th.height, titel: titel };
+// Ein Eintrag der Jahrestage-Seite (Wikitext) → { text, year, bild, links }
+// "*<div …>[[Datei:X.jpg|{{Bildgröße|WGA|800|508}}|alt=…|Unterschrift]]</div>
+//  {{Jahrestag|1846}}Der … [[William Lassell]] ent&shy;deckt [[Triton (Mond)|Triton]] …"
+function jahrestagLesen(zeile) {
+  let bild = null;
+  let t = zeile.replace(/^\*\s*/, "");
+  t = t.replace(/<div[^>]*>\s*\[\[(?:Datei|File|Bild):([^|\]]+)\|([^\]]*)\]\]\s*<\/div>/, function (_, datei, rest) {
+    const g = /\{\{Bildgr(?:ö|oe)(?:ß|ss)e\|[^|}]*\|(\d+)\|(\d+)\}\}/.exec(rest);
+    const teile = rest.replace(/\{\{[^}]*\}\}/g, "").split("|").filter(function (x) { return x && x.indexOf("alt=") !== 0; });
+    bild = { datei: datei.trim(), w: g ? +g[1] : 4, h: g ? +g[2] : 3, titel: teile.length ? teile[teile.length - 1].trim() : "" };
+    return "";
+  });
+  const j = /\{\{Jahrestag\|(-?\d{1,4})(?:\|[^}]*)?\}\}/.exec(t);
+  if (!j) return null;
+  t = t.replace(j[0], "");
+  t = t.replace(/<small>\s*\(Bild\)\s*<\/small>/g, "")
+    .replace(/<ref[^>]*\/>/g, "").replace(/<ref[\s\S]*?<\/ref>/g, "")
+    .replace(/<br\s*\/?>/g, " ").replace(/<[^>]+>/g, "");
+  // Vorlagen von innen nach außen: {{ß}} → ß, {{nowrap|x}} → x, sonst letzter Wert
+  for (let n = 0; n < 10 && /\{\{[^{}]*\}\}/.test(t); n++) {
+    t = t.replace(/\{\{([^{}]*)\}\}/g, function (_, innen) {
+      const teile = innen.split("|");
+      if (teile[0].trim() === "ß") return "ß";
+      return teile.length > 1 ? teile[teile.length - 1] : "";
+    });
   }
-  return null;
+  t = t.replace(/'{2,}/g, "").replace(/&shy;/g, "\u00AD").replace(/&nbsp;/g, "\u00A0");
+  // Verlinkungen auflösen; Ziele merken (fürs Bild), mit dem Text davor:
+  // "In [[Hubei]] bricht …" – Orte nach "in/bei/heute …" sind selten das Thema.
+  const links = [];
+  let aus = "";
+  let pos = 0;
+  const re = /\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g;
+  let m;
+  while ((m = re.exec(t))) {
+    aus += t.slice(pos, m.index);
+    const ziel = m[1].split("#")[0].trim();
+    const label = m[2] != null ? m[2] : m[1];
+    const ort = /(?:^|\s)(?:in|im|In|Im|nach|aus|bei|heute|auf)\s*$/.test(aus);
+    if (ziel && !ort && !/^\d{1,4}$/.test(ziel) && !/^\d{1,2}\.\s/.test(ziel) && ziel.indexOf(":") === -1) links.push(ziel);
+    aus += label;
+    pos = re.lastIndex;
+  }
+  aus += t.slice(pos);
+  const text = decodeHtmlEntities(aus).replace(/\s+/g, " ").replace(/\s([,.;:])/g, "$1").trim();
+  if (text.length < 20) return null;
+  return { text: text, year: +j[1], bild: bild, links: links };
 }
 
-// Für die Wand: kurze Ereignisse (40–170 Zeichen, in einem Zug aus 3 m
-// lesbar – vorher kamen auch 390-Zeichen-Absätze, die nach 22 s noch
-// getippt wurden), mit Bild bevorzugt, gemischt.
-function triviaStapelBauen(events) {
-  // Nur Jahre n. Chr. ("-44" als Antwortknopf wäre kein gutes Quiz).
-  const brauchbar = events.filter(function (e) { return e && e.text && typeof e.year === "number" && e.year > 0; });
-  let kurz = brauchbar.filter(function (e) { return e.text.length >= 40 && e.text.length <= 170; });
-  if (kurz.length < 5) {
-    kurz = brauchbar.slice().sort(function (a, b) { return a.text.length - b.text.length; })
-      .slice(0, Math.max(5, Math.ceil(brauchbar.length / 2)));
-  }
-  const mitBild = kurz.filter(function (e) { return !!triviaBildVon(e); });
-  const wahl = mitBild.length >= 5 ? mitBild : kurz;
-  for (let i = wahl.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const tmp = wahl[i]; wahl[i] = wahl[j]; wahl[j] = tmp;
-  }
-  return wahl;
+function jahrestageLesen(wikitext) {
+  const m = /<onlyinclude>([\s\S]*?)<\/onlyinclude>/.exec(wikitext || "");
+  if (!m) return [];
+  return m[1].split("\n").filter(function (z) { return /^\*/.test(z); })
+    .map(jahrestagLesen)
+    .filter(function (e) { return e && e.year > 0; }); // v. Chr. taugt nicht fürs Jahreszahl-Raten
 }
 
-// Jede Runde ein anderes Ereignis des Tages statt eine Stunde lang dasselbe.
+// Bilder für alle Ereignisse des Tages mit EINER Anfrage: die Datei der
+// Redaktion (imageinfo) bzw. das Artikelbild des ersten passenden Links
+// (pageimages). Wikipedia sperrt bei vielen schnellen Abrufen – deshalb
+// gebündelt und nur einmal am Tag.
+function jahrestageBilder(liste) {
+  const titel = [];
+  liste.forEach(function (e) {
+    if (e.bild && e.bild.datei) titel.push("Datei:" + e.bild.datei);
+    else e.links.slice(0, 4).forEach(function (l) { if (titel.indexOf(l) === -1) titel.push(l); });
+  });
+  if (!titel.length) return Promise.resolve(liste);
+  const url = "https://de.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&origin=*&redirects=1" +
+    "&prop=pageimages%7Cimageinfo&piprop=thumbnail&pithumbsize=500&iiprop=url&iiurlwidth=500&titles=" +
+    encodeURIComponent(titel.slice(0, 50).join("|"));
+  return fetch(url).then(function (res) {
+    if (!res.ok) throw new Error("Jahrestage-Bilder: HTTP " + res.status);
+    return res.json();
+  }).then(function (data) {
+    const q = (data && data.query) || {};
+    const umweg = {};
+    (q.normalized || []).concat(q.redirects || []).forEach(function (n) { umweg[n.from] = n.to; });
+    const seiten = {};
+    (q.pages || []).forEach(function (p) { seiten[p.title] = p; });
+    const seite = function (t) { let k = t; for (let i = 0; i < 3 && umweg[k]; i++) k = umweg[k]; return seiten[k] || null; };
+    liste.forEach(function (e) {
+      if (e.bild && e.bild.datei) {
+        const p = seite("Datei:" + e.bild.datei);
+        const ii = p && p.imageinfo && p.imageinfo[0];
+        e.bild = ii && ii.thumburl ? { gross: ii.thumburl, klein: ii.thumburl, w: ii.thumbwidth || e.bild.w, h: ii.thumbheight || e.bild.h, titel: e.bild.titel } : null;
+        return;
+      }
+      e.bild = null;
+      for (let i = 0; i < e.links.length && i < 4; i++) {
+        const p = seite(e.links[i]);
+        const th = p && p.thumbnail;
+        if (th && th.source && th.width && th.height) { e.bild = { gross: th.source, klein: th.source, w: th.width, h: th.height, titel: p.title }; break; }
+      }
+    });
+    return liste;
+  }).catch(function (err) {
+    console.error(err);
+    liste.forEach(function (e) { if (e.bild && !e.bild.gross) e.bild = null; });
+    return liste; // ohne Bilder ist der Text genauso richtig
+  });
+}
+
 function naechstesTriviaEreignis() {
   if (!triviaStapel.length) return false;
   // Nach Mitternacht stammt der Stapel noch vom Vortag (Abruf stündlich) –
@@ -3140,7 +3214,8 @@ function naechstesTriviaEreignis() {
   triviaStapelPos++;
   triviaFullText = ev.text;
   triviaYear = ev.year;
-  triviaBild = triviaBildVon(ev);
+  triviaBremen = !!ev.bremen;
+  triviaBild = ev.bild || null;
   renderTriviaShell();
   return true;
 }
@@ -3182,6 +3257,21 @@ function renderTriviaBild(block) {
   img.src = b.gross;
 }
 
+// "10. Oktober – in welchem Jahr?" bzw. nach der Auflösung
+// "10. Oktober 1846 · vor 180 Jahren" (Bremen: "Bremen · …")
+function triviaDatumText(aufgeloest) {
+  const tag = triviaStapelDatum || new Date();
+  const vorn = (triviaBremen ? "Bremen · " : "") + tag.getDate() + ". " + TRIVIA_MONTHS[tag.getMonth()];
+  if (!aufgeloest || triviaYear == null) return vorn + " – in welchem Jahr?";
+  const vor = tag.getFullYear() - triviaYear;
+  return vorn + " " + triviaYear + (vor > 0 ? " · vor " + vor + (vor === 1 ? " Jahr" : " Jahren") : "");
+}
+
+function triviaAufloesungZeigen() {
+  const el = document.getElementById("triviaDateLabel");
+  if (el) el.textContent = triviaDatumText(true);
+}
+
 function renderTriviaShell() {
   if (!els.triviaBlock) return;
   els.triviaBlock.innerHTML = "";
@@ -3194,8 +3284,8 @@ function renderTriviaShell() {
   const now = new Date();
   const dateLabel = document.createElement("div");
   dateLabel.className = "trivia-date";
-  const tag = triviaStapelDatum || now;
-  dateLabel.textContent = "Historisches Ereignis vom " + tag.getDate() + ". " + TRIVIA_MONTHS[tag.getMonth()];
+  dateLabel.id = "triviaDateLabel";
+  dateLabel.textContent = triviaDatumText(false);
   els.triviaBlock.appendChild(dateLabel);
 
   const text = document.createElement("div");
@@ -3244,6 +3334,7 @@ function startTriviaReveal() {
   attachChoiceInteractivity(choicesEl, function () {
     if (triviaRevealTimer) { clearTimeout(triviaRevealTimer); triviaRevealTimer = null; }
     stopRevealCountdown(els.triviaBlock);
+    triviaAufloesungZeigen();
   });
 
   const full = triviaFullText;
@@ -3261,6 +3352,7 @@ function startTriviaReveal() {
       triviaRevealTimer = setTimeout(function () {
         choicesEl.classList.add("is-revealed");
         stopRevealCountdown(els.triviaBlock);
+        triviaAufloesungZeigen();
       }, triviaDelay);
     }
   }, 35);
@@ -3270,39 +3362,45 @@ function updateTrivia() {
   if (!els.triviaBlock) return;
 
   const now = new Date();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
+  const tag = (now.getMonth() + 1) + "-" + now.getDate();
+  // Die Auswahl ändert sich nur einmal am Tag – also auch nur einmal holen.
+  if (tag === triviaStapelTag || tag === triviaLaedt) return;
+  triviaLaedt = tag;
+  const seite = "Wikipedia:Hauptseite/Jahrestage/" + TRIVIA_MONTHS[now.getMonth()] + "/" + now.getDate();
 
-  // Cache-Buster wie bei allen anderen Feeds hier (siehe Kommentar bei
-  // updateQuote) — sonst liefert ein zwischengeschalteter Cache stur
-  // dieselbe Tagesauswahl über Stunden hinweg aus.
-  fetch("https://de.wikipedia.org/api/rest_v1/feed/onthisday/events/" + mm + "/" + dd + "?_=" + Date.now(), { cache: "no-store" }).then(function (res) {
-    if (!res.ok) throw new Error("Trivia-Abruf fehlgeschlagen (" + res.status + ")");
+  fetch("https://de.wikipedia.org/w/api.php?action=parse&format=json&formatversion=2&origin=*&prop=wikitext&page=" +
+    encodeURIComponent(seite)).then(function (res) {
+    if (!res.ok) throw new Error("Jahrestage-Abruf fehlgeschlagen (" + res.status + ")");
     return res.json();
   }).then(function (data) {
-    const events = (data && data.events) || [];
-    const stapel = triviaStapelBauen(events);
-    if (!stapel.length) throw new Error("Keine Trivia-Ereignisse erhalten");
-
-    // Stündlicher Abruf am selben Tag lässt die Reihenfolge weiterlaufen,
-    // ein neuer Tag beginnt einen neuen Stapel.
-    const tag = mm + "-" + dd;
-    if (tag !== triviaStapelTag) {
-      triviaStapel = stapel;
-      triviaStapelPos = 0;
-      triviaStapelTag = tag;
-      triviaStapelDatum = now;
-      // Gezogen wird erst beim Zeigen (showPanel) – sonst wäre Ereignis 0
-      // samt Bild umsonst aufgebaut und gleich übersprungen worden.
-      const panelEl = document.getElementById("panel-trivia");
-      const isActive = panelEl && panelEl.className.indexOf("active") !== -1;
-      if (isActive && naechstesTriviaEreignis()) startTriviaReveal();
-    }
-
+    const liste = jahrestageLesen(data && data.parse && data.parse.wikitext);
+    // Bremen/Werder zuerst (bremen-tage.js), dann die Auswahl der Redaktion
+    const bremen = (window.BREMER_TAGE || []).filter(function (e) {
+      return e.datum === ("0" + (now.getMonth() + 1)).slice(-2) + "-" + ("0" + now.getDate()).slice(-2);
+    }).map(function (e) {
+      return { text: e.text, year: e.jahr, bild: null, links: e.bildArtikel ? [e.bildArtikel] : [], bremen: true };
+    });
+    const alle = bremen.concat(liste);
+    if (alle.length < 2) throw new Error("Jahrestage: zu wenige Einträge für " + seite);
+    return jahrestageBilder(alle);
+  }).then(function (stapel) {
+    triviaLaedt = "";
+    triviaStapel = stapel;
+    triviaStapelPos = 0;
+    triviaStapelTag = tag;
+    triviaStapelDatum = now;
     triviaAvailable = true;
+    // Gezogen wird erst beim Zeigen (showPanel) – läuft das Panel gerade,
+    // gleich das erste Ereignis des neuen Tages.
+    const panelEl = document.getElementById("panel-trivia");
+    const isActive = panelEl && panelEl.className.indexOf("active") !== -1;
+    if (isActive && naechstesTriviaEreignis()) startTriviaReveal();
   }).catch(function (err) {
+    triviaLaedt = "";
     console.error(err);
-    triviaAvailable = false;
+    // Kein Ersatz aus dem Zufallsfeed: lieber kein Panel als ein belangloses.
+    // Der Stapel vom Vortag bleibt nicht stehen.
+    if (triviaStapelTag !== tag) { triviaStapel = []; triviaAvailable = false; }
   });
 }
 

@@ -36,16 +36,21 @@ module.exports = async (page, hilfe) => {
         ueberlappt: fb ? (tb.right > fb.left - 10 || cb.right > fb.left - 10) : false,
         aufgeloest: choices.classList.contains("is-revealed"),
         knoten: document.getElementsByTagName("*").length,
+        // Sitzung 6: Wikitext sauber aufgelöst, Auflösung nennt Jahr + Abstand
+        sauber: !/\[\[|\]\]|\{\{|\}\}|&[a-z]+;|''|<[a-z]/i.test(triviaFullText || ""),
+        label: (document.getElementById("triviaDateLabel") || {}).textContent || "",
       };
     });
     if (knotenErste === null) knotenErste = b.knoten;
-    const ok = b.vollstaendig && b.imKasten && !b.ueberlappt && b.aufgeloest && (!b.bild || b.bild.geladen) && gesehen.indexOf(b.text) === -1;
+    const labelOk = new RegExp(" " + b.jahr + "( · vor \\d+ Jahre?n?)?$").test(b.label);
+    const ok = b.vollstaendig && b.imKasten && !b.ueberlappt && b.aufgeloest && (!b.bild || b.bild.geladen) && gesehen.indexOf(b.text) === -1 && b.sauber && labelOk;
     if (!ok) fehler++;
     gesehen.push(b.text);
     console.log((ok ? "✓" : "✗") + " Runde " + r + ": " + b.jahr + " · " + b.text.length + " Zeichen · " +
       (b.bild ? "Bild „" + b.bild.titel + "“ " + (b.bild.geladen ? b.bild.breite + " px" : "NICHT geladen") : "ohne Bild") +
       (b.imKasten ? "" : " · TEXT ABGESCHNITTEN") + (b.ueberlappt ? " · ÜBERLAPPT BILD" : "") +
       (b.vollstaendig ? "" : " · noch nicht fertig getippt") + (b.aufgeloest ? "" : " · nicht aufgelöst") +
+      (b.sauber ? "" : " · WIKITEXT-RESTE") + (labelOk ? "" : " · Beschriftung falsch") + " · „" + b.label + "“" +
       " · DOM " + b.knoten);
     console.log("     " + b.text);
     await hilfe.foto("runde-" + r);
