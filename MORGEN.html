@@ -576,6 +576,7 @@
 
 <h2 id="s9">9 · Ehrliche Lücken</h2>
 <ul class="gaps">
+  <li><b>Neu (Sitzung 7):</b> Die Szenenfarben der IKEA-Farblampe sind aus den Hue-Farben umgerechnet, ob sie im Raum gleich wirken, zeigt erst dein echtes Licht. Die 20 Minuten Übergang beim Wecklicht sind laut HA erlaubt (bis 6553 s), ob die IKEA-Lampe dabei gleichmäßig dimmt, ist nicht dokumentiert. Das Tor-Licht lief nur gegen ein nachgestelltes Spiel. Die Prototypen sind nur gegen den Simulator geprüft.</li>
   <li>Alles nur im <b>Desktop-WebKit</b> und gegen den <b>Simulator</b> geprüft – nicht auf dem iPad, nicht gegen dein echtes HA. Das erste echte Anmelden ist der eigentliche Test.</li>
   <li>Schieberegler: Mausziehen ist geprüft; echte Touch-Ereignisse lassen sich im Desktop-WebKit nicht erzeugen. Der Touch-Code (touchstart/move mit preventDefault) ist Safari-12-tauglich geschrieben, aber am iPad unbestätigt.</li>
   <li>Stumme Autoplay-Videos sollten auf iOS 12 laufen (muted + playsinline) – am Gerät unbestätigt.</li>
@@ -585,7 +586,7 @@
   <li>Morgengruß: Der Melder hängt im Schlafzimmer, nicht an der Tafel. Der Gruß kommt bei der <i>ersten</i> Bewegung ab 5 Uhr (einmal pro Tag) – stehst du um 5:10 kurz auf, ist er verbraucht. Der Tagesblick danach zeigt dieselbe Bahn aber weiter bis 11 Uhr. Siehe FRAGEN 18.</li>
   <li>„Richtung“ der Arbeitslinie kommt aus der Transitous-Route (Zielangabe der ersten Fahrt). Passt die Schreibweise mal nicht, fällt die Tafel auf „nur Linie“ zurück – wie bisher.</li>
   <li><b>Code-Review der HA-Teile</b> (heute früh): Behoben sind ein leeres Panel nach zwei schnellen Wechseln, die Regler, die beim Scrollen die Lampe verstellten, „fehlgeschlagen“ bei langsamen Automationen, eine zu großzügige Erkennung der Schnellaktionen und die Einkaufsliste bei mehr als drei Listen. Offen, weil es deinen Haushalt nicht betrifft: Lichtgruppen mit versteckten Mitgliedern, mehrere Thermostate je Raum. <i>Behoben seit 7:30:</i> Neue, verschobene oder umbenannte Geräte erscheinen jetzt sofort (vorher erst nach dem Neuladen, bis 3 h) – <code>tool/pruefe-registry.js</code>.</li>
-  <li><b>Wichtig:</b> Deine Automationen <i>Bett Fertig</i> und <i>Arbeitsmodus</i> brechen in echtem HA vermutlich bei der ersten Licht-Aktion ab (FRAGEN 4 und 19). Die Tafel erkennt das jetzt und meldet „hat nichts geschaltet“ (2c) – reparieren musst du sie in HA.</li>
+  <li><s>Deine Automationen <i>Bett Fertig</i> und <i>Arbeitsmodus</i> brechen in echtem HA vermutlich bei der ersten Licht-Aktion ab</s>: von dir repariert (FRAGEN 19). Die Tafel meldet weiterhin „hat nichts geschaltet“, falls eine Automation still abbricht.</li>
   <li>Die Wirkungsprüfung warnt auch, wenn „Gute Nacht“/„Arbeiten“ nichts zu tun hat, weil schon alles so ist, wie die Automation es will. Das ist selten; falls es stört: FRAGEN 21.</li>
   <li>Kalender nach dem Umzug nach HA: nur mit der Änderung im Worker (FRAGEN 20). Geprüft per <code>curl</code> mit der HA-Herkunft, nicht am iPad.</li>
   <li><b>Code-Review von heute früh</b> (zweiter Durchgang, alles behoben): Der Tagesblick hätte eine kurz vorher gestrichene Bahn empfehlen können (alte gezielte Abfrage), die Wirkungsprüfung hatte Fehlalarm-Fälle, und – schon länger: <b>Fußball-Anstoßzeiten standen auf dem iPad 2 h falsch</b> (Safari 12 liest Zeiten ohne Zone als UTC); jetzt aus der UTC-Angabe.</li>
