@@ -2985,6 +2985,7 @@ let triviaBild = null;      // { gross, klein, w, h, titel } oder null
 let triviaStapel = [];      // heutige Ereignisse, gemischt (jede Runde das nächste)
 let triviaStapelPos = 0;
 let triviaStapelTag = "";
+let triviaStapelDatum = null; // Date des Tages, aus dem der Stapel stammt
 let triviaTypeTimer = null;
 let triviaRevealTimer = null;
 
@@ -2994,13 +2995,21 @@ let triviaRevealTimer = null;
 function buildTriviaChoices(correctYear) {
   const thisYear = new Date().getFullYear();
   const offsets = [];
-  while (offsets.length < 2) {
+  // Höchstens 200 Würfe: Für Jahre, um die herum es keine zwei gültigen
+  // Kandidaten gibt (vor Christus kommt aus dem Feed als negative Zahl),
+  // lief die Schleife vorher endlos und fror die Tafel ein. Danach feste
+  // Abstände als Rückfall.
+  for (let versuch = 0; offsets.length < 2 && versuch < 200; versuch++) {
     const sign = Math.random() < 0.5 ? -1 : 1;
     const delta = sign * (10 + Math.floor(Math.random() * 70));
     const candidate = correctYear + delta;
     if (candidate === correctYear || candidate < 1 || candidate > thisYear) continue;
     if (offsets.indexOf(candidate) !== -1) continue;
     offsets.push(candidate);
+  }
+  for (let k = 1; offsets.length < 2 && k < 100; k++) {
+    const c = correctYear + (k % 2 ? 1 : -1) * 10 * Math.ceil(k / 2);
+    if (c !== correctYear && offsets.indexOf(c) === -1 && c <= thisYear) offsets.push(c);
   }
   const all = [correctYear, offsets[0], offsets[1]];
   for (let i = all.length - 1; i > 0; i--) {
@@ -3034,7 +3043,8 @@ function triviaBildVon(ev) {
 // lesbar – vorher kamen auch 390-Zeichen-Absätze, die nach 22 s noch
 // getippt wurden), mit Bild bevorzugt, gemischt.
 function triviaStapelBauen(events) {
-  const brauchbar = events.filter(function (e) { return e && e.text && e.year; });
+  // Nur Jahre n. Chr. ("-44" als Antwortknopf wäre kein gutes Quiz).
+  const brauchbar = events.filter(function (e) { return e && e.text && typeof e.year === "number" && e.year > 0; });
   let kurz = brauchbar.filter(function (e) { return e.text.length >= 40 && e.text.length <= 170; });
   if (kurz.length < 5) {
     kurz = brauchbar.slice().sort(function (a, b) { return a.text.length - b.text.length; })
@@ -3052,6 +3062,10 @@ function triviaStapelBauen(events) {
 // Jede Runde ein anderes Ereignis des Tages statt eine Stunde lang dasselbe.
 function naechstesTriviaEreignis() {
   if (!triviaStapel.length) return false;
+  // Nach Mitternacht stammt der Stapel noch vom Vortag (Abruf stündlich) –
+  // gleich neu holen; bis dahin steht über dem Ereignis sein echtes Datum.
+  const heute = new Date();
+  if (triviaStapelDatum && heute.getDate() !== triviaStapelDatum.getDate()) updateTrivia();
   const ev = triviaStapel[triviaStapelPos % triviaStapel.length];
   triviaStapelPos++;
   triviaFullText = ev.text;
@@ -3079,6 +3093,7 @@ function renderTriviaBild(block) {
   img.alt = "";
   img.onload = function () { fig.classList.add("is-geladen"); };
   img.onerror = function () {
+    if (!fig.parentNode) return; // längst durch ein neues Ereignis ersetzt
     if (img.getAttribute("src") !== b.klein) { img.src = b.klein; return; }
     if (fig.parentNode) fig.parentNode.removeChild(fig);
     block.classList.remove("mit-bild");
@@ -3109,7 +3124,8 @@ function renderTriviaShell() {
   const now = new Date();
   const dateLabel = document.createElement("div");
   dateLabel.className = "trivia-date";
-  dateLabel.textContent = "Historisches Ereignis vom " + now.getDate() + ". " + TRIVIA_MONTHS[now.getMonth()];
+  const tag = triviaStapelDatum || now;
+  dateLabel.textContent = "Historisches Ereignis vom " + tag.getDate() + ". " + TRIVIA_MONTHS[tag.getMonth()];
   els.triviaBlock.appendChild(dateLabel);
 
   const text = document.createElement("div");
@@ -3205,10 +3221,12 @@ function updateTrivia() {
       triviaStapel = stapel;
       triviaStapelPos = 0;
       triviaStapelTag = tag;
-      naechstesTriviaEreignis();
+      triviaStapelDatum = now;
+      // Gezogen wird erst beim Zeigen (showPanel) – sonst wäre Ereignis 0
+      // samt Bild umsonst aufgebaut und gleich übersprungen worden.
       const panelEl = document.getElementById("panel-trivia");
       const isActive = panelEl && panelEl.className.indexOf("active") !== -1;
-      if (isActive) startTriviaReveal();
+      if (isActive && naechstesTriviaEreignis()) startTriviaReveal();
     }
 
     triviaAvailable = true;
@@ -4316,10 +4334,15 @@ function renderCommuteMap(coords, results) {
 
   // Bild genau in der Größe des Kartenfelds anfordern: Bild und SVG werden
   // ungleichmäßig gestreckt, ein anderes Seitenverhältnis verzerrt die
-  // Karte. Ist das Panel gerade ausgehängt (display:none), gelten die Maße
-  // aus style.css (.commute-unten.mit-karte).
-  const W = Math.round(els.commuteMapWrap.offsetWidth) || 600;
-  const H = Math.round(els.commuteMapWrap.offsetHeight) || 396;
+  // Karte. Ist das Panel gerade ausgehängt (display:none), lässt sich die
+  // Größe nicht messen (sie hängt u. a. an der Hinweiszeile) – dann erst
+  // beim Zeigen anfordern (pruefeArbeitswegKarte), statt zweimal.
+  const W = Math.round(els.commuteMapWrap.offsetWidth);
+  const H = Math.round(els.commuteMapWrap.offsetHeight);
+  if (!W || !H) {
+    letzteArbeitswegKarte = { coords: coords, results: results, w: 0, h: 0, nacht: null };
+    return;
+  }
   const color = (CONFIG.commuteModeColors && CONFIG.commuteModeColors[winner.key]) || "#5b6b78";
   // Dunkle Farbwelt: TomToms Nachtstil statt einer hellen Fläche mitten im
   // dunklen Panel; die Linie dort kräftig und hell (gleicher Farbton), sonst

@@ -4237,7 +4237,8 @@ body.wetter-ruhig .weather-hour-icon {
 /* Arbeitsweg mit echter Route: Karte links, die drei Verkehrsmittel rechts
    als kompakte Liste (Zeit in der Kopfzeile statt Balken). Vorher ersetzte
    die Karte die Liste ganz. Ohne Kartenbild bleibt es bei den Balken über
-   die volle Breite. Maße passen zu renderCommuteMap (Ersatzwerte 600×396). */
+   die volle Breite. renderCommuteMap fordert das Bild in der gemessenen
+   Größe des Kartenfelds an. */
 .commute-unten {
   flex: 1;
   min-height: 0;
