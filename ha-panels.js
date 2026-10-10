@@ -307,7 +307,7 @@
   function noop() {}
 
   // ---------- Hinweis-Toast ----------
-  function toast(text, kind) {
+  function toast(text, kind, ms) {
     if (!els.toast) return;
     els.toast.textContent = text;
     els.toast.className = "ha-toast is-shown" + (kind ? " is-" + kind : "");
@@ -315,7 +315,7 @@
     toastTimer = setTimeout(function () {
       toastTimer = null;
       els.toast.className = "ha-toast";
-    }, 3800);
+    }, ms || 3800);
   }
 
   // ---------- Panel-Verfügbarkeit (für Karussell + Übersicht) ----------
@@ -959,6 +959,47 @@
     return CFG.bestaetigungSek != null ? CFG.bestaetigungSek : 4;
   }
 
+  // ---------- Hat die Automation wirklich etwas geschaltet? ----------
+  // Home Assistant meldet Fehler in Automationen nicht an den Aufrufer:
+  // automation.trigger endet "erfolgreich", der Fehler steht nur im Log
+  // bzw. in der Ablaufverfolgung (z. B. rgb_color + color_temp_kelvin in
+  // einer Licht-Aktion – Abbruch bei genau dieser Aktion). Erkennbar ist
+  // es trotzdem: Jede Änderung, die eine Automation auslöst, trägt deren
+  // Kontext mit parent_id = Kontext unseres Aufrufs (bei Skripten direkt
+  // dessen id). Kommt binnen 5 s keine einzige solche Änderung, obwohl
+  // eine zu erwarten war, hat die Automation vermutlich nichts bewirkt.
+  let wirkungsBeobachter = null;
+  const ohneWirkung = {}; // Aktions-id → { name, at } für den Hinweis
+
+  function beobachteWirkung(zielId) {
+    wirkungsBeobachter = { ziel: zielId, kontexte: [] };
+    return wirkungsBeobachter;
+  }
+
+  function merkeWirkung(entityId, neu) {
+    const b = wirkungsBeobachter;
+    if (!b || entityId === b.ziel || !neu || !neu.context || b.kontexte.length >= 200) return;
+    b.kontexte.push(neu.context);
+  }
+
+  function pruefeWirkung(b, kontextId, warteMs) {
+    return new Promise(function (resolve) {
+      if (!kontextId) { resolve(true); return; } // nicht feststellbar → nicht warnen
+      const treffer = function () {
+        return b.kontexte.some(function (c) { return c.id === kontextId || c.parent_id === kontextId; });
+      };
+      if (treffer()) { resolve(true); return; }
+      const start = Date.now();
+      const iv = setInterval(function () {
+        if (treffer()) { clearInterval(iv); resolve(true); }
+        else if (Date.now() - start > warteMs) { clearInterval(iv); resolve(false); }
+      }, 250);
+    }).then(function (ok) {
+      if (wirkungsBeobachter === b) wirkungsBeobachter = null;
+      return ok;
+    });
+  }
+
   // Ablauf: 1. Tipp → Countdown (erneuter Tipp bricht ab) → Ausführen →
   // 20 s lang "Rückgängig" (stellt per scene.create gesicherte Lichter/
   // Heizungen wieder her).
@@ -987,10 +1028,17 @@
   function executeAction(action) {
     if (window.TafelLernen) TafelLernen.merkeAktion(action.id);
     let undoable = false;
+    // text = null: ausgelöst, aber nichts hat reagiert (siehe pruefeWirkung).
     function fertig(text) {
-      const st = { phase: "done", undoable: undoable, timer: null };
+      const st = { phase: "done", undoable: undoable, timer: null, ohneWirkung: text === null };
       st.timer = setTimeout(function () { delete actionState[action.id]; renderActions(); }, 20000);
       actionState[action.id] = st;
+      if (text === null) {
+        toast(action.name + " hat nichts geschaltet – Automation in HA prüfen", "warn", 12000);
+        renderActions();
+        scheduleFlush(0); // Hinweise neu berechnen
+        return; // nicht abdunkeln: die Lichter sind ja noch an
+      }
       toast(action.name + " – " + text, "ok");
       renderActions();
       // "Gute Nacht": Tafel dunkelt danach sanft in den Nachtmodus ab.
@@ -998,6 +1046,10 @@
         setTimeout(function () { setActionsMenuOpen(false); tafelGuteNacht(); }, 1500);
       }
     }
+    // Für die Wirkungsprüfung: Waren Lichter an (dann muss "raus" etwas
+    // ausschalten), und welche Aktionen schalten in jedem Fall etwas ein?
+    const lichterVorher = lightsOnList().length;
+    const beob = action.ziel && /^(automation|script)\./.test(action.ziel) ? beobachteWirkung(action.ziel) : null;
     actionState[action.id] = { phase: "busy" };
     renderActions();
     // Kacheln gehen gestaffelt aus — man sieht, dass wirklich alles aus ist.
@@ -1027,9 +1079,20 @@
       if (dom === "script") return HA.callService("script", "turn_on", null, { entity_id: action.ziel });
       if (dom === "scene") return HA.callService("scene", "turn_on", null, { entity_id: action.ziel });
       return HA.callService("homeassistant", "turn_on", null, { entity_id: action.ziel });
-    }).then(function () {
-      fertig("erledigt");
+    }).then(function (res) {
+      if (!beob) { fertig("erledigt"); return null; }
+      const erwartet = lichterVorher > 0 || action.id === "nacht" || action.id === "arbeit";
+      return pruefeWirkung(beob, res && res.context ? res.context.id : null, 5000).then(function (ok) {
+        if (ok || !erwartet) {
+          delete ohneWirkung[action.id];
+          fertig("erledigt");
+        } else {
+          ohneWirkung[action.id] = { name: action.name, at: Date.now() };
+          fertig(null);
+        }
+      });
     }).catch(function (err) {
+      if (beob && wirkungsBeobachter === beob) wirkungsBeobachter = null;
       // Echtes HA antwortet auf automation.trigger/script.turn_on erst,
       // wenn alles durchgelaufen ist – mit Verzögerungen oder Push dauert
       // das länger als unser Zeitlimit. Dann läuft sie trotzdem.
@@ -1073,6 +1136,12 @@
       cls += " is-busy";
       inner = icon(a.icon) + '<span class="ha-action-text"><span class="ha-action-name">' + esc(a.name) + '</span><span class="ha-action-sub">läuft …</span></span>';
       return '<button type="button" class="' + cls + '">' + inner + "</button>";
+    }
+    if (s && s.phase === "done" && s.ohneWirkung) {
+      cls += " is-ohne-wirkung";
+      inner = icon("alert") + '<span class="ha-action-text"><span class="ha-action-name">' + esc(a.name) + "</span>" +
+        '<span class="ha-action-sub">nichts geschaltet</span></span>';
+      return '<button type="button" class="' + cls + '" data-act="aktion" data-aktion="' + esc(a.id) + '">' + inner + "</button>";
     }
     if (s && s.phase === "done") {
       cls += " is-done";
@@ -2181,6 +2250,14 @@
       }
     });
 
+    // Schnellaktion hat zuletzt nichts geschaltet (pruefeWirkung): bleibt
+    // als ruhiger Hinweis stehen, bis sie wieder wirkt (höchstens 12 h).
+    Object.keys(ohneWirkung).forEach(function (aid) {
+      const o = ohneWirkung[aid];
+      if (now - o.at > 12 * 3600 * 1000) { delete ohneWirkung[aid]; return; }
+      out.push({ key: "ohnewirkung|" + aid, prio: 2, icon: "alert", text: "„" + o.name + "“ wirkt nicht – in HA prüfen", ziel: "home" });
+    });
+
     if (nobodyHome) {
       const on = lightsOnList().length;
       if (on) out.push({ key: "weglicht", prio: 2, icon: "bulb", text: "Niemand da – " + on + (on === 1 ? " Licht an" : " Lichter an"), ziel: "home" });
@@ -3027,6 +3104,7 @@
       } else if (type === "todo") {
         scheduleFlush();
       } else if (type === "state") {
+        merkeWirkung(a, b);
         if (optimistic[a]) delete optimistic[a];
         onEntityChange(a, b, c);
         scheduleFlush();

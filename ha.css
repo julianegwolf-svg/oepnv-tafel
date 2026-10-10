@@ -452,6 +452,17 @@ body.ha-offline .ha-ctl {
   color: var(--c-ok);
 }
 
+/* Ausgelöst, aber nichts hat reagiert (Automation in HA fehlerhaft). */
+.ha-action.is-ohne-wirkung {
+  background: rgba(var(--c-warn-rgb), 0.14);
+  border-color: rgba(var(--c-warn-rgb), 0.6);
+}
+
+.ha-action.is-ohne-wirkung > .ha-ico,
+.ha-action.is-ohne-wirkung .ha-action-sub {
+  color: var(--c-warn);
+}
+
 .ha-action .ha-action-undo {
   margin-left: auto;
   margin-right: 0;

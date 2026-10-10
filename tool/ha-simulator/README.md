@@ -41,6 +41,7 @@ Benötigt nur `ws` aus `tool/node_modules` (Node ≥ 18). Beenden mit Strg+C.
 | `HA_SIM_EXTRAS` | – | `1` = wie `--extras` |
 | `HA_SIM_HAUSHALT` | – | Pfad zu einer haushalt.json oder `fiktiv` |
 | `HA_SIM_LEISE` | – | `1` = kaum Log |
+| `HA_SIM_STRENG` | – | `1` = Automationen brechen bei ungültigen Aktionen ab wie in echtem HA (z. B. `rgb_color` + `color_temp_kelvin` zusammen). Ohne: der Simulator nimmt beim echten Haushalt jeweils die erste Angabe, damit die Wirkung sichtbar bleibt. |
 
 ## WebSocket `/api/websocket`
 

@@ -1494,7 +1494,10 @@ class Simulation {
     this.merkeAusloesung(id, a.zuletzt, quelle, ctx);
     this.log(id + ': ausgelöst (' + grund + ')');
     const aktionen = a.cfg ? a.cfg.actions : [];
-    this.fuehreAus(aktionen, ctx, id, { locker: !!this.h.LOCKER_AUTOMATIONEN }).then(() => {
+    // HA_SIM_STRENG=1: fehlerhafte Aktionen brechen ab wie in echtem HA
+    // (sonst nimmt der Simulator beim echten Haushalt die erste Angabe).
+    const locker = !!this.h.LOCKER_AUTOMATIONEN && process.env.HA_SIM_STRENG !== '1';
+    this.fuehreAus(aktionen, ctx, id, { locker: locker }).then(() => {
       a.laeuft = Math.max(0, a.laeuft - 1);
       if (this.automationen.get(id) === a) this.schreibeAutomation(id, ctx);
     });
