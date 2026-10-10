@@ -48,7 +48,7 @@
 <body>
 <div class="wrap">
 
-<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 11:30</div>
+<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 12:10</div>
 <h1>Deine Tafel ist jetzt eine Smart-Home-Zentrale.</h1>
 <p class="lead">Kurz und ehrlich, was diese Nacht entstanden ist – alles gegen einen Home-Assistant-<b>Simulator</b> mit deinem echten Haushalt getestet, nie gegen dein echtes HA. Die Bilder zeigen Desktop-WebKit bei 1024×768 (wie das iPad), nicht das iPad selbst.</p>
 
@@ -368,6 +368,9 @@
   <figure><img src="belege/2026-10-10/s6/fussball-live/3b-karte-nach-tor.png" alt=""><figcaption>Danach: „LIVE · ~24'“, 1:0, Torschütze unter dem Wappen.</figcaption></figure>
   <figure><img src="belege/2026-10-10/s6/fussball-live/4-gegentor-chip.png" alt=""><figcaption>Gegentor: kein Sprung, nur der Chip unten links zeigt 1:1.</figcaption></figure>
 </div>
+
+<h3>Code-Review dieser Sitzung</h3>
+<p class="note">Ein unabhängiges Review fand 12 Fehler. Alle sind nachgeprüft und behoben (<code>belege/2026-10-10/s6/review.log</code>). Der wichtigste: Bei „Auf den Tag genau“ stand die Lösung teils schon in der Bildunterschrift, heute bei der 1971er-Frage („Nationalratswahl in Österreich 1971“). Bildunterschriften verdecken Jahreszahlen jetzt bis zur Auflösung, Artikel mit Jahreszahl im Titel liefern kein Bild mehr, und Sätze, die ihr Jahr selbst nennen, werden übersprungen. Außerdem ließ sich Fußball-live über <code>config.js</code> gar nicht abschalten, das geht jetzt. Ein täglicher Kalendertermin seit 1965 wäre verschwunden. Und bei Ereignissen aus den letzten Jahren war die jüngste Antwort fast immer die richtige. HA-Probe, Kalender-, Live-, Musik- und Tag-genau-Probe danach erneut ✓. 24-h-Zeitraffer: nichts wächst (<code>belege/2026-10-10/s6/zeitraffer.log</code>).</p>
 
 <h2 id="s3">3 · Animationen, die etwas bedeuten</h2>
 <p class="note">Nur über transform/opacity (Safari 12, A7-Chip). Videos aus Playwright-WebKit; darunter je ein Bildstreifen.</p>
