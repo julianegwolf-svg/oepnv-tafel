@@ -979,6 +979,10 @@
       actionState[action.id] = st;
       toast(action.name + " – erledigt", "ok");
       renderActions();
+      // "Gute Nacht": Tafel dunkelt danach sanft in den Nachtmodus ab.
+      if (action.id === "nacht" && typeof tafelGuteNacht === "function") {
+        setTimeout(function () { setActionsMenuOpen(false); tafelGuteNacht(); }, 1500);
+      }
     }).catch(function (err) {
       delete actionState[action.id];
       toast(action.name + " fehlgeschlagen" + (err && err.message ? " (" + err.message + ")" : ""), "fehler");
@@ -1521,7 +1525,9 @@
   function coverHtml(st, cls) {
     const url = coverUrl(st);
     const isTv = HA.attr(st, "device_class") === "tv";
-    return '<span class="ha-cover ' + cls + '">' + (url && st.state !== "off" ? '<img src="' + esc(url) + '" alt="">' : icon(isTv ? "tv" : "speaker")) + "</span>";
+    // data-key = Bild-URL: bei Titelwechsel entsteht ein neues <img>, das
+    // per CSS einblendet (Überblendung statt hartem Sprung).
+    return '<span class="ha-cover ' + cls + '">' + (url && st.state !== "off" ? '<img data-key="' + esc(url) + '" src="' + esc(url) + '" alt="">' : icon(isTv ? "tv" : "speaker")) + "</span>";
   }
 
   function switchRowHtml(id, room) {
@@ -1775,6 +1781,7 @@
       }
       if (tmm) spark += '<path class="ha-spark-temp" d="' + sparkPath(tPts, W, H - 4, tmm[0] - 0.3, tmm[1] + 0.3) + '"/>';
       spark += "</svg>";
+      spark = '<div class="ha-spark-wrap">' + spark + "</div>";
       if (wide) {
         spark += '<div class="ha-spark-axis"><span>vor 24 h</span><span>vor 12 h</span><span>jetzt</span></div>';
       }
@@ -1957,7 +1964,8 @@
     }
     html += '<div class="ha-controls">' +
       (supports(st, MF.PREV) ? '<button type="button" class="ha-round ha-round-l ha-ctl" data-act="media-prev" data-id="' + esc(heroId) + '">' + icon("prev") + "</button>" : "") +
-      '<button type="button" class="ha-round ha-round-xl ha-ctl is-primary" data-act="media-play" data-id="' + esc(heroId) + '">' + icon(playing ? "pause" : "play") + "</button>" +
+      '<button type="button" class="ha-round ha-round-xl ha-ctl is-primary ha-pp' + (playing ? " is-playing" : "") + '" data-act="media-play" data-id="' + esc(heroId) + '">' +
+      '<span class="ha-pp-play">' + icon("play") + '</span><span class="ha-pp-pause">' + icon("pause") + "</span></button>" +
       (supports(st, MF.NEXT) ? '<button type="button" class="ha-round ha-round-l ha-ctl" data-act="media-next" data-id="' + esc(heroId) + '">' + icon("next") + "</button>" : "") +
       "</div>";
     if (vol != null && supports(st, MF.VOLUME_SET)) {

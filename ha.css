@@ -2781,3 +2781,75 @@ body.ha-ruhe .ha-dot {
 .ha-hint.is-more {
   flex-shrink: 0;
 }
+
+/* Verlaufskurven zeichnen sich beim Zeigen von links ein: eine Abdeckung
+   in Kartenfarbe schrumpft nach rechts weg (nur transform). */
+.ha-spark-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
+.ha-spark-wrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--c-surface);
+  transform-origin: right center;
+  transform: scaleX(0);
+  pointer-events: none;
+}
+
+@keyframes haReveal {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+#panel-klima.active .ha-spark-wrap::after {
+  animation: haReveal 1.2s cubic-bezier(0.22, 0.61, 0.36, 1) 0.2s both;
+}
+
+/* Cover-Überblendung bei Titelwechsel. */
+@keyframes haCoverIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.ha-cover img {
+  animation: haCoverIn 0.6s ease 1;
+}
+
+/* Play/Pause: Symbole blenden ineinander (statt hart zu tauschen). */
+.ha-pp {
+  position: relative;
+}
+
+.ha-pp-play,
+.ha-pp-pause {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -20px 0 0 -20px;
+  width: 40px;
+  height: 40px;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.ha-pp-play .ha-ico,
+.ha-pp-pause .ha-ico {
+  width: 40px;
+  height: 40px;
+}
+
+.ha-pp .ha-pp-pause,
+.ha-pp.is-playing .ha-pp-play {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.ha-pp.is-playing .ha-pp-pause {
+  opacity: 1;
+  transform: scale(1);
+}

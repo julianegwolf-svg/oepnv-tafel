@@ -2969,3 +2969,9 @@ html, body {
 .topbar-stand:empty {
   display: none;
 }
+
+
+/* "Gute Nacht": langsames Abdunkeln (4 s) statt des normalen Wechsels. */
+.night-overlay.is-slow {
+  transition: opacity 3.5s ease;
+}

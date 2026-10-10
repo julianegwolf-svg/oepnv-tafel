@@ -300,8 +300,27 @@ let recentlyTouched = false;
 // Karussell anzuhalten.
 let presenceWakeUntil = 0;
 
+// "Gute Nacht" (Schnellaktion, ha-panels.js): die Tafel dunkelt sanft in
+// den Tiefschlaf ab, bis 6 Uhr — Antippen oder Bewegung weckt sie wie
+// gewohnt (AUSBAU Abschnitt 4).
+let goodNightUntil = 0;
+
+function tafelGuteNacht() {
+  const now = new Date();
+  const six = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (now.getHours() >= 6 ? 1 : 0), 6, 0);
+  goodNightUntil = six.getTime();
+  recentlyTouched = false;
+  presenceWakeUntil = 0;
+  if (els.nightOverlay) {
+    els.nightOverlay.classList.add("is-slow");
+    setTimeout(function () { els.nightOverlay.classList.remove("is-slow"); }, 4000);
+  }
+  updateNightDim(now.getHours());
+}
+
 function wakeByPresence() {
   presenceWakeUntil = Date.now() + 5 * 60 * 1000;
+  goodNightUntil = 0;
   armAmbientTimer();
   if (ambientActive) exitAmbientMode();
   updateNightDim(new Date().getHours());
@@ -312,7 +331,7 @@ function updateNightDim(hour) {
   const cfg = CONFIG.nightDim;
   const sleepCfg = CONFIG.nightSleep;
   const dimActive = isNightHour(hour);
-  const sleepActive = isInHourRange(hour, sleepCfg) && !recentlyTouched && Date.now() > presenceWakeUntil;
+  const sleepActive = (isInHourRange(hour, sleepCfg) || Date.now() < goodNightUntil) && !recentlyTouched && Date.now() > presenceWakeUntil;
 
   const opacity = sleepActive && sleepCfg && sleepCfg.opacity != null
     ? sleepCfg.opacity
