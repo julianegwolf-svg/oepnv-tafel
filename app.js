@@ -3272,8 +3272,51 @@ function startQuizReveal() {
 let quizRetryTimer = null;
 const QUIZ_RETRY_DELAYS_MS = [20000, 60000, 180000];
 
+// Deutsche Fragen (quiz.js, FRAGEN 17) statt der englischen Open Trivia
+// DB: lokal, jedes Mal eine neue Frage, wenn das Panel erscheint. Der
+// Rest-Stapel liegt in localStorage, damit nach dem Neuladen nicht
+// dieselben Fragen wiederkommen (höchstens so lang wie die Sammlung).
+function quizLokal() {
+  return (CONFIG.quizQuelle || "deutsch") === "deutsch" && typeof QUIZ_FRAGEN !== "undefined" && QUIZ_FRAGEN.length > 0;
+}
+
+function naechsteQuizFrage() {
+  const n = QUIZ_FRAGEN.length;
+  let rest = null;
+  try { rest = JSON.parse(localStorage.getItem("tafelQuizRest") || "null"); } catch (e) { rest = null; }
+  if (!Array.isArray(rest)) rest = [];
+  rest = rest.filter(function (i) { return typeof i === "number" && i >= 0 && i < n; });
+  if (!rest.length) {
+    for (let i = 0; i < n; i++) rest.push(i);
+    for (let i = rest.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = rest[i]; rest[i] = rest[j]; rest[j] = tmp;
+    }
+  }
+  const q = QUIZ_FRAGEN[rest.shift()];
+  try { localStorage.setItem("tafelQuizRest", JSON.stringify(rest)); } catch (e) { /* voll/privat: dann eben ohne Gedächtnis */ }
+
+  quizQuestion = { text: q.f, category: q.k };
+  const options = q.x.concat([q.r]);
+  for (let i = options.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = options[i]; options[i] = options[j]; options[j] = tmp;
+  }
+  quizChoices = { options: options, correct: q.r };
+  renderQuizShell();
+  const panelEl = document.getElementById("panel-quiz");
+  if (panelEl && panelEl.className.indexOf("active") !== -1) startQuizReveal();
+  quizAvailable = true;
+}
+
 function updateQuiz(retryCount) {
   if (!els.quizBlock) return;
+  if (quizLokal()) {
+    // Die Frage wird erst beim Zeigen des Panels gezogen (showPanel) –
+    // stündlich nichts tun, sonst wechselte sie womöglich mitten im Raten.
+    quizAvailable = true;
+    return;
+  }
   retryCount = retryCount || 0;
   if (quizRetryTimer) { clearTimeout(quizRetryTimer); quizRetryTimer = null; }
 
@@ -5247,7 +5290,8 @@ function showPanel(name) {
   }
 
   if (name === "quiz") {
-    startQuizReveal();
+    if (quizLokal()) naechsteQuizFrage();
+    else startQuizReveal();
   }
 
   if (name === "riddle") {

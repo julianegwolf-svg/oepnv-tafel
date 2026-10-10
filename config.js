@@ -263,6 +263,11 @@ const CONFIG = {
   // zeigen.
   refreshTriviaMs: 60 * 60 * 1000,
 
+  // Allgemeinwissen (FRAGEN 17): "deutsch" = eigene deutsche Sammlung
+  // (quiz.js, 131 Fragen inkl. "Bremen & Norden", jedes Mal eine neue),
+  // "opentdb" = englische Open Trivia Database wie bisher (siehe unten).
+  quizQuelle: "deutsch",
+
   // Allgemeinwissen-Panel — Open Trivia Database (opentdb.com), kostenlos,
   // kein Key, CORS offen. Bewusst eigenständig neben "Auf den Tag genau":
   // dort geht es um Fakten, die HEUTE vor X Jahren passiert sind, hier um
