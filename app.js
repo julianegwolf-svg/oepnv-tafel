@@ -4091,24 +4091,42 @@ function fetchTomTomRoute(from, to, travelMode, departDate) {
 // versuchen (falls konfiguriert), bei Erfolg direkt verwenden. Ohne Key
 // oder bei jedem Fehler fällt es auf den bisherigen Weg zurück —
 // Transitous-Route + Plausibilitätsschätzung.
+// Letzte echte TomTom-Fahrzeit je Verkehrsmittel (FEEDBACK 10.10.: "immer
+// 6 Minuten"). Gegenprobe am 10.10. für Julians Weg (4,4 km, über die
+// Weser): TomTom 10,8 min, Transitous-Autoroute 5,5 min (kennt weder
+// Verkehr noch Ampeln), Luftlinien-Schätzung 6 min – beide Ersatzwerte also
+// halb so lang. Fällt TomTom aus, zeigt die Tafel deshalb den zuletzt
+// gemessenen TomTom-Wert als "geschätzt" und sonst gar keine Autozeit.
+const ROUTE_ZULETZT_KEY = "tafelRouteZuletzt";
+const ROUTE_ZULETZT_MAX_MS = 14 * 86400000;
+
+function routeZuletzt(modus, minuten) {
+  let alle = null;
+  try { alle = JSON.parse(localStorage.getItem(ROUTE_ZULETZT_KEY) || "null"); } catch (e) { alle = null; }
+  if (!alle || typeof alle !== "object") alle = {};
+  if (minuten != null) {
+    alle[modus] = { min: minuten, at: Date.now() };
+    try { localStorage.setItem(ROUTE_ZULETZT_KEY, JSON.stringify(alle)); } catch (e) { /* egal */ }
+    return null;
+  }
+  const z = alle[modus];
+  return z && typeof z.min === "number" && Date.now() - z.at < ROUTE_ZULETZT_MAX_MS ? z : null;
+}
+
 function fetchCarItinerary(from, to, distanceMeters, departDate) {
+  // Ohne TomTom-Schlüssel: Transitous-Autoroute, aber nie als echte Angabe
+  // (freie Fahrt ohne Ampeln und Verkehr).
   function viaMotis() {
     return fetchDirectItinerary(from, to, "CAR")
       .then(function (it) {
         const check = plausibleMinutesOrFallback(
           itineraryDurationMin(it), estimateCarMinutes(distanceMeters), "Auto"
         );
-        return {
-          itinerary: it, minutes: check.minutes, estimated: check.estimated,
-          delayMin: null, source: check.estimated ? "fallback" : "motis",
-        };
+        return { itinerary: it, minutes: check.minutes, estimated: true, delayMin: null, source: "ohne-verkehr" };
       })
       .catch(function (err) {
         console.error(err);
-        return {
-          itinerary: null, minutes: estimateCarMinutes(distanceMeters), estimated: true,
-          delayMin: null, source: "fallback",
-        };
+        return null;
       });
   }
 
@@ -4116,14 +4134,17 @@ function fetchCarItinerary(from, to, distanceMeters, departDate) {
 
   return fetchTomTomRoute(from, to, "car", departDate)
     .then(function (r) {
+      routeZuletzt("car", r.minutes);
       return {
         itinerary: null, minutes: r.minutes, estimated: false, delayMin: r.delayMin,
         source: "tomtom", points: r.points,
       };
     })
     .catch(function (err) {
-      console.error("TomTom-Route (Auto) nicht verfügbar, nutze Ersatzroute:", err);
-      return viaMotis();
+      console.error("TomTom-Route (Auto) nicht verfügbar:", err);
+      const z = routeZuletzt("car");
+      if (!z) return null; // lieber keine Autozeit als eine halb so lange
+      return { itinerary: null, minutes: z.min, estimated: true, delayMin: null, source: "zuletzt", zuletztAt: z.at };
     });
 }
 
@@ -4151,6 +4172,8 @@ function fetchBikeItinerary(from, to, distanceMeters, departDate) {
 
   if (!CONFIG.tomtomApiKey) return viaMotis();
 
+  // Ersatz Transitous-Rad passt (10.10.: 15,3 statt TomTom 13,3 min) –
+  // Radwege kennt jeder Routenplaner, Verkehr spielt kaum eine Rolle.
   return fetchTomTomRoute(from, to, "bicycle", departDate)
     .then(function (r) {
       return { itinerary: null, minutes: r.minutes, estimated: false, source: "tomtom", points: r.points };
@@ -4310,9 +4333,13 @@ const COMMUTE_MODES = [
 // balken oben im Header).
 function fastestCommuteMode(results) {
   let best = null;
+  // Eine Schätzung gewinnt nur, wenn es gar keinen echten Wert gibt – sonst
+  // stünde "Los um …" auf einer Zahl, die niemand gemessen hat.
+  const echteDa = COMMUTE_MODES.some(function (m) { const r = results[m.key]; return r && r.minutes != null && !r.estimated; });
   COMMUTE_MODES.forEach(function (m) {
     const res = results[m.key];
     if (!res || res.minutes == null) return;
+    if (echteDa && res.estimated) return;
     if (!best || res.minutes < best.minutes) {
       best = { key: m.key, icon: m.icon, label: m.label, minutes: res.minutes, estimated: res.estimated, source: res.source };
     }
@@ -4516,8 +4543,17 @@ function renderCommuteRace(results) {
       row.appendChild(extra);
     } else if (res && res.estimated) {
       const extra = document.createElement("div");
-      extra.className = "commute-race-extra";
-      extra.textContent = "geschätzt, keine Live-Route verfügbar";
+      extra.className = "commute-race-extra is-geschaetzt";
+      if (res.source === "zuletzt") {
+        const t = new Date(res.zuletztAt);
+        extra.textContent = "geschätzt · Verkehrsdaten fehlen, zuletzt gemessen " +
+          (t.toDateString() === new Date().toDateString() ? "heute " : t.toLocaleDateString("de-DE", { weekday: "short" }) + " ") +
+          t.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+      } else if (res.source === "ohne-verkehr") {
+        extra.textContent = "geschätzt · ohne Verkehr und Ampeln";
+      } else {
+        extra.textContent = "geschätzt, keine Live-Route verfügbar";
+      }
       row.appendChild(extra);
     }
 
