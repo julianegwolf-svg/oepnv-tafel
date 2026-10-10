@@ -953,6 +953,15 @@ function renderDepartures(departures) {
 // lange Transition verwirft (passiert beim ersten Zeichnen nach dem Laden).
 const PILL_BAR_SPAN_MS = 5 * 60 * 1000;
 
+// Sehr dunkle Linienfarben (z. B. die 23) verschwinden fast auf der
+// dunklen Karte – solche Schilder bekommen einen feinen hellen Rand.
+function istDunkleFarbe(hex) {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex || ""));
+  if (!m) return false;
+  const lin = function (h) { const c = parseInt(h, 16) / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  return 0.2126 * lin(m[1]) + 0.7152 * lin(m[2]) + 0.0722 * lin(m[3]) < 0.035;
+}
+
 function updatePillBar(bar, endMs, now) {
   // Eine Transition startet nur an einem Element im Dokument – neue Zeilen
   // holen das nach dem Einsetzen nach (renderDepartures).
@@ -995,7 +1004,8 @@ function updateDepartureRow(row, dep, now, isNext) {
   const badge = row.querySelector(".dep-badge");
   const lineName = dep.routeShortName || dep.tripShortName || dep.displayName || "?";
   if (badge.textContent !== lineName) badge.textContent = lineName;
-  badge.className = "line-badge dep-badge " + productClass(dep.mode) + (dep.routeColor ? " has-color" : "");
+  badge.className = "line-badge dep-badge " + productClass(dep.mode) + (dep.routeColor ? " has-color" : "") +
+    (istDunkleFarbe(dep.routeColor) ? " is-dunkel" : "");
   badge.style.background = dep.routeColor ? "#" + dep.routeColor : "";
   badge.style.color = dep.routeColor ? "#" + (dep.routeTextColor || "ffffff") : "";
 

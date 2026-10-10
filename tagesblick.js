@@ -198,7 +198,8 @@
 
   // ---------- Bahn ----------
   function badge(line, color, text) {
-    return '<span class="tb-badge"' + (color ? ' style="background:#' + esc(color) + ";color:#" + esc(text || "ffffff") + '"' : "") + ">" + esc(line) + "</span>";
+    const dunkel = typeof istDunkleFarbe === "function" && istDunkleFarbe(color);
+    return '<span class="tb-badge' + (dunkel ? " is-dunkel" : "") + '"' + (color ? ' style="background:#' + esc(color) + ";color:#" + esc(text || "ffffff") + '"' : "") + ">" + esc(line) + "</span>";
   }
 
   // Fahrplan der Arbeitslinie rund um die empfohlene Bahn: eine davor, die

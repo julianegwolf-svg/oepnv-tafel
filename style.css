@@ -4087,3 +4087,22 @@ body.farbe-dunkel .trivia-choices.is-revealed .trivia-choice:not(.correct):not(.
 .trivia-block.is-raten.is-revealed-block .knowledge-score-badge {
   opacity: 0;
 }
+
+/* Spur hinter dem ablaufenden Balken der LOS-Pille: Ein fast leerer
+   Balken sah allein wie ein weißer Fleck aus – mit Spur liest er sich als
+   "gleich abgelaufen". */
+.dep-pill.is-shown::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 4px;
+  height: 5px;
+  border-radius: 3px;
+  background: currentColor;
+  opacity: 0.28;
+}
+
+.dep-badge.is-dunkel {
+  box-shadow: inset 0 0 0 2px rgba(239, 233, 223, 0.3);
+}
