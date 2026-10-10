@@ -99,6 +99,22 @@ if (new URL(request.url).searchParams.get("musik") === "de") {
 ```
 und in `config.js`: `musikProxy: "https://kalender-worker.julian-e-g-wolf.workers.dev/?musik=de"`.
 
+### 7. Szenen wie in der Hue-App (35 Stück, optional)
+In HA gab es bisher nur die Hue-Szenen im Schlafzimmer und „Concentrate“ im Büro. Das Wohnzimmer hatte keine, und die IKEA-Lampen waren in keiner Szene. Die Datei **`ha-vorschlag/scenes.yaml`** liegt nur auf deinem Mac. Der Ordner ist gitignored, weil sie deine echten entity_ids enthält. Sie baut die Hue-Klassiker für Wohnzimmer, Schlafzimmer und Büro nach:
+- **Hell, Konzentrieren, Lesen, Entspannen, Gedimmt, Nachtlicht, Energie tanken** mit den Werten der Hue-Bridge, z. B. Entspannen 2237 K bei 56 % oder Konzentrieren 4292 K bei 100 %. Quellen stehen in `ha-vorschlag/baue-szenen.py`.
+- dazu die Farbszenen **Sonnenuntergang, Tropische Dämmerung, Polarlicht und Frühling** mit den gemessenen Hue-Farben je Lampe
+- und **Wohnzimmer · Filmabend** sowie **Schlafzimmer · Aufwachen**
+
+Jede Lampe bekommt nur, was sie kann. Die reine Weißlampe im Büro bekommt nur Helligkeit. Die IKEA-Lampe ohne Farbe bekommt nur Farbtemperatur zwischen 2202 und 4000 K. Die Farblampen von Hue und IKEA bekommen Farbe. Je Lampe gibt es genau **eine** Farbangabe, also nicht der Fehler aus den alten Automationen. Die Hue-Raumgruppen werden nicht zusätzlich gesetzt.
+
+**Einbau:**
+1. Datei-Editor (oder Samba) → `/config/scenes.yaml` öffnen. Steht dort nur `[]`, diese Zeile durch den Inhalt von `ha-vorschlag/scenes.yaml` ersetzen. Gibt es schon eigene Szenen, den Inhalt darunter anhängen.
+2. Prüfen, dass in `configuration.yaml` die Zeile `scene: !include scenes.yaml` steht. Das ist bei neuen Installationen Standard.
+3. **Entwicklerwerkzeuge → YAML → „Szenen neu laden“.**
+4. *Optional:* Einstellungen → Automationen & Szenen → Szenen → Szene öffnen → ⚙ → **Bereich** zuordnen. Die Tafel braucht das nicht, sie ordnet die Szenen über den Namensanfang („Wohnzimmer · …“) dem richtigen Raum zu. Sprachassistenten und die HA-Bereichsansicht profitieren aber davon.
+
+Auf der Tafel erscheinen die Szenen in der Raumansicht mit kurzem Namen und Farbstreifen. Beim Antippen läuft ein Farbschleier in den Szenenfarben über den Knopf. Gibt es eine Hue-Szene mit gleichem Namen (z. B. „Read“ im Schlafzimmer), zeigt die Tafel nur die eigene, denn die schaltet auch die IKEA-Lampe mit. Geprüft mit `tool/pruefe-szenen.js` gegen den Simulator: Jede der 35 Szenen setzt alle 116 Lampenwerte genau wie vorgesehen (`belege/2026-10-10/s7/szenen/`).
+
 Gut zu wissen: Die Home-Bildschirm-App unter der neuen Adresse hat eigenen Speicher. Was die Tafel bisher über deine Bedienung gelernt hat (Vorschläge), fängt dort neu an. Der HA-Verlauf liefert die Grundlage aber sofort wieder.
 
 ---

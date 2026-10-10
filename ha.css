@@ -2345,7 +2345,8 @@ body.ha-offline .ha-ctl {
   100% { transform: translateX(160%); opacity: 0.85; }
 }
 
-.ha-scene.is-pressed .ha-scene-sweep {
+.ha-scene.is-pressed .ha-scene-sweep,
+.ha-scene.is-sweeping .ha-scene-sweep {
   animation: haSweep 0.6s var(--ease) 1;
 }
 

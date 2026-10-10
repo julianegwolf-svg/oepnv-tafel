@@ -41,6 +41,8 @@ Benötigt nur `ws` aus `tool/node_modules` (Node ≥ 18). Beenden mit Strg+C.
 | `HA_SIM_EXTRAS` | – | `1` = wie `--extras` |
 | `HA_SIM_HAUSHALT` | – | Pfad zu einer haushalt.json oder `fiktiv` |
 | `HA_SIM_LEISE` | – | `1` = kaum Log |
+| `HA_SIM_SZENEN` | – | Pfad zu einer HA-`scenes.yaml` (z. B. `ha-vorschlag/scenes.yaml`, privat): Szenen wie in HA (`scene.<slug>`, Zustand = letzte Aktivierung, `scene.turn_on` stellt die Lampen her) |
+| `HA_SIM_SZENEN_BEREICH` | – | `1` = diese Szenen wie nach Zuordnung in der HA-Oberfläche einem Bereich zuweisen (über den Namensanfang „Wohnzimmer · …“); ohne: kein Bereich, wie direkt nach dem Einbau |
 | `HA_SIM_STRENG` | – | `1` = Automationen brechen bei ungültigen Aktionen ab wie in echtem HA (z. B. `rgb_color` + `color_temp_kelvin` zusammen). Ohne: der Simulator nimmt beim echten Haushalt jeweils die erste Angabe, damit die Wirkung sichtbar bleibt. |
 
 ## WebSocket `/api/websocket`

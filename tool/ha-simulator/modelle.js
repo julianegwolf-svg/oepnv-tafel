@@ -290,7 +290,7 @@ class Simulation {
     }
     for (const sa of this.szenenAuswahl.values()) w.setze(sa.id, 'unknown', { options: sa.optionen.slice() }, null, vorher(60, 600));
     for (const e of h.ENTITAETEN) {
-      if (e.art === 'szene_ha') w.setze(e.entity_id, 'unknown', { entity_id: Object.keys(e.modell.entities), id: e.modell.id }, null, vorher(600, 1400));
+      if (e.art === 'szene_ha') w.setze(e.entity_id, 'unknown', Object.assign({ entity_id: Object.keys(e.modell.entities), id: e.modell.id }, e.modell.icon ? { icon: e.modell.icon } : {}), null, vorher(600, 1400));
     }
     for (const hz of this.heizungen.values()) {
       hz.aktion = this.berechneAktion(hz, true);

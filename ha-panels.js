@@ -571,6 +571,7 @@
     else if (act === "licht") toggleLight(id);
     else if (act === "szene") activateScene(id, btn);
     else if (act === "szene-wahl") {
+      markSceneSweep(id + "|" + btn.getAttribute("data-option"));
       btn.classList.add("is-pressed");
       setTimeout(function () { btn.classList.remove("is-pressed"); }, 900);
       call("select", "select_option", { option: btn.getAttribute("data-option") }, { entity_id: id }, "Szene").catch(noop);
@@ -832,7 +833,24 @@
   }
 
   // ---------- Szenen, Schalter, Heizung, Medien ----------
+  // Der Farbschleier (0,6 s) soll ganz durchlaufen, auch wenn HA schon nach
+  // ~100 ms den neuen Zustand meldet und die Knöpfe neu gezeichnet werden:
+  // der neue Knopf setzt die Animation an der richtigen Stelle fort.
+  const SWEEP_MS = 600;
+  let sceneSweep = { key: null, t: 0 };
+
+  function markSceneSweep(key) {
+    sceneSweep = { key: key, t: Date.now() };
+  }
+
+  function sweepAttrs(key) {
+    const ms = sceneSweep.key === key ? Date.now() - sceneSweep.t : SWEEP_MS;
+    if (ms >= SWEEP_MS - 30) return { cls: "", style: "" };
+    return { cls: " is-sweeping", style: "animation-delay:-" + ms + "ms;" };
+  }
+
   function activateScene(id, btn) {
+    markSceneSweep(id);
     if (btn) {
       btn.classList.add("is-pressed");
       setTimeout(function () { btn.classList.remove("is-pressed"); }, 900);
@@ -1673,20 +1691,39 @@
   const SCENE_DE = {
     "relax": "Entspannen", "read": "Lesen", "concentrate": "Konzentrieren", "energize": "Energie tanken",
     "rest": "Ausruhen", "nightlight": "Nachtlicht", "natural light": "Natürliches Licht", "bright": "Hell",
-    "dimmed": "Gedimmt", "rolling hills": "Sanfte Hügel", "sunset-animation": "Sonnenuntergang", "sunset animation": "Sonnenuntergang",
+    "dimmed": "Gedimmt", "rolling hills": "Sanfte Hügel",
+    "sunset-animation": "Sonnenuntergang animiert", "sunset animation": "Sonnenuntergang animiert",
+    "savanna sunset": "Sonnenuntergang", "tropical twilight": "Tropische Dämmerung", "arctic aurora": "Polarlicht",
+    "spring blossom": "Frühling",
   };
 
-  // Typische Farben der Hue-Szenen (für den Farbstreifen am Knopf und den
-  // Farbschleier beim Aktivieren). Unbekannte Szenen: Akzentfarbe.
+  // Typische Farben je Szene (deutscher Name, klein) für den Farbstreifen
+  // am Knopf und den Farbschleier beim Aktivieren – bei den Farbszenen die
+  // Lampenfarben aus Hue (gemessene xy-Werte, nach sRGB umgerechnet).
+  // Unbekannte Szenen: Akzentfarbe.
   const SCENE_TINT = {
-    "relax": ["#ffb35c", "#ffcf8a"], "read": ["#ffe2b8", "#fff1dc"], "concentrate": ["#f3f6ff", "#d9e6ff"],
-    "energize": ["#dfeaff", "#bcd3ff"], "rest": ["#ff9d4d", "#ffbe7a"], "nightlight": ["#ff7b2e", "#c4521a"],
-    "natural light": ["#fff4e0", "#dbe9ff"], "bright": ["#ffffff", "#fff3dd"], "dimmed": ["#e0a96a", "#a87545"],
-    "rolling hills": ["#9ccf5f", "#f2d16b"], "sunset-animation": ["#ff7a59", "#c94f9a"], "sunset animation": ["#ff7a59", "#c94f9a"],
+    "hell": ["#ffd9a8", "#ffeacc"], "konzentrieren": ["#f3f6ff", "#d9e6ff"], "lesen": ["#ffe2b8", "#fff1dc"],
+    "entspannen": ["#ffb35c", "#ffcf8a"], "gedimmt": ["#e0a96a", "#a87545"], "nachtlicht": ["#ff7b2e", "#c4521a"],
+    "energie tanken": ["#dfeaff", "#bcd3ff"], "ausruhen": ["#ff9d4d", "#ffbe7a"],
+    "natürliches licht": ["#fff4e0", "#dbe9ff"], "sanfte hügel": ["#9ccf5f", "#f2d16b"],
+    "sonnenuntergang animiert": ["#ff7a59", "#c94f9a"],
+    "sonnenuntergang": ["#ffd86d", "#ff5020", "#ff7e3a", "#ffab37"],
+    "tropische dämmerung": ["#ff95cd", "#ff561e", "#ae25ff", "#ef62ff"],
+    "polarlicht": ["#00fffc", "#0082ff", "#0040ff", "#00ffae"],
+    "frühling": ["#ffc2d0", "#ff8ac4", "#ff635e", "#ff489b"],
+    "filmabend": ["#6a3cff", "#ffb35c"], "aufwachen": ["#ffe0b0", "#fff3e0"],
   };
+  const SCENE_TINT_DEFAULT = ["#e2a65a", "#f4c879"];
 
-  function sceneKey(id) {
-    return HA.shortName(id).toLowerCase().trim();
+  function canonScene(name) {
+    const k = String(name || "").toLowerCase().trim();
+    return SCENE_DE[k] ? SCENE_DE[k].toLowerCase() : k;
+  }
+
+  // Schlüssel = deutscher Name ohne Raum ("Wohnzimmer · Lesen" und Hues
+  // "Read" im selben Raum → "lesen"), damit Doppelte nur einmal erscheinen.
+  function sceneKey(id, room) {
+    return canonScene(HA.shortName(id, room ? room.name : ""));
   }
 
   function sceneLabel(id, room) {
@@ -1694,25 +1731,45 @@
     return SCENE_DE[raw.toLowerCase().trim()] || raw;
   }
 
-  function sceneTint(id) {
-    return SCENE_TINT[sceneKey(id)] || ["#e2a65a", "#f4c879"];
+  function sceneTint(id, room) {
+    return SCENE_TINT[sceneKey(id, room)] || SCENE_TINT_DEFAULT;
   }
 
-  // Hue legt Szenen gern doppelt an (…_2, …_3) — gleiche Namen nur einmal.
+  function tintGradient(t, winkel) {
+    return "linear-gradient(" + winkel + "," + t.join(",") + ")";
+  }
+
+  function sweepGradient(t) {
+    return "linear-gradient(90deg,rgba(0,0,0,0)," + t.join(",") + ",rgba(0,0,0,0))";
+  }
+
+  // Szenen aus der Hue-Bridge tragen group_name.
+  function isHueScene(id) {
+    return HA.attr(HA.state(id), "group_name") != null;
+  }
+
+  // Gleiche Namen nur einmal: Hue legt Szenen gern doppelt an (…_2, …_3),
+  // und eigene HA-Szenen ("Schlafzimmer · Lesen") gehen vor gleichnamige
+  // Hue-Szenen ("Read") – sie schalten auch die IKEA-Lampen mit.
   function uniqueScenes(room) {
     const seen = {};
     const out = [];
-    room.scenes.slice().sort(function (a, b) { return a.length - b.length || (a < b ? -1 : 1); }).forEach(function (id) {
-      const k = sceneKey(id);
+    room.scenes.slice().sort(function (a, b) {
+      return (isHueScene(a) ? 1 : 0) - (isHueScene(b) ? 1 : 0) || a.length - b.length || (a < b ? -1 : 1);
+    }).forEach(function (id) {
+      const k = sceneKey(id, room);
       if (seen[k]) return;
       seen[k] = true;
       out.push(id);
     });
-    // Reihenfolge der Hue-App grob nachbilden: alltägliche zuerst.
-    const order = ["energize", "concentrate", "read", "bright", "natural light", "relax", "dimmed", "rest", "nightlight"];
+    // Reihenfolge der Hue-App grob nachbilden: Weißlicht für den Alltag,
+    // dann Besonderes, dann Farbszenen; eigene, unbekannte zuletzt.
+    const order = ["hell", "konzentrieren", "lesen", "entspannen", "gedimmt", "nachtlicht", "energie tanken",
+      "natürliches licht", "ausruhen", "aufwachen", "filmabend",
+      "sonnenuntergang", "tropische dämmerung", "polarlicht", "frühling", "sanfte hügel", "sonnenuntergang animiert"];
     out.sort(function (a, b) {
-      const ia = order.indexOf(sceneKey(a));
-      const ib = order.indexOf(sceneKey(b));
+      const ia = order.indexOf(sceneKey(a, room));
+      const ib = order.indexOf(sceneKey(b, room));
       return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
     });
     return out;
@@ -1723,8 +1780,8 @@
     for (let i = 0; i < room.sceneSelects.length; i++) {
       const sel = HA.state(room.sceneSelects[i]);
       if (!sel || HA.isUnavailable(sel) || !sel.state || sel.state === "unknown") continue;
-      const want = String(sel.state).toLowerCase();
-      const hit = room.scenes.filter(function (id) { return sceneKey(id) === want; })[0];
+      const want = canonScene(sel.state);
+      const hit = room.scenes.filter(function (id) { return sceneKey(id, room) === want; })[0];
       if (hit && roomLightsOn(room) > 0) return hit;
     }
     let best = null;
@@ -1870,25 +1927,27 @@
           side += '<div class="ha-sec-head"><span class="ds-eyebrow">Szenen</span></div><div class="ha-scenes">' +
             opts.slice(0, 10).map(function (o) {
               const key = String(o).toLowerCase();
-              const t = SCENE_TINT[key] || ["#e2a65a", "#f4c879"];
+              const t = SCENE_TINT[canonScene(o)] || SCENE_TINT_DEFAULT;
               const isActive = sel && sel.state === o && roomLightsOn(room) > 0;
-              return '<button type="button" class="ha-scene ha-ctl' + (isActive ? " is-active" : "") + '" data-act="szene-wahl" data-id="' + esc(selId) + '" data-option="' + esc(o) + '">' +
-                '<span class="ha-scene-tint" style="background:linear-gradient(135deg,' + t[0] + "," + t[1] + ')"></span>' +
+              const sw = sweepAttrs(selId + "|" + o);
+              return '<button type="button" class="ha-scene ha-ctl' + (isActive ? " is-active" : "") + sw.cls + '" data-act="szene-wahl" data-id="' + esc(selId) + '" data-option="' + esc(o) + '">' +
+                '<span class="ha-scene-tint" style="background:' + tintGradient(t, "135deg") + '"></span>' +
                 '<span class="ha-scene-name">' + esc(SCENE_DE[key] || o) + "</span>" +
-                '<span class="ha-scene-sweep" style="background:linear-gradient(90deg,rgba(0,0,0,0),' + t[0] + "," + t[1] + ',rgba(0,0,0,0))"></span></button>';
+                '<span class="ha-scene-sweep" style="' + sw.style + "background:" + sweepGradient(t) + '"></span></button>';
             }).join("") + "</div>";
         }
       }
       if (room.scenes.length) {
         const active = activeSceneId(room);
-        const activeKey = active ? sceneKey(active) : null;
+        const activeKey = active ? sceneKey(active, room) : null;
         side += '<div class="ha-sec-head"><span class="ds-eyebrow">Szenen</span></div><div class="ha-scenes">' +
           uniqueScenes(room).map(function (id) {
-            const t = sceneTint(id);
-            return '<button type="button" class="ha-scene ha-ctl' + (sceneKey(id) === activeKey ? " is-active" : "") + '" data-act="szene" data-id="' + esc(id) + '">' +
-              '<span class="ha-scene-tint" style="background:linear-gradient(135deg,' + t[0] + "," + t[1] + ')"></span>' +
+            const t = sceneTint(id, room);
+            const sw = sweepAttrs(id);
+            return '<button type="button" class="ha-scene ha-ctl' + (sceneKey(id, room) === activeKey ? " is-active" : "") + sw.cls + '" data-act="szene" data-id="' + esc(id) + '">' +
+              '<span class="ha-scene-tint" style="background:' + tintGradient(t, "135deg") + '"></span>' +
               "<span class=\"ha-scene-name\">" + esc(sceneLabel(id, room)) + "</span>" +
-              '<span class="ha-scene-sweep" style="background:linear-gradient(90deg,rgba(0,0,0,0),' + t[0] + "," + t[1] + ',rgba(0,0,0,0))"></span></button>';
+              '<span class="ha-scene-sweep" style="' + sw.style + "background:" + sweepGradient(t) + '"></span></button>';
           }).join("") + "</div>";
       }
       if (room.climates.length) {

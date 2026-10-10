@@ -77,6 +77,10 @@ function ladeHaushalt() {
 
 const H = ladeHaushalt();
 if (CHARTS) H.ENTITAETEN.push(require('./charts.js').sensor());
+if (process.env.HA_SIM_SZENEN) {
+  // Szenen aus einer HA-scenes.yaml (z. B. ha-vorschlag/scenes.yaml, privat)
+  require('./szenen-yaml.js').ladeSzenenYaml(H, path.resolve(process.env.HA_SIM_SZENEN), process.env.HA_SIM_SZENEN_BEREICH === '1', log);
+}
 const welt = new Welt(H);
 const sim = new Simulation(welt, H, { tickMs: TICK_MS, log: log, wochen: WOCHEN });
 const dienste = new Dienste(welt, sim);

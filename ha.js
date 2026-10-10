@@ -925,7 +925,7 @@
       const lower = full.toLowerCase();
       const prefix = roomName.toLowerCase();
       if (lower.indexOf(prefix) === 0 && full.length > roomName.length + 1) {
-        const rest = full.slice(roomName.length).replace(/^[\s:\-–]+/, "");
+        const rest = full.slice(roomName.length).replace(/^[\s:\-–·|\/]+/, "");
         if (rest) return rest.charAt(0).toUpperCase() + rest.slice(1);
       }
     }
@@ -953,6 +953,32 @@
       lights: [], lightGroups: [], scenes: [], sceneSelects: [], climates: [], temps: [], hums: [],
       illums: [], openings: [], motions: [], media: [], switches: [], powers: [], vacuums: [], others: [],
     };
+  }
+
+  // Szene ohne Bereich (z. B. frisch aus scenes.yaml, noch keinem Raum
+  // zugeordnet): 1. Name beginnt mit einem Raumnamen ("Wohnzimmer · Lesen"),
+  // 2. sonst alle ihre Lampen/Geräte stehen im selben Raum. Von der Tafel
+  // selbst angelegte Szenen (Rückgängig) bleiben draußen.
+  function sceneAreaGuess(entityId, st) {
+    if (entityId.indexOf("scene.tafel_") === 0) return null;
+    const name = String(attr(st, "friendly_name") || "").toLowerCase();
+    let best = null;
+    for (let i = 0; i < store.areas.length; i++) {
+      const a = store.areas[i];
+      const an = String(a.name || "").toLowerCase();
+      if (!an || name.indexOf(an) !== 0 || !/^[\s:\-–·|\/]/.test(name.slice(an.length))) continue;
+      if (!best || an.length > String(best.name).length) best = a;
+    }
+    if (best) return best.area_id;
+    const members = attr(st, "entity_id");
+    if (!Array.isArray(members) || !members.length) return null;
+    let area = null;
+    for (let i = 0; i < members.length; i++) {
+      const a = areaIdOf(members[i]);
+      if (!a || (area && a !== area)) return null;
+      area = a;
+    }
+    return area;
   }
 
   let roomsCache = null;
@@ -1019,6 +1045,7 @@
         if (v != null && (global.powerTotal == null || v > (numState(store.states[global.powerTotal]) || 0))) global.powerTotal = id;
         continue;
       }
+      if (!areaId && dom === "scene") areaId = sceneAreaGuess(id, st);
       if (!areaId) {
         // Szenen ohne Raum (z. B. per scene.create angelegte) gehören nicht
         // in die Raum-Ansicht; Lichter/Schalter/Medien ohne Raum schon.
