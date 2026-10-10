@@ -3270,3 +3270,71 @@ html, body {
 .news-layout-rechts .news-progress-count {
   color: var(--ink-dim);
 }
+
+
+/* ---------- Nachtansicht (IDEEN NA1) ----------
+   Schwarz, gedämpftes Bernstein (Variante: kühles Grau), keine Fotos,
+   keine Animationen. Liegt über allem außer dem Tiefschlaf-Schleier. */
+.night-view {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 960;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  color: #a8814f;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 1.2s ease, visibility 0s linear 1.2s;
+}
+
+.night-view.is-active {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.night-view.is-grau {
+  color: #6f7885;
+}
+
+.nv-clock {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 150px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.nv-date {
+  margin-top: 10px;
+  font-size: 24px;
+  opacity: 0.7;
+}
+
+.nv-deps {
+  margin-top: 56px;
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  white-space: pre-line;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.nv-hint {
+  margin-top: 30px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #c2723f;
+}
+
+.night-view.is-grau .nv-hint {
+  color: #9a7b6e;
+}

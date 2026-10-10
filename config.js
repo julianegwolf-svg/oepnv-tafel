@@ -64,6 +64,15 @@ const CONFIG = {
   // Abfahrten prüfen will. Wacht sofort auf, sobald jemand die Tafel
   // berührt (siehe recentlyTouched in app.js) — fällt dann auf die normale
   // nightDim-Helligkeit zurück, nicht auf volle Tageshelligkeit.
+  // Nachts (nightDim-Stunden): "schleier" = Karussell läuft gedimmt weiter
+  // (bisher), "ansicht" = ruhige Nachtansicht mit großer Uhr, nächsten zwei
+  // Bahnen und wichtigen Hinweisen, Karussell ruht bis zum nächsten Tipp.
+  // Bewusst noch "schleier": eine große Uhr mit stehendem Karussell ist
+  // genau das, was tagsüber gestört hat (FEEDBACK) — Julian entscheidet
+  // (FRAGEN.md). nachtFarbe: "bernstein" | "grau".
+  nachtModus: "schleier",
+  nachtFarbe: "bernstein",
+
   nightSleep: {
     startHour: 1,
     endHour: 5,

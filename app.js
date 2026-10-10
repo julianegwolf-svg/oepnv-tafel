@@ -337,8 +337,72 @@ function updateNightDim(hour) {
     ? sleepCfg.opacity
     : ((cfg && cfg.opacity != null) ? cfg.opacity : 0.65);
 
+  // Nachtansicht (IDEEN NA1): statt eines grauen Schleiers über dem
+  // laufenden Karussell eine ruhige eigene Ansicht — große Uhr, die
+  // nächsten zwei Bahnen, wichtige Hinweise, in gedämpftem Licht. Der
+  // Schleier bleibt nur für den Tiefschlaf. CONFIG.nachtModus "schleier"
+  // = bisheriges Verhalten.
+  const nightView = CONFIG.nachtModus === "ansicht" && dimActive && !recentlyTouched &&
+    Date.now() > presenceWakeUntil && !ambientActive;
+  setNightView(nightView);
+  const overlayOn = nightView ? sleepActive : (dimActive || sleepActive);
   els.nightOverlay.style.setProperty("--night-dim-opacity", opacity);
-  els.nightOverlay.classList.toggle("is-active", dimActive || sleepActive);
+  els.nightOverlay.classList.toggle("is-active", overlayOn);
+}
+
+let nightViewActive = false;
+
+function setNightView(on) {
+  const el = document.getElementById("nightView");
+  if (!el) return;
+  if (on !== nightViewActive) {
+    nightViewActive = on;
+    el.classList.toggle("is-active", on);
+    el.classList.toggle("is-grau", CONFIG.nachtFarbe === "grau");
+    if (on) {
+      // Karussell ruht, solange niemand hinsieht — spart nachts Strom und
+      // hält keine Fotos/Animationen im Speicher.
+      if (carouselTimer) { clearTimeout(carouselTimer); carouselTimer = null; }
+      pauseSlideshowTimers();
+      jumpQuietlyTo("departures");
+    } else if (!carouselTimer && !carouselIdleTimer && !panelNavOpen && !ambientActive) {
+      scheduleCarousel();
+    }
+  }
+  if (on) renderNightView();
+}
+
+// Ohne Übergangseffekte auf das Abfahrten-Panel wechseln (liegt unter der
+// Nachtansicht, damit die Bühne dahinter leicht ist).
+function jumpQuietlyTo(name) {
+  const idx = activeSequence.indexOf(name);
+  if (idx !== -1) panelIndex = idx;
+  showPanel(name);
+}
+
+function renderNightView() {
+  const now = new Date();
+  const set = function (id, text) {
+    const el = document.getElementById(id);
+    if (el && el.textContent !== text) el.textContent = text;
+  };
+  set("nvClock", now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }));
+  set("nvDate", now.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" }));
+  const deps = (lastDepartureSnapshot || []).filter(function (d) { return d.leaveByMs && d.leaveByMs >= now.getTime() - 60000; }).slice(0, 2);
+  const depText = deps.map(function (d) {
+    const m = Math.max(0, Math.round((d.whenMs - now.getTime()) / 60000));
+    return d.line + "  " + d.dest + "  ·  " + (m <= 0 ? "jetzt" : m + " min");
+  }).join("\n");
+  set("nvDeps", depText || "Keine Bahn in der nächsten Stunde");
+  // Nur Wichtiges: amtliche Warnung oder HA-Hinweis der höchsten Stufe.
+  let hint = "";
+  const warn = window.TafelWarn ? TafelWarn.aktuelle()[0] : null;
+  if (warn) hint = "⚠ " + TafelWarn.kurz(warn);
+  else if (window.TafelHAUI) {
+    const h = TafelHAUI.hints().filter(function (x) { return x.prio === 1; })[0];
+    if (h) hint = h.text;
+  }
+  set("nvHint", hint);
 }
 
 // ---------- Haltestellen auflösen ----------
