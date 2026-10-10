@@ -92,6 +92,17 @@
     morphBox.innerHTML = "";
   }
 
+  // Panel-Titel: lange Hinweise ("Badezimmer: Fenster offen, Heizung an")
+  // in kleinerer Schrift statt abgeschnitten oder unter den Kopfknöpfen.
+  // Ausgehängt (display:none) lässt sich nichts messen – dann beim
+  // nächsten Zeigen (onPanelShown rendert neu).
+  function setTitel(el, html) {
+    setHtml(el, html);
+    if (!el || !el.clientWidth) return;
+    el.classList.remove("is-lang");
+    if (el.scrollWidth > el.clientWidth + 1) el.classList.add("is-lang");
+  }
+
   function sameNode(t, s) {
     if (t.nodeType !== s.nodeType || t.nodeName !== s.nodeName) return false;
     if (s.nodeType !== 1) return true;
@@ -1581,7 +1592,7 @@
     els.homeEyebrow.textContent = "Zuhause";
     const pl = personsLine();
     const parts = homeSummaryParts();
-    setHtml(els.homeTitle, pl || esc(parts[0]));
+    setTitel(els.homeTitle, pl || esc(parts[0]));
     setHtml(els.homeSub, esc((pl ? parts : parts.slice(1)).join("  ·  ")));
     renderActions();
   }
@@ -2194,9 +2205,9 @@
 
     const klimaHints = hints.filter(function (h) { return h.ziel === "klima"; });
     if (klimaHints.length) {
-      setHtml(els.klimaTitle, esc(klimaHints[0].text));
+      setTitel(els.klimaTitle, esc(klimaHints[0].text));
     } else {
-      setHtml(els.klimaTitle, "Raumklima im grünen Bereich");
+      setTitel(els.klimaTitle, "Raumklima im grünen Bereich");
     }
     const temps = [];
     let heatingRooms = 0;
@@ -2263,7 +2274,7 @@
     if (!els.medienBody) return;
     const heroId = pickHero();
     if (!heroId) {
-      setHtml(els.medienTitle, "Gerade läuft nichts");
+      setTitel(els.medienTitle, "Gerade läuft nichts");
       setHtml(els.medienBody, '<div class="ha-empty">Keine Lautsprecher gefunden.</div>');
       return;
     }
@@ -2271,7 +2282,7 @@
     const st = eff(heroId);
     const playing = st.state === "playing";
     const room = playerRoomName(heroId);
-    setHtml(els.medienTitle, esc(playing ? "Läuft " + (room ? "im " + room : "auf " + HA.name(heroId)) : (st.state === "paused" ? "Pausiert" + (room ? " im " + room : "") : "Bereit")));
+    setTitel(els.medienTitle, esc(playing ? "Läuft " + (room ? "im " + room : "auf " + HA.name(heroId)) : (st.state === "paused" ? "Pausiert" + (room ? " im " + room : "") : "Bereit")));
 
     if (isDraggingIn(els.medienBody)) return;
     const dur = HA.attr(st, "media_duration");

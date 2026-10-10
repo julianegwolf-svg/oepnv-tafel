@@ -3132,3 +3132,15 @@ body.ha-ruhe .ha-dot {
 .ha-outdoor-note {
   font-size: 13px;
 }
+
+/* Kopf der HA-Panels endet vor den drei Kopfknöpfen (ab x = 518): vorher
+   560 px breit, lange Titel liefen unter die Knöpfe. Lange Titel kleiner
+   (setTitel in ha-panels.js). */
+.ha-head {
+  max-width: 476px;
+}
+
+.ha-title.is-lang {
+  margin-top: 9px;
+  font-size: 22px;
+}
