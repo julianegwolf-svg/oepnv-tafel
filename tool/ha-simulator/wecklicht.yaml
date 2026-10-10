@@ -1,0 +1,21 @@
+# Wecklicht der Tafel (KONZEPTE.md K1) – dieselbe Automation steht zum
+# Einbau in HOME_ASSISTANT.md. Braucht den Helfer input_datetime.wecklicht
+# (Datum + Uhrzeit) und die Szenen "Schlafzimmer · Nachtlicht/Aufwachen".
+- id: "tafel_wecklicht"
+  alias: "Wecklicht (Tafel)"
+  description: "Zur Zeit im Helfer Wecklicht: 20 Minuten Sonnenaufgang im Schlafzimmer"
+  triggers:
+    - trigger: time
+      at: input_datetime.wecklicht
+  conditions: []
+  actions:
+    - action: scene.turn_on
+      target:
+        entity_id: scene.schlafzimmer_nachtlicht
+    - delay: "00:00:02"
+    - action: scene.turn_on
+      target:
+        entity_id: scene.schlafzimmer_aufwachen
+      data:
+        transition: 1200
+  mode: single

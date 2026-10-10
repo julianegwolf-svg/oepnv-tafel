@@ -34,6 +34,10 @@ const berlinTag = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', 
 function wochentag(sek) {
   return berlinTag.format(new Date(sek * 1000)).slice(0, 3).toLowerCase();
 }
+const berlinDatum = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' });
+function ortsDatum(sek) {
+  return berlinDatum.format(new Date(sek * 1000));
+}
 function zeitInStunden(text) {
   const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(String(text || ''));
   return m ? Number(m[1]) + Number(m[2]) / 60 + Number(m[3] || 0) / 3600 : null;
@@ -412,6 +416,13 @@ class Simulation {
       for (const tr of liste(a.cfg.triggers)) {
         if ((tr.trigger || tr.platform) !== 'time') continue;
         for (const at of liste(tr.at)) {
+          if (/^input_datetime\./.test(String(at))) {
+            // at: input_datetime.x – mit Datum: genau dieser Tag + Minute
+            const s = this.welt.zustand(at);
+            const m = s && /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/.exec(s.state);
+            if (m && m[1] === ortsDatum(t) && Math.floor(zeitInStunden(m[2]) * 60) === minute) this.automationAusloesen(aid, null, false, 'time');
+            continue;
+          }
           const z = zeitInStunden(at);
           if (z !== null && Math.floor(z * 60) === minute) this.automationAusloesen(aid, null, false, 'time');
         }

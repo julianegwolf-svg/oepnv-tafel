@@ -595,7 +595,8 @@
     else if (act === "hinweis") openHint(btn.getAttribute("data-key"));
     else if (act === "vorschlag-weg") {
       const k = btn.getAttribute("data-key") || "";
-      if (window.TafelLernen) TafelLernen.ablehnen(k.replace(/^vorschlag\|/, ""));
+      if (k.indexOf("konzept|") === 0) { if (window.TafelKonzepte) TafelKonzepte.ablehnen(k.slice(8)); }
+      else if (window.TafelLernen) TafelLernen.ablehnen(k.replace(/^vorschlag\|/, ""));
       lastHintsAt = 0;
       scheduleFlush(0);
     }
@@ -2626,6 +2627,13 @@
       });
     }
 
+    // Prototypen aus KONZEPTE.md (konzepte.js) – Vorschläge und Infos
+    if (window.TafelKonzepte && TafelKonzepte.hinweise) {
+      TafelKonzepte.hinweise().forEach(function (k) {
+        out.push({ key: "konzept|" + k.key, prio: k.prio || 2, icon: k.icon || "sparkle", text: k.text, vorschlag: k.onTap ? k : null, ziel: k.ziel || "home" });
+      });
+    }
+
     out.sort(function (a, b) { return a.prio - b.prio; });
     return out;
   }
@@ -2662,6 +2670,10 @@
     const h = hints.filter(function (x) { return x.key === key; })[0];
     if (typeof jumpToPanel !== "function") return;
     if (!h) { jumpToPanel("home"); return; }
+    if (h.vorschlag && h.vorschlag.onTap) {
+      h.vorschlag.onTap();
+      return;
+    }
     if (h.vorschlag) {
       if (window.TafelLernen) TafelLernen.annehmen(h.vorschlag.key);
       if (h.vorschlag.aktion) {

@@ -115,6 +115,34 @@ Jede Lampe bekommt nur, was sie kann. Die reine Weißlampe im Büro bekommt nur 
 
 Auf der Tafel erscheinen die Szenen in der Raumansicht mit kurzem Namen und Farbstreifen. Beim Antippen läuft ein Farbschleier in den Szenenfarben über den Knopf. Gibt es eine Hue-Szene mit gleichem Namen (z. B. „Read“ im Schlafzimmer), zeigt die Tafel nur die eigene, denn die schaltet auch die IKEA-Lampe mit. Geprüft mit `tool/pruefe-szenen.js` gegen den Simulator: Jede der 35 Szenen setzt alle 116 Lampenwerte genau wie vorgesehen (`belege/2026-10-10/s7/szenen/`).
 
+### 8. Prototypen zum Ausprobieren (optional, standardmäßig aus)
+Drei Ideen aus **KONZEPTE.md** sind als Prototypen gebaut und gegen den Simulator geprüft. Bilder und Videos dazu stehen in MORGEN.html, Abschnitt „Konzepte“. Einschalten in `config.js` → `konzepte`:
+- **Tür-Check** (`tuerCheck: true`): Scannst du den NFC-Tag an der Tür, zeigt die Tafel 90 s lang die Bahn mit Los-Minuten, ob du einen Schirm brauchst, ob noch Licht an ist und was auf der Einkaufsliste steht („Aufs iPhone“). In HA ist dafür nichts zu tun.
+- **Wecklicht** (`wecklicht: true`): Ab 19 Uhr schlägt die Tafel „Wecklicht morgen 06:40? Bahn 23 um 07:35“ vor. Gerechnet wird Losgehzeit minus 45 min, ein früher Termin zählt mit. Ein Tipp setzt einen Helfer, den Sonnenaufgang macht HA, auch wenn die Tafel aus ist. Dafür einmal in HA:
+  1. Einstellungen → Geräte & Dienste → Helfer → **Helfer erstellen → Datum und/oder Uhrzeit** → Name „Wecklicht“, **Datum und Uhrzeit**. Ergibt `input_datetime.wecklicht`.
+  2. Die Szenen aus Schritt 7 (mindestens „Schlafzimmer · Nachtlicht“ und „Schlafzimmer · Aufwachen“).
+  3. Diese Automation in `automations.yaml` anhängen (oder im Automations-Editor → YAML), dann neu laden:
+     ```yaml
+     - id: "tafel_wecklicht"
+       alias: "Wecklicht (Tafel)"
+       triggers:
+         - trigger: time
+           at: input_datetime.wecklicht
+       actions:
+         - action: scene.turn_on
+           target:
+             entity_id: scene.schlafzimmer_nachtlicht
+         - delay: "00:00:02"
+         - action: scene.turn_on
+           target:
+             entity_id: scene.schlafzimmer_aufwachen
+           data:
+             transition: 1200
+       mode: single
+     ```
+  4. Wichtig: Der Benutzer „tafel“ darf den Helfer setzen, Nicht-Admins dürfen Dienste aufrufen. Den 20-Minuten-Übergang der IKEA-Lampe einmal echt ausprobieren. HA erlaubt bis 6553 s, ob die Lampe gleichmäßig dimmt, ist aber nicht dokumentiert.
+- **Werder-Tor-Licht** (`torLicht: true`): siehe KONZEPTE.md K3.
+
 Gut zu wissen: Die Home-Bildschirm-App unter der neuen Adresse hat eigenen Speicher. Was die Tafel bisher über deine Bedienung gelernt hat (Vorschläge), fängt dort neu an. Der HA-Verlauf liefert die Grundlage aber sofort wieder.
 
 ---

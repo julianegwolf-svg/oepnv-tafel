@@ -224,6 +224,25 @@ class Dienste {
       this.def(domain, 'toggle', { entitaet: true, aus: a => a.ids.forEach(id => sim.schalterSetzen(id, welt.zustand(id).state !== 'on', a.kontext)) });
     }
     this.def('input_boolean', 'reload', { aus: () => null });
+    // ── input_datetime (Helfer, z. B. Wecklicht der Tafel) ──
+    this.def('input_datetime', 'set_datetime', {
+      entitaet: true,
+      felder: { datetime: f('text'), date: f('text'), time: f('text'), timestamp: f('zahl') },
+      aus: a => a.ids.forEach(id => {
+        const alt = welt.zustand(id);
+        let text = a.daten.datetime;
+        if (!text && a.daten.date) text = a.daten.date + ' ' + (a.daten.time || '00:00:00');
+        if (!text && a.daten.timestamp !== undefined) {
+          const d = new Date(a.daten.timestamp * 1000);
+          const t = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(d);
+          text = t.replace(',', '');
+        }
+        const w = require('./zusatz-yaml.js').datetimeAttribute(text, alt ? alt.attributes : {});
+        if (!w) throw invalid('Invalid datetime specified: ' + text + " for dictionary value @ data['datetime']");
+        welt.setze(id, w.state, w.attributes, a.kontext);
+      })
+    });
+    this.def('input_datetime', 'reload', { aus: () => null });
     const fernbedienungMedien = id => {
       for (const [mid, rid] of sim.remoteVonMedien) if (rid === id) return mid;
       return null;

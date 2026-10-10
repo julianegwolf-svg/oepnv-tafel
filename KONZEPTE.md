@@ -16,7 +16,7 @@ Nutzen 1–5 (wie oft und wie spürbar im Alltag) gegen Aufwand. Hardware nur, w
 | Rang | Konzept | Nutzen | Aufwand | Hardware | Status |
 |---|---|---|---|---|---|
 | 1 | **K2 Tür-Check: „Tschüss“-Karte beim Scan des Tür-Tags** | 5 | S | – (Tag hängt schon) | **Prototyp gebaut** (`konzepte.tuerCheck`) |
-| 2 | **K1 Wecklicht passend zur ersten Bahn** | 5 | M | – | **Prototyp folgt (Sitzung 7)** |
+| 2 | **K1 Wecklicht passend zur ersten Bahn** | 5 | M | – | **Prototyp gebaut** (`konzepte.wecklicht`) |
 | 3 | **K3 Werder-Spieltag: Tor-Licht im Wohnzimmer** | 4 | M | – | **Prototyp folgt (Sitzung 7)** |
 | 4 | K5 Wege zu Terminen („Los um 8:32 zum Zahnarzt“) | 4 | M | – | Konzept |
 | 5 | K6 „Wo ist mein iPhone?“ – klingeln lassen | 4 | S | – | Konzept |
@@ -47,7 +47,7 @@ Nutzen 1–5 (wie oft und wie spürbar im Alltag) gegen Aufwand. Hardware nur, w
 
 ## K1 · Wecklicht passend zur ersten Bahn ★ Prototyp
 
-**Szene:** So, 21:40. Auf der Tafel steht im Abendblick: *„Morgen (Mo) Bahn 23 um 7:35 → Wecklicht 6:50 · 20 Min Sonnenaufgang im Schlafzimmer“* und daneben **[Wecklicht an]**. Ein Tipp, dann *„Wecklicht steht: Mo 6:30–6:50“*. Montag um 6:30 glimmen Schirmlampe und Bettlicht bernsteinfarben auf 1 % und werden in 20 Minuten zu warmweißem 90 %-Licht („Schlafzimmer · Aufwachen“). Hast du am Montag um 8:00 einen Termin in der Neustadt, schlägt die Tafel stattdessen 6:20 vor. Ist Feiertag, schlägt sie gar nichts vor.
+**Szene:** So, 21:40. Auf der Tafel steht im Abendblick: *„Morgen (Mo) Bahn 23 um 7:35 → Wecklicht 6:50 · 20 Min Sonnenaufgang im Schlafzimmer“* und daneben **[Wecklicht an]**. Ein Tipp, dann *„Wecklicht steht: Mo 6:30–6:50“*. Montag um 6:30 glimmen die beiden Schlafzimmerlampen bernsteinfarben auf 1 % und werden in 20 Minuten zu warmweißem 90 %-Licht („Schlafzimmer · Aufwachen“). Hast du am Montag um 8:00 einen Termin in der Neustadt, schlägt die Tafel stattdessen 6:20 vor. Ist Feiertag, schlägt sie gar nichts vor.
 **Nutzen:** Du wachst sanfter auf und denkst nicht ans Stellen. Die Zeit stimmt mit Bahn und Terminen überein, statt für jeden Tag gleich zu sein.
 **Daten/HA:** Die Bahnzeit kommt aus der Tafel (`arbeitsBahnAm`, wie Tagesblick und Morgengruß). Dazu ein Helfer `input_datetime` (Datum + Uhrzeit), den die Tafel per `input_datetime.set_datetime` setzt. Eine HA-Automation „Wecklicht“ startet 20 Minuten vorher `scene.turn_on` „Schlafzimmer · Nachtlicht“ und dann `light.turn_on` mit `transition: 1200` zum Ziel. HA erlaubt Übergänge bis 6553 s, Hue und Matter reichen sie durch. Die YAML kommt in HOME_ASSISTANT.md. Die Tafel muss nachts nicht laufen, denn HA weckt.
 **Hardware:** keine.

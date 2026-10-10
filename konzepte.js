@@ -234,6 +234,104 @@
   }
 
   // ======================================================================
+  // K1 · Wecklicht passend zur ersten Bahn
+  // Abends (ab 19 Uhr) schlägt die Tafel für den nächsten Arbeitstag vor,
+  // wann das Schlafzimmerlicht aufgehen soll: Losgehzeit der Bahn zur
+  // Arbeit (arbeitsBahnAm – dieselbe Rechnung wie Tagesblick/Morgengruß)
+  // minus Vorlauf, bei einem frühen Termin entsprechend früher. Ein Tipp
+  // setzt den HA-Helfer (input_datetime); den Sonnenaufgang macht dann
+  // eine HA-Automation – die Tafel muss nachts nicht laufen. Nie von selbst.
+  // ======================================================================
+  const WECK_NEIN_KEY = "tafelWecklichtNein";
+
+  function weckHelfer() {
+    const id = KC.wecklichtHelfer || "input_datetime.wecklicht";
+    return HA().state(id) ? id : null;
+  }
+
+  function tagSchluessel(d) {
+    return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+  }
+
+  const WOCHENTAGE = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+
+  function weckPlan() {
+    if (typeof arbeitsBahnAm !== "function") return null;
+    const now = new Date();
+    const abStunde = KC.wecklichtVorschlagAb != null ? KC.wecklichtVorschlagAb : 19;
+    if (!(now.getHours() >= abStunde || now.getHours() < 4)) return null;
+    const tag = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (now.getHours() >= 12 ? 1 : 0));
+    const bahn = arbeitsBahnAm(tag);
+    if (!bahn) return null; // Wochenende, Feiertag oder keine Fahrzeit bekannt
+    const losMs = bahn.dep ? bahn.dep.leaveByMs : bahn.losMs;
+    if (!losMs) return null;
+    let ende = losMs - (KC.wecklichtVorlaufMin || 45) * 60000;
+    let grund = bahn.dep ? "Bahn " + bahn.dep.line + " um " + bahn.dep.clock : "los um " + fmt(losMs);
+    // Früher Termin an dem Tag? Dann 90 min davor wach.
+    const snap = typeof tafelSnapshot === "function" ? tafelSnapshot() : null;
+    const evs = (snap && snap.calendar) || [];
+    const tagEnde = tag.getTime() + 86400000;
+    for (let i = 0; i < evs.length; i++) {
+      const e = evs[i];
+      if (e.allDay || e.start < tag.getTime() || e.start >= tagEnde) continue;
+      if (e.start - 90 * 60000 < ende) {
+        ende = e.start - 90 * 60000;
+        grund = "Termin um " + fmt(e.start);
+      }
+      break;
+    }
+    ende = Math.floor(ende / 300000) * 300000;
+    const dauer = (KC.wecklichtDauerMin || 20) * 60000;
+    const heute = tag.getDate() === now.getDate();
+    return {
+      tag: tag, key: tagSchluessel(tag), startMs: ende - dauer, endeMs: ende, grund: grund,
+      wann: heute ? "heute" : "morgen", wochentag: WOCHENTAGE[tag.getDay()],
+    };
+  }
+
+  function weckGesetzt(id, plan) {
+    const st = HA().state(id);
+    return !!(st && String(st.state).indexOf(plan.key + " ") === 0);
+  }
+
+  function weckAbgelehnt(plan) {
+    try { return window.localStorage.getItem(WECK_NEIN_KEY) === plan.key; } catch (e) { return false; }
+  }
+
+  function stelleWecklicht(id, plan) {
+    const d = new Date(plan.startMs);
+    const text = tagSchluessel(d) + " " + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2) + ":00";
+    HA().callService("input_datetime", "set_datetime", { datetime: text }, { entity_id: id }).then(function () {
+      if (UI()) {
+        UI().refresh();
+        UI().showGreeting("Wecklicht", plan.wochentag + " " + fmt(plan.startMs) + "–" + fmt(plan.endeMs),
+          [Math.round((plan.endeMs - plan.startMs) / 60000) + " Minuten Sonnenaufgang im Schlafzimmer", plan.grund], 5000);
+      }
+    }).catch(function () {});
+  }
+
+  function wecklichtHinweise() {
+    if (!KC.wecklicht || !HA() || !HA().isConnected()) return [];
+    const id = weckHelfer();
+    if (!id) return [];
+    const plan = weckPlan();
+    if (!plan) return [];
+    if (weckGesetzt(id, plan)) {
+      // Info (nur auf dem Zuhause-Panel): steht schon
+      const st = HA().state(id);
+      const ts = HA().attr(st, "timestamp");
+      const start = ts ? ts * 1000 : plan.startMs;
+      return [{ key: "wecklicht-steht", prio: 4, icon: "sunrise", text: "Wecklicht " + plan.wochentag + " " + fmt(start) + "–" + fmt(start + (KC.wecklichtDauerMin || 20) * 60000) }];
+    }
+    if (weckAbgelehnt(plan)) return [];
+    return [{
+      key: "wecklicht|" + plan.key, prio: 2, icon: "sunrise",
+      text: "Wecklicht " + plan.wann + " " + fmt(plan.endeMs) + "? " + plan.grund,
+      onTap: function () { stelleWecklicht(id, plan); },
+    }];
+  }
+
+  // ======================================================================
   // Verdrahtung
   // ======================================================================
   let tuerTagCache = null;
@@ -261,8 +359,23 @@
     });
   }
 
+  function hinweise() {
+    let out = [];
+    try { out = out.concat(wecklichtHinweise()); } catch (e) { /* Prototyp darf nie die Hinweise stören */ }
+    return out;
+  }
+
+  function ablehnen(key) {
+    if (key.indexOf("wecklicht|") === 0) {
+      try { window.localStorage.setItem(WECK_NEIN_KEY, key.slice(10)); } catch (e) { /* egal */ }
+    }
+  }
+
   window.TafelKonzepte = {
     init: init,
+    hinweise: hinweise,
+    ablehnen: ablehnen,
+    wecklichtPlan: weckPlan,
     tuerCheck: zeigeTuerCheck,
     tuerSchliessen: schliesseTuerCheck,
     debug: function () { return { tuerOffen: tuerOffen, tuerTakt: !!tuerTakt }; },

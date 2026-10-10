@@ -526,6 +526,15 @@ const CONFIG = {
     tuerCheck: false,
     tuerTag: "", // leer = Tag, dessen Name nach Tür/Haustür/door klingt
     tuerNotify: "", // leer = erste notify-Entität (HA-App am iPhone)
+    // K1 Wecklicht: ab 19 Uhr Vorschlag "Wecklicht morgen 6:50?" für den
+    // nächsten Arbeitstag (Bahn zur Arbeit minus Vorlauf, früher Termin
+    // zählt). Ein Tipp setzt den HA-Helfer, eine HA-Automation macht den
+    // Sonnenaufgang (HOME_ASSISTANT.md, Schritt 8).
+    wecklicht: false,
+    wecklichtHelfer: "input_datetime.wecklicht",
+    wecklichtVorlaufMin: 45, // Licht ganz an … bis zum Losgehen
+    wecklichtDauerMin: 20, // Länge des Sonnenaufgangs
+    wecklichtVorschlagAb: 19, // Uhr
   },
 
   homeAssistant: {
