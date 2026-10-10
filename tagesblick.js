@@ -589,7 +589,9 @@
 
   // Jede Karte so kürzen, dass nichts unten abgeschnitten wird (Hinweis-
   // zeile, lange Termine, 5 Karten): zuerst die Bahn davor, dann von
-  // hinten Fahrplan-, Stunden- und Raumzeilen. Nur sichtbar messbar.
+  // hinten Fahrplan-, Stunden- und Raumzeilen. HA-Hinweise in der
+  // Zuhause-Karte weichen vor den Räumen – sie stehen auch im Band unten,
+  // die Räume mit Licht nirgends sonst. Nur sichtbar messbar.
   function einpassen() {
     if (!bodyEl.clientHeight) return;
     const karten = bodyEl.querySelectorAll(".tb-card");
@@ -600,7 +602,7 @@
         // markierten Fahrplanzeile – lieber sie opfern als die nächste Bahn.
         const sum = erstes(karte, ".tb-plan-row.is-pick") && erstes(karte, ".tb-plan-row.is-nach-1") ? erstes(karte, ".tb-bahn-sum") : null;
         const weg = erstes(karte, ".tb-plan-row.is-vor") || letztes(karte, ".tb-plan-row.is-nach-3, .tb-plan-row.is-nach-2") ||
-          letztes(karte, ".tb-hour") || sum || letztes(karte, ".tb-plan-row:not(.is-pick)") || letztes(karte, ".tb-raum") || letztes(karte, ".tb-abf-row") || erstes(karte, ".tb-plan");
+          letztes(karte, ".tb-hour") || sum || letztes(karte, ".tb-plan-row:not(.is-pick)") || letztes(karte, ".tb-line.is-hinweis") || letztes(karte, ".tb-raum") || letztes(karte, ".tb-abf-row") || erstes(karte, ".tb-plan");
         if (!weg) break;
         weg.parentNode.removeChild(weg);
       }
