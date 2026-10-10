@@ -202,6 +202,13 @@ function initRadioBar() {
     dot.className = "radio-menu-dot";
     item.appendChild(dot);
 
+    // Equalizer aus drei Balken (nur sichtbar/animiert, solange der Sender
+    // spielt) — zeigt, dass wirklich Ton kommt (IDEEN RA1).
+    const eq = document.createElement("span");
+    eq.className = "radio-eq";
+    eq.innerHTML = "<i></i><i></i><i></i>";
+    item.appendChild(eq);
+
     const label = document.createElement("span");
     label.textContent = station.name;
     item.appendChild(label);

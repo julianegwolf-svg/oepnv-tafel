@@ -3847,3 +3847,50 @@ html, body {
 .knowledge-score-badge {
   transition: opacity 0.4s ease;
 }
+
+
+/* ---------- Radio-Menü (IDEEN RA1) ---------- */
+.radio-menu {
+  min-width: 300px;
+}
+
+.radio-menu-item {
+  min-height: 64px;
+  font-size: 19px;
+}
+
+.radio-eq {
+  display: none;
+  order: 3;
+  align-items: flex-end;
+  height: 18px;
+  margin-left: auto;
+}
+
+.radio-eq i {
+  display: block;
+  width: 4px;
+  height: 18px;
+  margin-left: 3px;
+  border-radius: 2px;
+  background: currentColor;
+  transform-origin: bottom center;
+  animation: radioEq 0.9s ease-in-out infinite;
+}
+
+.radio-eq i:nth-child(2) { animation-delay: 0.3s; }
+.radio-eq i:nth-child(3) { animation-delay: 0.6s; }
+
+@keyframes radioEq {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+.radio-menu-item.is-playing .radio-eq,
+.radio-menu-item.is-playing-ha .radio-eq {
+  display: flex;
+}
+
+.radio-menu:not(.is-open) .radio-eq i {
+  animation-play-state: paused;
+}
