@@ -4106,3 +4106,78 @@ body.farbe-dunkel .trivia-choices.is-revealed .trivia-choice:not(.correct):not(.
 .dep-badge.is-dunkel {
   box-shadow: inset 0 0 0 2px rgba(239, 233, 223, 0.3);
 }
+
+/* ---------- Wetter (Sitzung 3) ----------
+   CONFIG.wetterEffekte "ruhig": keine endlos treibenden Wolken, Regen-
+   streifen, Sterne, kein schwebendes Symbol – AUSBAU 4 ("nichts Endloses"),
+   und vorher trieben Wolken über Symbol und Legende. Der Himmel-Verlauf
+   bleibt. */
+body.wetter-ruhig .weather-fx-layer,
+body.wetter-ruhig .fx-lightning {
+  display: none !important;
+}
+
+body.wetter-ruhig .weather-big-icon,
+body.wetter-ruhig .weather-hour-icon {
+  animation: none;
+}
+
+/* Fünf Tage statt fünf Stunden (CONFIG.wetterUnten "tage"): waagerecht,
+   Symbol links, Tag/Temperatur/Regen rechts. */
+.weather-day {
+  flex-direction: row;
+  justify-content: flex-start;
+  padding: 12px 12px 12px 14px;
+}
+
+.weather-day > * + * {
+  margin-top: 0;
+}
+
+.weather-day .weather-hour-icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  margin-right: 12px;
+}
+
+.weather-day-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.weather-day .weather-hour-time {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+}
+
+.weather-day .weather-hour-temp {
+  margin-top: 2px;
+  font-size: 24px;
+  white-space: nowrap;
+}
+
+.weather-day-lo {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.weather-day-regen {
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+}
+
+.weather-day.is-nass .weather-day-regen,
+.weather-day-regen.is-regen {
+  color: #8fc8ea;
+}
+
+.weather-day.is-nass {
+  border-color: rgba(143, 200, 234, 0.45);
+}

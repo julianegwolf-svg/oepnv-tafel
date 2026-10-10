@@ -206,6 +206,13 @@ const CONFIG = {
   // Mitte des Wetter-Panels: "verlauf" = Temperaturkurve + Regen der
   // nächsten 12 Stunden, "leer" = nur Himmel (bisher).
   wetterMitte: "verlauf",
+  // Wetter-Effekte: "ruhig" = keine endlos treibenden Wolken/Regenstreifen,
+  // kein schwebendes Symbol (AUSBAU 4: nichts Endloses; vorher trieben
+  // Wolken über Symbol und Legende), "animiert" = wie bisher.
+  wetterEffekte: "ruhig",
+  // Kacheln unten im Wetter-Panel: "tage" = die nächsten 5 Tage (die
+  // nächsten Stunden zeigt schon die Kurve darüber), "stunden" = bisher.
+  wetterUnten: "tage",
 
   // News-Panel: Mischung aus Bremen-Regionalmeldungen (regions=5) und
   // überregionalen/internationalen Meldungen (allgemeiner Feed + explizit

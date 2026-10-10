@@ -1452,6 +1452,35 @@ function setWeatherScene(fxCategory, isDay) {
   );
 }
 
+// Die nächsten 5 Tage als Kacheln: Tag, Symbol, Höchst-/Tiefstwert und
+// Regenwahrscheinlichkeit, wenn sie zählt (ab 30 %).
+const WOCHENTAG_KURZ = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+
+function renderWeatherDays(daily) {
+  const d0 = new Date();
+  const heute = d0.getFullYear() + "-" + String(d0.getMonth() + 1).padStart(2, "0") + "-" + String(d0.getDate()).padStart(2, "0");
+  const start = Math.max(0, daily.time.indexOf(heute));
+  const anzahl = Math.min(CONFIG.weatherHourCount || 5, daily.time.length - start);
+  for (let k = 0; k < anzahl; k++) {
+    const i = start + k;
+    const tag = parseOpenMeteoLocal(daily.time[i] + "T12:00");
+    const hi = daily.temperature_2m_max[i];
+    const lo = daily.temperature_2m_min[i];
+    const pp = daily.precipitation_probability_max ? daily.precipitation_probability_max[i] : null;
+    const cell = document.createElement("div");
+    cell.className = "weather-hour weather-day" + (pp != null && pp >= 50 ? " is-nass" : "");
+    // Waagerecht: Symbol links, Tag/Temperatur/Regen rechts – flacher als
+    // die alten Stundenkacheln, die Kurve darüber behält ihren Platz.
+    cell.innerHTML =
+      '<span class="weather-hour-icon">' + weatherIconMarkup(daily.weather_code[i], true) + "</span>" +
+      '<span class="weather-day-text"><span class="weather-hour-time">' + (k === 0 ? "Heute" : (k === 1 ? "Morgen" : WOCHENTAG_KURZ[tag.getDay()] + " " + tag.getDate() + ".")) + "</span>" +
+      '<span class="weather-hour-temp">' + (hi != null ? Math.round(hi) + "°" : "–") +
+      '<span class="weather-day-lo"> ' + (lo != null ? Math.round(lo) + "°" : "") + "</span></span>" +
+      '<span class="weather-day-regen' + (pp != null && pp >= 30 ? " is-regen" : "") + '">' + (pp != null && pp >= 30 ? pp + " % Regen" : "trocken") + "</span></span>";
+    els.weatherHours.appendChild(cell);
+  }
+}
+
 function ensureWeatherFxLayers() {
   if (weatherFxBuilt || !els.weatherPanel) return;
   weatherFxBuilt = true;
@@ -1682,7 +1711,7 @@ function updateWeather() {
     "&hourly=temperature_2m,weather_code,precipitation_probability" +
     "&minutely_15=precipitation,weather_code" +
     "&forecast_minutely_15=12" +
-    "&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max" +
+    "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max" +
     "&timezone=Europe%2FBerlin" +
     "&_=" + Date.now();
 
@@ -1769,7 +1798,13 @@ function updateWeather() {
         ? parseOpenMeteoLocal(data.daily.sunset[0]).getTime() : null;
 
       els.weatherHours.innerHTML = "";
-      for (let i = 0; i < CONFIG.weatherHourCount; i++) {
+      // Die nächsten Stunden zeigt schon die Kurve darüber – unten dann
+      // die nächsten Tage (bisher fehlte der Tafel jeder Blick über heute hinaus).
+      const tageUnten = (CONFIG.wetterUnten || "tage") === "tage" && (CONFIG.wetterMitte || "verlauf") === "verlauf" &&
+        data.daily && data.daily.time && data.daily.weather_code;
+      els.weatherHours.classList.toggle("is-tage", !!tageUnten);
+      if (tageUnten) renderWeatherDays(data.daily);
+      for (let i = 0; !tageUnten && i < CONFIG.weatherHourCount; i++) {
         const idx = startIdx + i;
         if (idx >= data.hourly.time.length) break;
 
@@ -5709,6 +5744,7 @@ function initStageSwipe() {
 // ---------- Start ----------
 function init() {
   updateTopbarTitle("departures");
+  document.body.classList.toggle("wetter-ruhig", (CONFIG.wetterEffekte || "ruhig") === "ruhig");
   // Regentipp gehört zur Hauptaussage (IDEEN W2): unter die Beschreibung.
   const tipHome = document.querySelector("#weatherBig .weather-big-text");
   if (tipHome && els.weatherTip) tipHome.appendChild(els.weatherTip);
