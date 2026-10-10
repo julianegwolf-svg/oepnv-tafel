@@ -2865,3 +2865,22 @@ body.ha-ruhe .ha-dot {
 .ha-klima.is-venting .ha-klima-temp {
   color: var(--c-cool);
 }
+
+/* Fünf Schnellaktionen nebeneinander: etwas kompakter, damit kein Name
+   abgeschnitten wird ("Alle Lichter aus"). */
+.ha-actions .ha-action:first-child:nth-last-child(5),
+.ha-actions .ha-action:first-child:nth-last-child(5) ~ .ha-action {
+  padding: 0 12px;
+}
+
+.ha-actions .ha-action:first-child:nth-last-child(5) > .ha-ico,
+.ha-actions .ha-action:first-child:nth-last-child(5) ~ .ha-action > .ha-ico {
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+}
+
+.ha-actions .ha-action:first-child:nth-last-child(5) .ha-action-name,
+.ha-actions .ha-action:first-child:nth-last-child(5) ~ .ha-action .ha-action-name {
+  font-size: 16px;
+}
