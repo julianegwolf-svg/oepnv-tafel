@@ -3632,3 +3632,32 @@ html, body {
   font-size: 16px;
   color: var(--ink-dim);
 }
+
+
+/* ---------- Spruch (IDEEN S1) ----------
+   Groß, vollständig, Anführungszeichen ganz in der Karte, Autor darunter. */
+#panel-quote .quote-text {
+  font-size: 52px;
+  line-height: 1.25;
+  max-width: 820px;
+}
+
+#panel-quote .quote-text.is-serif {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.quote-author-new {
+  margin-top: 24px;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ink-dim);
+}
+
+#panel-quote .panel-watermark {
+  right: 40px;
+  bottom: 0;
+  font-size: 200px;
+  line-height: 0.9;
+}

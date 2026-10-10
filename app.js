@@ -2657,7 +2657,7 @@ function renderQuoteShell() {
   els.quoteBlock.appendChild(mark);
 
   const text = document.createElement("div");
-  text.className = "quote-text";
+  text.className = "quote-text" + ((CONFIG.spruchSchrift || "serif") === "serif" ? " is-serif" : "");
 
   const typed = document.createElement("span");
   typed.id = "quoteTypedText";
@@ -2669,6 +2669,14 @@ function renderQuoteShell() {
   text.appendChild(cursor);
 
   els.quoteBlock.appendChild(text);
+
+  if (quoteAuthor) {
+    const author = document.createElement("div");
+    author.className = "quote-author quote-author-new";
+    author.id = "quoteAuthor";
+    author.textContent = "— " + quoteAuthor;
+    els.quoteBlock.appendChild(author);
+  }
 }
 
 function startQuoteTypewriter() {
@@ -2694,8 +2702,34 @@ function startQuoteTypewriter() {
   }, 35);
 }
 
+// Deutsche Sprüche aus sprueche.js (IDEEN S1): ohne Netz, zufällig ohne
+// direkte Wiederholung. CONFIG.spruchQuelle "deutsch" (Standard) |
+// "advice" (bisherige englische Quelle).
+let lastSpruchIndex = -1;
+let quoteAuthor = "";
+
+function pickSpruch() {
+  if (typeof SPRUECHE === "undefined" || !SPRUECHE.length) return null;
+  let i = Math.floor(Math.random() * SPRUECHE.length);
+  if (SPRUECHE.length > 1 && i === lastSpruchIndex) i = (i + 1) % SPRUECHE.length;
+  lastSpruchIndex = i;
+  return SPRUECHE[i];
+}
+
 function updateQuote() {
   if (!els.quoteBlock) return;
+  if ((CONFIG.spruchQuelle || "deutsch") === "deutsch") {
+    const sp = pickSpruch();
+    if (sp) {
+      quoteFullText = sp.t;
+      quoteAuthor = sp.a;
+      renderQuoteShell();
+      const pe = document.getElementById("panel-quote");
+      if (pe && pe.className.indexOf("active") !== -1) startQuoteTypewriter();
+      quoteAvailable = true;
+      return;
+    }
+  }
 
   // Cache-Buster, weil manche CORS-Proxies/CDNs vor dieser API sonst
   // immer denselben Spruch ausliefern.
@@ -4792,6 +4826,8 @@ function showPanel(name) {
   setTimeout(function () { unmountInactivePanels(name); }, 750);
 
   if (name === "quote") {
+    // Jede Runde ein neuer Spruch (lokal, kostet nichts).
+    if ((CONFIG.spruchQuelle || "deutsch") === "deutsch") updateQuote();
     startQuoteTypewriter();
   }
 

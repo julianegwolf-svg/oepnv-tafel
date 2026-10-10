@@ -243,6 +243,11 @@ const CONFIG = {
 
   // Zitat-Panel
   refreshQuoteMs: 60 * 60 * 1000,
+  // Spruch des Tages (IDEEN S1): "deutsch" = lokale deutsche Sammlung
+  // (sprueche.js), "advice" = englische Advice-Slip-API (bisher).
+  // Schrift: "serif" (Georgia kursiv) | "sans" (Inter).
+  spruchQuelle: "deutsch",
+  spruchSchrift: "serif",
 
   // Trivia-Panel ("Auf den Tag genau") — Wikipedia-REST-API, kostenlos,
   // kein Key. Stündlich neu abgerufen und zufällig aus der Tagesliste
