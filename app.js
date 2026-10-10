@@ -2959,10 +2959,14 @@ function fetchDirectItinerary(from, to, mode) {
   });
 }
 
-function fetchTransitItinerary(from, to) {
+// departDate: gleiche Prognose-Uhrzeit wie Auto/Rad — ohne Uhrzeit fragte
+// Transitous "ab jetzt", nachts kam dadurch "ab 05:25" als Verbindung zur
+// 07:30-Prognose heraus (IDEEN AW1).
+function fetchTransitItinerary(from, to, departDate) {
   const url = API_BASE + "/v6/plan?fromPlace=" + from.lat + "," + from.lon +
     "&toPlace=" + to.lat + "," + to.lon +
-    "&directModes=&transitModes=TRANSIT";
+    "&directModes=&transitModes=TRANSIT" +
+    (departDate ? "&time=" + encodeURIComponent(departDate.toISOString()) : "");
 
   return fetch(url).then(function (res) {
     if (!res.ok) throw new Error("Routenabruf (ÖPNV) fehlgeschlagen (" + res.status + ")");
@@ -3311,9 +3315,21 @@ function renderCommuteHero(results) {
   tag.textContent = results.forecastDate ? "Voraussichtlich am schnellsten" : "Heute am schnellsten";
   textWrap.appendChild(tag);
 
+  // Fern-Info ist die Handlung, nicht die Rechengröße (IDEEN AW1):
+  // "Los um 07:49" = Zielankunft minus Fahrzeit minus 5 Min Puffer; bei
+  // ÖPNV die echte Abfahrt der gefundenen Verbindung.
+  const target = String(CONFIG.workArrivalTarget || "08:00").split(":");
+  const base = results.forecastDate || new Date();
+  const arriveBy = new Date(base.getFullYear(), base.getMonth(), base.getDate(), parseInt(target[0], 10) || 8, parseInt(target[1], 10) || 0);
+  let leave = new Date(arriveBy.getTime() - (winner.minutes + 5) * 60000);
+  if (winner.key === "bus" && results.bus && results.bus.departure) leave = results.bus.departure;
+  const arrival = new Date(leave.getTime() + winner.minutes * 60000);
+  const hm = function (d) { return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }); };
+  const isToday = new Date().toDateString() === leave.toDateString();
+
   const big = document.createElement("span");
   big.className = "commute-hero-big";
-  big.textContent = winner.minutes + " Min";
+  big.textContent = (isToday ? "Los um " : leave.toLocaleDateString("de-DE", { weekday: "short" }) + " los um ") + hm(leave);
   // Bisher unsichtbar, obwohl das Panel im Hintergrund längst zwischen
   // echten TomTom-Verkehrsdaten und grober Schätzung unterscheidet
   // (results[mode].source) — nur der "geschätzt"-Fall hatte eine Anzeige,
@@ -3333,7 +3349,7 @@ function renderCommuteHero(results) {
 
   const label = document.createElement("span");
   label.className = "commute-hero-label";
-  label.textContent = "mit " + winner.label + " zu Max Müller GmbH";
+  label.textContent = winner.minutes + " Min mit " + winner.label + " · Ankunft " + hm(arrival) + " · Ziel " + (CONFIG.workArrivalTarget || "08:00");
   textWrap.appendChild(label);
 
   if (results.forecastDate) {
@@ -3410,12 +3426,17 @@ function renderCommuteRace(results) {
       : 0;
     fillTargets.push({ el: fill, pct: pct });
 
+    // Zeit in eigener Spalte rechts statt auf dem Balken (dort war sie
+    // mit 1,15:1 Kontrast unsichtbar, IDEEN AW1).
     const timeLabel = document.createElement("span");
-    timeLabel.className = "commute-race-time";
-    timeLabel.textContent = available ? (res.minutes + " min") : "nicht verfügbar";
-    track.appendChild(timeLabel);
+    timeLabel.className = "commute-race-time is-column";
+    timeLabel.textContent = available ? (res.minutes + " min") : "–";
 
-    row.appendChild(track);
+    const trackRow = document.createElement("div");
+    trackRow.className = "commute-race-trackrow";
+    trackRow.appendChild(track);
+    trackRow.appendChild(timeLabel);
+    row.appendChild(trackRow);
 
     // Bus/ÖPNV: zusätzlich Linie(n) + wirkliche nächste Abfahrtszeit statt
     // nur einer nackten Minutenzahl — deutlich planbarer.
@@ -3634,7 +3655,7 @@ function updateCommute() {
 
     return Promise.all([
       fetchBikeItinerary(coords.home, coords.work, distanceMeters, departDate),
-      fetchTransitItinerary(coords.home, coords.work)
+      fetchTransitItinerary(coords.home, coords.work, departDate || nextCommuteDepartureDate())
         .then(function (it) {
           return {
             itinerary: it,
@@ -4439,7 +4460,10 @@ let panelIndex = 0;
 
 const PANEL_AVAILABILITY = {
   departures: function () { return true; },
-  commute: function () { return commuteAvailable; },
+  // Arbeitsweg nur an Werktagen bis 18 Uhr (IDEEN AW2): am Wochenende/
+  // Feiertag oder abends wirkte "6 Min" wie eine aktuelle Info, war aber
+  // eine Prognose für Montag — abends übernimmt der Tagesblick.
+  commute: function () { return commuteAvailable && isCommuteTime(new Date()); },
   weather: function () { return true; },
   news: function () { return newsAvailable; },
   music: function () { return musicAvailable; },
@@ -4459,6 +4483,12 @@ const PANEL_AVAILABILITY = {
   // Video "tagesschau in 100 Sekunden" (clips.js): nur morgens/abends.
   tagesschau: function () { return !!(window.TafelClips && TafelClips.tagesschauAvailable()); },
 };
+
+function isCommuteTime(now) {
+  const day = now.getDay();
+  if (day === 0 || day === 6 || holidayOn(now)) return false;
+  return now.getHours() >= 5 && now.getHours() < 18;
+}
 
 function haPanelAvailable(name) {
   return !!(window.TafelHAUI && TafelHAUI.panelAvailable(name));
