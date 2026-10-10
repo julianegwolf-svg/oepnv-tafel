@@ -48,17 +48,23 @@
 <body>
 <div class="wrap">
 
-<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 09:35</div>
+<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 11:30</div>
 <h1>Deine Tafel ist jetzt eine Smart-Home-Zentrale.</h1>
 <p class="lead">Kurz und ehrlich, was diese Nacht entstanden ist – alles gegen einen Home-Assistant-<b>Simulator</b> mit deinem echten Haushalt getestet, nie gegen dein echtes HA. Die Bilder zeigen Desktop-WebKit bei 1024×768 (wie das iPad), nicht das iPad selbst.</p>
 
 <div class="summary">
 <ol>
-  <li><b>Dein dringender Fehler ist weg und doppelt abgesichert:</b> Keine Riesen-Uhr mehr nach 1 Stunde. Das Karussell läuft weiter (geprüft nach 2, 6 und 24 h ohne Berührung). Selbst ein Fehler beim Panelwechsel kann es nicht mehr anhalten, ein Wächter wirft es nach spätestens 3 Minuten wieder an. <b>Neu gefunden (9 Uhr):</b> Ein älterer Fehler kann die Live-Tafel an einzelnen Tagen ganz einfrieren, zuerst wieder am 19.10. Auf <code>ausbau</code> ist er behoben, siehe Kasten unten.</li>
-  <li><b>Home Assistant komplett:</b> Login mit deinem HA-Konto, Räume in echter Lichtfarbe, Licht/Szenen/Helligkeit mit einem Tipp, deine Automationen als Schnellaktionen mit Countdown, Rückgängig und Wirkungsprüfung, Einkaufsliste zum Abhaken, Bad-Klima mit Lüftungsrat, HomePod mit Radio.</li>
-  <li><b>Die Tafel denkt mit:</b> Sie lernt deinen Rhythmus aus dem HA-Verlauf. Morgens taucht aus dem Dunkel der eine Satz auf, der zählt („nimm die 23 um 07:35“). Morgengruß, Tagesblick, Arbeitsweg und Lern-Vorschlag nennen <i>dieselbe</i> pünktliche Bahn, seit heute früh auch abends und am Wochenende (2d).</li>
-  <li><b>Mehr Alltag:</b> „Tagesblick“ morgens und abends („Morgen früh“), amtliche DWD-Warnungen (im Tagesblick jetzt mit Zeitraum und Rat: „heute 12–19 Uhr · lose Gegenstände sichern“), Müll am Vorabend, Regenradar, tagesschau in 100 s. Das Quiz ist jetzt <b>deutsch</b>, mit eigenen Bremen-Fragen. <b>Neu seit 9 Uhr:</b> Der Arbeitsweg rechnet endlich mit echten TomTom-Verkehrsdaten (seit Juli scheiterte jede Anfrage, das Auto stand mit 6 statt 11 Minuten da) und zeigt die Route auf einer dunklen Karte (2e).</li>
-  <li><b>Die ganze Tafel sieht neu aus:</b> dunkle Farbwelt, Abfahrten wie eine echte Anzeigetafel, keine abgeschnittenen Titel und keine verdeckten Inhalte mehr, Sprüche nach dem Originalwortlaut. Auf dem echten iPad waren Nachtdimmung/Ambient/Übersicht kaputt (Safari-12-CSS) – behoben.</li>
+  <li><b>Dein dringender Fehler ist weg und doppelt abgesichert:</b> Keine Riesen-Uhr mehr nach 1 Stunde, das Karussell läuft weiter (geprüft nach 2, 6 und 24 h), ein Wächter wirft es notfalls wieder an. Ein älterer Fehler kann die Live-Tafel am <b>19.10.</b> einfrieren. Auf <code>ausbau</code> ist er behoben, siehe Kasten unten.</li>
+  <li><b>Home Assistant komplett:</b> Login mit deinem HA-Konto, Räume in echter Lichtfarbe, Licht/Szenen/Helligkeit mit einem Tipp, deine Automationen als Schnellaktionen, Einkaufsliste zum Abhaken, Bad-Klima mit Lüftungsrat, HomePod mit Radio.</li>
+  <li><b>Neu seit 10 Uhr: Was die Tafel sagt, stimmt jetzt – gegen eine zweite Quelle geprüft</b> (2f):<br>
+    <i>Termine</i> mit Wiederholungen und richtigen Uhrzeiten (vorher auf dem iPad 0 von 5 richtig).<br>
+    <i>Musik-Charts</i> von Apple Music (9 von 10 wie die Offiziellen Charts, Deezer nur 2).<br>
+    <i>Auf den Tag genau</i> aus den Jahrestagen der Wikipedia-Hauptseite, dazu 68 Bremen- und Werder-Tage.<br>
+    <i>Veranstaltungen</i>: geprüfte Bremer Termine statt Umland mit falschen Daten.<br>
+    <i>Rätsel</i> auf Deutsch, die auch aufgehen.<br>
+    <i>Autozeit</i> nie mehr still „6 Minuten“.</li>
+  <li><b>Neu: live und frisch.</b> Fußball mit Live-Stand auf allen Panels, und bei einem Werder-Tor springt die Tafel aufs Spiel („Tor!“). Nachrichten kommen aus der Top-Auswahl der tagesschau, jede zeigt ihr Alter, Eilmeldungen erscheinen rot auf allen Panels. Fußball-News kommen vom kicker statt Fremdem und Altem.</li>
+  <li><b>Die Tafel denkt mit und sieht neu aus:</b> Morgengruß mit der einen pünktlichen Bahn, Tagesblick, DWD-Warnungen, echter TomTom-Verkehr mit Karte, dunkle Farbwelt, Abfahrten wie eine echte Anzeigetafel. Auf dem echten iPad kaputte Safari-12-Teile sind behoben.</li>
 </ol>
 </div>
 
@@ -71,12 +77,13 @@
   <li>In HA einen Benutzer <b>tafel</b> anlegen (kein Admin, nur lokal).</li>
   <li>Am iPad Guided Access beenden, in Safari <code>http://homeassistant.local:8123/local/tafel/index.html</code> → <b>Zum Home-Bildschirm</b> → neue App öffnen → als <b>tafel</b> anmelden → Guided Access wieder starten.</li>
   <li><b>Neu:</b> In deinem Cloudflare-Kalender-Worker die Adresse <code>http://homeassistant.local:8123</code> erlauben – sonst fehlen nach dem Umzug die Termine (Code-Schnipsel in HOME_ASSISTANT.md, Schritt 5; Kontrolle am iPad: lange auf die Uhr → Datenquellen).</li>
-  <li>Optional, aber empfohlen: <i>Bett Fertig</i> und <i>Arbeitsmodus</i> in HA reparieren (je Lampe nur <code>color_temp_kelvin</code> oder <code>rgb_color</code>) – die Tafel zeigt sonst „hat nichts geschaltet“ (2c).</li>
+  <li><b>Neu (für die Musik-Charts):</b> In HA den Sensor <code>sensor.musik_charts</code> anlegen. Das sind 15 Zeilen YAML in HOME_ASSISTANT.md, Schritt 6. Ohne ihn zeigt die Tafel kein Musik-Panel statt falscher Charts.</li>
+  <li><s>Bett Fertig / Arbeitsmodus reparieren</s> – erledigt, danke.</li>
 </ol>
 <p class="note">Alles Schritt für Schritt (und warum GitHub Pages dafür nicht reicht): <a href="HOME_ASSISTANT.md">HOME_ASSISTANT.md</a>. Fragen an dich: <a href="FRAGEN.md">FRAGEN.md</a> – darin auch zwei Fehler, die beim Nachbauen deiner echten Automationen aufgefallen sind.</p>
 </div>
 
-<p class="note" style="margin-top:22px">Inhalt: <a href="#s1">1 Riesen-Uhr</a> · <a href="#s2">2 Home Assistant</a> · <a href="#s2b">2b Morgengruß</a> · <a href="#s2c">2c Neu seit 6 Uhr</a> · <a href="#s2d">2d Neu seit 8 Uhr</a> · <a href="#s2e"><b>2e Neu seit 9 Uhr</b></a> · <a href="#s3">3 Animationen</a> · <a href="#s4">4 Lernen</a> · <a href="#s5">5 Clips</a> · <a href="#s6">6 iPad-Fehler</a> · <a href="#s7">7 Ideen</a> · <a href="#s8">8 Zur Wahl</a> · <a href="#s9">9 Lücken</a></p>
+<p class="note" style="margin-top:22px">Inhalt: <a href="#s1">1 Riesen-Uhr</a> · <a href="#s2">2 Home Assistant</a> · <a href="#s2b">2b Morgengruß</a> · <a href="#s2c">2c Neu seit 6 Uhr</a> · <a href="#s2d">2d Neu seit 8 Uhr</a> · <a href="#s2e">2e Neu seit 9 Uhr</a> · <a href="#s2f"><b>2f Inhalte, die stimmen · live</b></a> · <a href="#s3">3 Animationen</a> · <a href="#s4">4 Lernen</a> · <a href="#s5">5 Clips</a> · <a href="#s6">6 iPad-Fehler</a> · <a href="#s7">7 Ideen</a> · <a href="#s8">8 Zur Wahl</a> · <a href="#s9">9 Lücken</a></p>
 
 <h2 id="s1">1 · Der dringende Fehler: Riesen-Uhr nach einer Stunde</h2>
 <p class="note">Playwright spult die Zeit ohne jede Berührung vor. Vorher: Ambient-Modus nach 1 h, Karussell steht. Nachher: Ambient nur noch, wenn laut HA niemand zu Hause ist.</p>
@@ -305,6 +312,63 @@
 <h3>Geprüft</h3>
 <p class="note">HA-Probe mit deinem Haushalt und mit Extras komplett grün (<code>belege/2026-10-10/s5/ha/</code>, <code>ha-extras/</code>), Safari-12-Prüfung OK, keine Code-Fehler in der Konsole. 24-h-Zeitraffer: DOM, Listener, Intervalle und Bilder wachsen in keinem Abschnitt, 5× Neuladen, keine Seitenfehler. Zwei Abschnitte zeigt die Probe mit ✗, weil sie offene Timeouts mit dem ersten Abschnitt vergleicht. Dort standen konstant 22 statt höchstens 12, zur selben simulierten Uhrzeit wie schon im Lauf von Sitzung 4, also vor diesen Änderungen, und ohne Wachstum (<code>belege/2026-10-10/s5/zeitraffer.log</code>).</p>
 
+<h2 id="s2f">2f · Neu seit 10 Uhr (Sitzung 6): Inhalte, die stimmen – und live sind</h2>
+<p class="note">Dein Eindruck vom Live-Stand: Verkehrsansagen, Charts, Termine und Veranstaltungen stimmen oft nicht, vieles ist englisch oder belanglos. Ab jetzt gilt: <b>lieber kein Panel als ein falsches</b>. Jede Aussage habe ich gegen eine unabhängige Quelle geprüft. Je Punkt: was falsch war, warum, was jetzt gilt, und die Gegenprobe.</p>
+
+<h3>Termine: Wiederholungen, Zeitzonen, abgesagte und mehrtägige Termine</h3>
+<p class="note">An deinem echten Kalender hätte die Tafel auf dem iPad <b>0 von 5</b> Terminen der nächsten 60 Tage richtig gezeigt. Jede Uhrzeit stand 2 h zu spät da (18:00 als 20:00), denn Safari 12 liest „…T18:00:00“ ohne Zone als UTC. Jährliche Termine fehlten ganz, weil nur ihr erster Termin gelesen wurde und der in der Vergangenheit liegt. Abgesagte Termine standen dagegen groß oben. Der neue <code>kalender.js</code> rechnet Wiederholungen, Ausnahmen, verschobene Einzeltermine, Zeitzonen-Blöcke und mehrtägige Termine („Urlaub · bis Mo. 12.10.“) wie ein Kalenderprogramm. Die Gegenprobe läuft mit Pythons <code>dateutil</code> und den Zeitzonen des Systems, also mit einem anderen Weg. 16 knifflige Testfälle plus dein echter Kalender stimmen überein (<code>tool/pruefe-kalender.js</code>). Am Worker hat sich nichts geändert. Das Bild zeigt erfundene Termine, nicht deine.</p>
+<div class="strip"><img src="belege/2026-10-10/s6/kalender/vergleich.png" alt=""></div>
+
+<h3>Musik-Charts: echte deutsche Charts – über Home Assistant</h3>
+<p class="note">Die „Charts“ waren Deezers Hörer-Playlist „Top Germany“. Ich habe sie mit den Offiziellen Deutschen Charts verglichen (offiziellecharts.de, Woche 09.–15.10.). Nur 2 der Top 10 standen dort in den Top 25, dafür US-Country wie Morgan Wallen und Ella Langley. Apple Music „Meistgespielt – Deutschland“ trifft 9 von 10 und dieselbe Nr. 1 (Tabelle: <code>belege/2026-10-10/s6/musik/vergleich-charts.txt</code>). Apple erlaubt den Abruf aber nicht direkt aus dem Browser. Deshalb holt dein HA die Liste stündlich (Schritt 6 in HOME_ASSISTANT.md), und die Tafel liest sie über die bestehende Verbindung. Bis dahin gibt es <b>kein</b> Musik-Panel. Unten im Panel stehen Quelle und Stand. Ein Sensor, der älter als 4 Tage ist, wird nicht mehr gezeigt.</p>
+<div class="strip"><img src="belege/2026-10-10/s6/musik/vergleich.png" alt=""></div>
+
+<h3>Auf den Tag genau: kuratiert statt Zufall – mit Bremen und Werder</h3>
+<p class="note">Bisher kam ein beliebiger Eintrag aus dem Wikipedia-Rohfeed („In Nürnberg erscheint die Erstausgabe des Gong“). Jetzt kommen die <b>Jahrestage der Wikipedia-Hauptseite</b>: fünf Ereignisse pro Tag, von der Redaktion ausgewählt, ganze deutsche Sätze, runde Jubiläen. Die Bilder wählt ebenfalls die Redaktion bzw. es ist das Bild des Hauptartikels, also Nansen statt Oslo. Nach der Auflösung steht „10. Oktober 1846 · vor 180 Jahren“. Die falschen Jahre liegen in Fünferschritten daneben, sonst verriete die Endziffer die Lösung. Dazu kommen <b>68 geprüfte Bremen- und Werder-Tage</b> (<code>bremen-tage.js</code>, Quelle je Eintrag), die an ihrem Tag zuerst erscheinen: Lissabon 1992, die Wunder von der Weser, der Pfostenbruch am Bökelberg, der Hauptbahnhof, der Beat-Club …</p>
+<div class="strip"><img src="belege/2026-10-10/s6/tag/vergleich.png" alt=""></div>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s6/tag/bremen-1011-runde-2.png" alt=""><figcaption><b>11.10. (morgen):</b> Werder – BFC Dynamo 5:0, vor 38 Jahren.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s6/tag/nachher-runde-5.png" alt=""><figcaption>Jahrestag der Hauptseite mit dem Bild des Hauptartikels.</figcaption></figure>
+</div>
+
+<h3>Veranstaltungen: was in Bremen wirklich ansteht</h3>
+<p class="note">Von den „Bremen“-Terminen bei InfraNode lagen 88 % im Umland (Worpswede, Osterholz-Scharmbeck, Ganderkesee). Die Bremer Termine hatten falsche Daten: Weihnachtsmarkt nur bis 27.11., jazzahead! am 21.4., der swb-Marathon an einem Freitag. Der Freimarkt fehlte ganz. Jetzt steht hier eine geprüfte Liste der großen Bremer Veranstaltungen bis Ende 2027. Jeder Termin ist mit der offiziellen Seite abgeglichen, den Freimarkt habe ich selbst auf freimarkt.de nachgesehen. Dazu kommen die Werder-Heimspiele aus den Fußball-Daten, aber nur bis 3 Wochen voraus, denn weiter entfernte Spiele stehen bei OpenLigaDB noch mit einer Platzhalter-Uhrzeit.</p>
+<div class="strip"><img src="belege/2026-10-10/s6/feste/vergleich.png" alt=""></div>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s6/feste/zeit-2026-10-17-01-events.png" alt=""><figcaption>Sa 17.10. (simuliert): „Läuft · noch 16 Tage“, das Heimspiel am Nachmittag steht als „heute“.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s6/feste/zeit-2026-12-27-01-events.png" alt=""><figcaption>27.12. (simuliert): Eiswette, Sixdays, Classic Motorshow.</figcaption></figure>
+</div>
+
+<h3>Rätsel und „nirgends Englisch“</h3>
+<p class="note">17 Rätsel waren aus dem Englischen übersetzt und gehen auf Deutsch nicht auf, z. B. die Tastatur mit „Schlüsseln“ oder „E am Ende von Raum und Zeit“. Andere stimmten schlicht nicht: Ein Pferd trägt nicht lebenslang dieselben Hufeisen. Jetzt sind es 61 deutsche Rätsel und Scherzfragen, deren Wortspiel auf Deutsch funktioniert („Welcher Hahn kräht nie?“). Außerdem: Fehlte <code>sprueche.js</code> oder <code>quiz.js</code>, etwa beim Kopieren nach HA, holte die Tafel still die englischen Quellen. Jetzt fällt das Panel dann weg (<code>tool/pruefe-kein-englisch.js</code>).</p>
+
+<h3>Arbeitsweg: keine halbierte Autozeit mehr</h3>
+<p class="note">Gegenprobe für deinen Weg (4,4 km über die Weser): TomTom 10,8 min, die Transitous-Ersatzroute 5,5 min (kennt weder Verkehr noch Ampeln), die eingebaute Schätzung 6 min. Das sind genau deine „immer 6 Minuten“. Fiel TomTom aus, stand die Ersatzzeit ohne Kennzeichnung da. Jetzt steht der zuletzt gemessene TomTom-Wert da, gekennzeichnet als „geschätzt · zuletzt gemessen …“. Gibt es keinen, steht <b>keine</b> Autozeit da. Eine Schätzung wird nie „Schnellster“, solange es echte Werte gibt. Das Rad stimmte überall (13–15 min). Die Bus-Gegenprobe mit einer unabhängigen Quelle war heute nicht möglich, weil die DB-Schnittstelle nicht erreichbar war (FRAGEN 28).</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s6/arbeitsweg/2-ausfall-mit-zuletzt.png" alt=""><figcaption>TomTom fällt aus: Auto „geschätzt · zuletzt gemessen“, Rad gewinnt mit echter Zeit.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s6/arbeitsweg/3-ausfall-ohne-zuletzt.png" alt=""><figcaption>Kein gemerkter Wert: Auto „–“ statt 6 min.</figcaption></figure>
+</div>
+
+<h3>Nachrichten: frisch, mit Alter, Eilmeldungen sofort sichtbar</h3>
+<p class="note">Der „allgemeine“ Nachrichtenfeed lieferte nicht die Top-Meldungen, sondern einfach die neuesten Meldungen aus irgendeiner Region („Lyrik in Neustrelitz und Erzählabend in Ueckermünde“). Die zweite Bremen-Meldung war 52 Stunden alt, und nirgends stand ein Alter. Jetzt gilt: die redaktionelle Auswahl der tagesschau-Startseite, höchstens 12 h alt, Bremen höchstens 24 h. Neben jeder Meldung steht „vor 6 Std“. Kommt zu wenig Frisches, steht ehrlich „gestern 14:50“ da. <b>Eilmeldungen</b> erscheinen als roter Chip ganz vorn auf allen Panels, ein Tipp öffnet die Meldung. Die Fußball-News kommen jetzt aus den Vereins-Feeds des kicker statt aus der tagesschau-Suche, die zu Werder einen 6 Tage alten Einheitsfest-Liveticker lieferte. Höchstens 3 Tage alt, das Wappen steht groß daneben.</p>
+<div class="strip"><img src="belege/2026-10-10/s6/nachrichten/vergleich.png" alt=""></div>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s6/nachrichten/eil-01-abfahrten.png" alt=""><figcaption>Eilmeldung (Attrappe) auf den Abfahrten, links vor der DWD-Warnung.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s6/sport/kicker-karte-2.png" alt=""><figcaption>Fußball-News vom kicker: „vor 1 Std“, Wappen statt leerer Fläche.</figcaption></figure>
+</div>
+
+<h3>Fußball live: Stand auf allen Panels, „Tor!“ bei Werder</h3>
+<p class="note">Außerhalb von Spielen ruft die Tafel nichts zusätzlich ab. Ab 10 Minuten vor Anstoß bis zum Abpfiff holt sie alle 45 Sekunden den Spieltag bei OpenLigaDB, eine Anfrage je Liga, auch wenn mehrere deiner Vereine gleichzeitig spielen. Der Chip ganz vorn zeigt nacheinander:
+„Heute 15:30 · Bremen – Paderborn“ → „● LIVE Bremen 1:0 Paderborn · ~24'“ → „Halbzeit“ → „Endstand“. Nach 45 Minuten verschwindet er. Die Spielkarte zeigt den Stand groß mit Torschützen. Bei einem Tor deines Vereins springt die Tafel einmal aufs Spiel und zeigt kurz „Tor!“, nachts nicht, und auch nicht, während du sie bedienst. Ehrlich gesagt: OpenLigaDB kennt keine Live-Minute. Die Tafel schätzt sie aus dem Anstoß und kennzeichnet sie mit „~“. Geprüft habe ich mit einer Attrappe und Zeitsprüngen, nicht mit einem echten Spiel (<code>tool/pruefe-fussball-live.js</code>, alle 12 Punkte ✓).</p>
+<div class="pair">
+  <figure><video src="belege/2026-10-10/s6/fussball-live/tor-ablauf.webm" controls muted playsinline></video><figcaption>Ganzer Ablauf als Video (Zeitsprünge): Vorlauf, Anstoß, Tor, Gegentor, Halbzeit, Abpfiff.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s6/fussball-live/3-tor-werder.png" alt=""><figcaption>Werder trifft: Sport-Panel springt vor, „Tor! Bremen 1:0 Paderborn“.</figcaption></figure>
+</div>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s6/fussball-live/3b-karte-nach-tor.png" alt=""><figcaption>Danach: „LIVE · ~24'“, 1:0, Torschütze unter dem Wappen.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s6/fussball-live/4-gegentor-chip.png" alt=""><figcaption>Gegentor: kein Sprung, nur der Chip unten links zeigt 1:1.</figcaption></figure>
+</div>
+
 <h2 id="s3">3 · Animationen, die etwas bedeuten</h2>
 <p class="note">Nur über transform/opacity (Safari 12, A7-Chip). Videos aus Playwright-WebKit; darunter je ein Bildstreifen.</p>
 <div class="grid">
@@ -452,6 +516,7 @@
   <figure><img src="belege/vorher/03-wetter.png" alt=""><figcaption><b>leer</b> (bisher)</figcaption></figure>
 </div>
 <ul class="gaps">
+  <li><b>Sitzung 6:</b> Musik-Charts erst mit dem HA-Sensor (Schritt 6). Der Fußball-Live-Teil ist nur mit Attrappe und Zeitsprüngen geprüft, die Spielminute ist geschätzt („~“). Für Gladbach habe ich keinen kicker-Feed gefunden (keine News, Ergebnisse ja). Die kicker-News haben keine Fotos. Die Veranstaltungsliste muss einmal im Jahr ergänzt werden (bis Dez. 2027 gefüllt). „Auf den Tag genau“ hängt an der Jahrestage-Seite der Wikipedia. Ändert sich deren Format, fällt das Panel weg statt Unsinn zu zeigen. Die Bus-Zeiten sind noch nicht gegen eine unabhängige Quelle geprüft.</li>
   <li>Außerdem in FRAGEN.md: Radar-Karte (Esri), tagesschau-Zeiten, Schnellaktionen-Zuordnung, Müll-Feiertagsregel bitte gegen den echten Kalender prüfen.</li>
 </ul>
 
