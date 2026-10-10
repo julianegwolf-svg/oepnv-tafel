@@ -2844,3 +2844,87 @@ html, body {
 #panel-weather .weather-big {
   padding-top: 72px;
 }
+
+
+/* ---------- DWD-Warnungen (warnungen.js, AUSBAU D16) ---------- */
+.warn-hints {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.warn-detail {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 975;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 8, 12, 0.75);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+
+.warn-detail.is-open {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.warn-card {
+  width: 720px;
+  max-height: 640px;
+  overflow: hidden;
+  padding: 26px 30px 20px;
+  border-radius: 24px;
+  background: #18212d;
+  border: 2px solid #f0a04b;
+  color: #efe9df;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+}
+
+.warn-card.stufe-2 { border-color: #f08a3c; }
+.warn-card.stufe-3 { border-color: #e86a5c; }
+.warn-card.stufe-4 { border-color: #b46be0; }
+
+.warn-stufe {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #f0a04b;
+}
+
+.warn-title {
+  margin-top: 8px;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.warn-zeit {
+  margin-top: 6px;
+  font-size: 20px;
+  color: #b8b0a3;
+}
+
+.warn-text,
+.warn-rat {
+  margin: 14px 0 0;
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+.warn-rat {
+  color: #b8b0a3;
+}
+
+.warn-close {
+  margin-top: 16px;
+  font-size: 14px;
+  color: #7d8796;
+}

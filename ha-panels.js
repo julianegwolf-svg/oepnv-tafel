@@ -2377,6 +2377,9 @@
       const d = snap.waste.date;
       if (d.getDate() === now.getDate() && d.getMonth() === now.getMonth()) second.push("Heute wird der Müll abgeholt");
     }
+    // Amtliche Warnung zuerst, sie ist wichtiger als alles im Haus.
+    const warn = window.TafelWarn ? TafelWarn.aktuelle()[0] : null;
+    if (warn) second.unshift("Achtung: " + TafelWarn.kurz(warn));
     const important = hints.filter(function (h) { return h.prio <= 2 && !h.vorschlag; })[0];
     if (important) second.push(important.text);
     // Danach der Tagesblick ("Heute"), sonst die Abfahrten.

@@ -3810,7 +3810,8 @@ function updateHintBar() {
   const shell = document.querySelector(".panel");
   if (!shell) return;
   const hints = document.getElementById("haHints");
-  const has = !!((els.wasteLine && els.wasteLine.textContent) || (hints && hints.children.length));
+  const warn = document.getElementById("warnHints");
+  const has = !!((els.wasteLine && els.wasteLine.textContent) || (hints && hints.children.length) || (warn && warn.children.length));
   if (shell.classList.contains("has-hintbar") !== has) shell.classList.toggle("has-hintbar", has);
 }
 
@@ -4858,6 +4859,7 @@ function init() {
   if (window.TafelLernen) TafelLernen.init();
   if (window.TafelClips) TafelClips.init();
   if (window.TafelTag) TafelTag.init();
+  if (window.TafelWarn) TafelWarn.init();
 
   tickClock();
   setInterval(tickClock, CONFIG.refreshClockMs);

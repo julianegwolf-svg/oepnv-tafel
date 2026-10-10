@@ -309,6 +309,17 @@
       "</div>";
   }
 
+  // ---------- Amtliche Warnung (warnungen.js) ----------
+  function warnKarte() {
+    if (!window.TafelWarn) return "";
+    const a = TafelWarn.aktuelle()[0];
+    if (!a) return "";
+    const stufe = TafelWarn.stufe(a);
+    return '<div class="tb-card tb-warn stufe-' + stufe + '"><div class="tb-eyebrow">DWD-Warnung · Stufe ' + stufe + "</div>" +
+      '<div class="tb-mid">' + esc(TafelWarn.kurz(a)) + "</div>" +
+      (a.instruction_de ? '<div class="tb-line">' + esc(String(a.instruction_de).split(/(?:\.\s)/)[0]) + ".</div>" : "") + "</div>";
+  }
+
   // ---------- Darstellung ----------
   function render() {
     if (!bodyEl) return;
@@ -330,8 +341,9 @@
     const datum = tag.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" }) +
       (frei && frei !== "Samstag" && frei !== "Sonntag" ? " · " + frei : "");
 
-    const karten = [wetterKarte(s, m, tag), bahnKarte(s, m, tag), terminKarte(s, m, tag), muellKarte(s, m, tag), zuhauseKarte()]
-      .filter(function (k) { return !!k; });
+    const karten = [wetterKarte(s, m, tag), warnKarte(), bahnKarte(s, m, tag), terminKarte(s, m, tag), muellKarte(s, m, tag), zuhauseKarte()]
+      .filter(function (k) { return !!k; })
+      .slice(0, 5); // mehr passt nicht lesbar auf 1024×768 (Reihenfolge = Wichtigkeit)
     const html = '<div class="tb-head"><div class="tb-title">' + esc(kopf) + '</div><div class="tb-sub">' + esc(datum) + "</div></div>" +
       '<div class="tb-grid n-' + karten.length + '">' + karten.join("") + "</div>";
     if (bodyEl._html !== html) {

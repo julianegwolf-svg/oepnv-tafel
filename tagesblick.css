@@ -309,3 +309,24 @@
   grid-row: span 2;
   grid-column: auto;
 }
+
+.tb-warn {
+  border-color: rgba(var(--c-warn-rgb), 0.6);
+  background: linear-gradient(135deg, rgba(var(--c-warn-rgb), 0.14), rgba(var(--c-warn-rgb), 0.04)), var(--c-surface);
+}
+
+.tb-warn.stufe-3,
+.tb-warn.stufe-4 {
+  border-color: rgba(var(--c-alert-rgb), 0.7);
+  background: linear-gradient(135deg, rgba(var(--c-alert-rgb), 0.18), rgba(var(--c-alert-rgb), 0.05)), var(--c-surface);
+}
+
+.tb-warn .tb-eyebrow {
+  color: var(--c-warn);
+}
+
+/* Vier Karten: Wetter links über zwei Reihen, die zweite Karte (Warnung
+   oder Bahn) oben breit, darunter zwei — keine leere Zelle. */
+.tb-grid.n-4 .tb-card:nth-child(2) {
+  grid-column: span 2;
+}
