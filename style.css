@@ -4370,3 +4370,87 @@ body.farbe-dunkel .commute-map-wrap {
 .trivia-block.mit-bild .trivia-text {
   font-size: 32px;
 }
+
+/* ---------- Allgemeinwissen: Antworten als 2×2-Raster (Sitzung 5) ----------
+   Vorher vier kleine Knöpfe in einer Reihe oben links, die halbe Karte
+   leer. Jetzt große Antwortfelder (84 px, 26 px Schrift) mit Buchstaben
+   A–D über die Kartenbreite – aus 3 m lesbar, mit dem Finger leicht zu
+   treffen. Buchstaben per CSS-Zähler, der Antworttext bleibt unverändert;
+   aufgelöst zeigt der Kreis ✓ bzw. ✗ statt des Buchstabens. */
+#quizBlock .trivia-text {
+  font-size: 40px;
+  line-height: 1.25;
+}
+
+#quizChoices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-gap: 16px;
+  width: 100%;
+  max-width: 860px;
+  margin-top: 30px;
+  margin-left: 0;
+  counter-reset: quiz;
+}
+
+#quizChoices > * {
+  margin: 0;
+}
+
+#quizChoices .trivia-choice.text-choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 84px;
+  padding: 14px 22px 14px 80px;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: left;
+  counter-increment: quiz;
+}
+
+/* Absolut positioniert: so erbt der Kreis die Durchstreichung der
+   falschen Antworten nicht. */
+#quizChoices .trivia-choice::before {
+  content: counter(quiz, upper-alpha);
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  margin-top: -20px;
+  width: 40px;
+  height: 40px;
+  box-sizing: border-box;
+  border: 2px solid rgba(var(--accent-rgb), 0.7);
+  border-radius: 50%;
+  color: var(--accent);
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 36px;
+  text-align: center;
+  text-decoration: none;
+}
+
+#quizChoices.is-revealed .trivia-choice.correct::before {
+  content: "✓";
+  border-color: rgba(255, 255, 255, 0.85);
+  color: #ffffff;
+}
+
+#quizChoices.is-revealed .trivia-choice.is-wrong-pick::before {
+  content: "✗";
+  border-color: rgba(255, 255, 255, 0.85);
+  color: #ffffff;
+}
+
+#quizChoices.is-revealed .trivia-choice:not(.correct):not(.is-wrong-pick)::before {
+  border-color: rgba(239, 233, 223, 0.2);
+  color: var(--ink-dim);
+}
+
+/* Das "?" schimmerte durch das halbtransparente Antwortfeld D. */
+#quizBlock .panel-watermark {
+  display: none;
+}
