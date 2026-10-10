@@ -456,3 +456,38 @@ Grundlage: `belege/2026-10-10/s3/` (alle Panels, Mo 07:20 simuliert; Sa 06:40 ec
 ✅ **KO1 – Eine Bahn für alle** · S · Prio 1 · umgesetzt (5f4abae, 44ca3f8)
 - Stört: Arbeitsweg „ab 07:45“, Lern-Vorschlag „Linie 29 um 07:37“, Morgengruß „die 23 um 07:35“ – drei verschiedene Antworten.
 - Änderung: alle nutzen arbeitsBahnHeute().
+
+---
+
+## 18. Dritter Durchgang (Sitzung 4, 10.10. ab 07:55)
+
+Grundlage: `belege/2026-10-10/s4/rundgang-sa/` (Sa 07:55 echt, mit HA-Simulator) und `s4/rundgang-mo-abend/` (Mo 19:30 simuliert).
+
+✅ **K2 – Kopfzeilen-Titel abgeschnitten** · S · Prio 1 · umgesetzt (3459a5f)
+- Stört: mit HA-Knopf „Abfahrten — Föhrenstra“, „Veranstaltungen — Bre“, „Musik-Charts Deutsc“ – nicht nur in den letzten 3 s, sondern fast immer (der ausgeblendete „Als Nächstes“-Hinweis behielt seinen Text und Platz).
+- Änderung: Titel schrumpft nicht; Hinweis ganz, sonst „Gleich: …“, sonst gar nicht.
+
+✅ **TB4 – Warnung als Streifen, nicht als Karte** · M · Prio 1 · umgesetzt (e509555)
+- Stört: DWD-Karte zu zwei Dritteln leer, nimmt der „Bahn zur Arbeit“ den Fahrplan, Warnung zusätzlich im Band; bei Unwetter „ACHTUNG! Hinweis auf mögliche Gefahren: …“.
+- Änderung: Streifen über den Karten (26-px-Name, Zeitraum „heute 12–19 Uhr“, Stärke ohne Klammerwerte, erste Handlungsempfehlung), Stufe 3–4 rot; Band blendet DWD-Chips auf diesem Panel aus.
+
+✅ **TB5 – Stundenliste trifft die Regenstunde** · S · Prio 2 · umgesetzt (e509555)
+- Stört: „Regen ab 14 Uhr“ über 8, 9, 10, 11, 13, 15, 17 Uhr.
+- Änderung: 2-Stunden-Schritte so gelegt, dass die Regenstunde dabei ist (8 … 12, 14, 16).
+
+✅ **TB6 – Räume vor doppeltem Hinweis** · S · Prio 2 · umgesetzt (ad478b9)
+- Stört: „10 Lichter an“ über nur „Wohnzimmer 4“, weil der Batterie-Hinweis (steht auch im Band) Vorrang hatte.
+
+✅ **S2 – Falschzitate** · S · Prio 2 · umgesetzt (4d7d97a)
+- Stört: „Was du dem Augenblick ausgeschlagen …“ (Schiller: „Was man von der Minute ausgeschlagen …“), Frankl als Nietzsche, Internet-Einstein. Sechs Sprüche nach dem Original.
+
+✅ **Q3 – Quiz deutsch** · M · Prio 1 · umgesetzt (10e3975)
+- Stört: englische Fragen auf einer deutschen Tafel, eine Stunde dieselbe.
+- Änderung: `quiz.js`, 131 Fragen, 7 Kategorien inkl. „Bremen & Norden“, neue Frage je Anzeige, keine Wiederholung über Neuladen.
+
+✅ **KO2 – Eine Bahn auch abends** · S · Prio 1 · umgesetzt (4a635f4)
+- Stört: abends/Wochenende Arbeitsweg „Linie 23 · ab 07:45“ (Ankunft 08:05, zu spät) neben Tagesblick „07:35“.
+- Änderung: `arbeitsBahnAm(tag)` – eine Rechnung für heute und den nächsten Arbeitstag.
+
+✗ **KL1 – „Beste Lüftzeit“ in der leeren Draußen-Karte** · verworfen
+- Mit der echten Bremer Vorhersage trocknet Lüften im Oktober den ganzen Tag fast gleich gut (2,4–3,0 g/m³) – ein Zeitfenster wäre Deko. Im Sommer sinnvoll, dann neu prüfen.

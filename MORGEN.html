@@ -48,19 +48,17 @@
 <body>
 <div class="wrap">
 
-<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 07:55</div>
+<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 09:00</div>
 <h1>Deine Tafel ist jetzt eine Smart-Home-Zentrale.</h1>
 <p class="lead">Kurz und ehrlich, was diese Nacht entstanden ist – alles gegen einen Home-Assistant-<b>Simulator</b> mit deinem echten Haushalt getestet, nie gegen dein echtes HA. Die Bilder zeigen Desktop-WebKit bei 1024×768 (wie das iPad), nicht das iPad selbst.</p>
 
 <div class="summary">
 <ol>
-  <li><b>Dein dringender Fehler ist weg:</b> Die Tafel springt nicht mehr nach 1 Stunde in die Riesen-Uhr – das Karussell läuft (geprüft nach 2, 6 und 24 h ohne Berührung).</li>
-  <li><b>Home Assistant komplett:</b> Login mit deinem HA-Konto, Räume mit echter Lichtfarbe, Licht/Szenen/Helligkeit mit einem Tipp, deine Automationen als Schnellaktionen mit Countdown + Rückgängig, Einkaufsliste zum Abhaken, Bad-Klima mit echtem Lüftungsrat, HomePod mit Radio.</li>
-  <li><b>Die Tafel denkt mit:</b> Sie lernt deinen Rhythmus aus dem HA-Verlauf („Du gehst werktags meist um 07:32 los – Bahn in 17 Min“, „Wie jeden Abend: Gute Nacht?“), begrüßt dich beim Heimkommen – und morgens taucht aus dem Dunkel der eine Satz auf, der zählt: „12 °C, es regnet – nimm die 23 um 07:35.“ (die richtige Linie <i>und</i> Richtung, siehe 2b).</li>
-  <li><b>Mehr Alltag:</b> „Tagesblick“ morgens (Wetter, Bahn, Termin, Müll) und abends als „Morgen früh“, amtliche DWD-Unwetterwarnungen, Luft/UV/Pollen nur wenn relevant, Müll erst am Vorabend (mit Feiertagsverschiebung), Regenradar und „tagesschau in 100 Sekunden“.</li>
-  <li><b>Dein dringendster Punkt, noch einmal abgesichert:</b> Bisher konnte schon ein einziger Fehler beim Panelwechsel das Karussell bis zum Neuladen anhalten. Jetzt läuft es trotzdem weiter, und ein Wächter wirft es nach spätestens 3 Minuten wieder an. Geprüft: Die alte Fassung fällt bei 5 von 6 Prüfungen durch, die neue besteht alle, der 24-h-Zeitraffer ist grün.</li>
-  <li><b>Seit 6 Uhr (2c):</b> Der Tagesblick zeigt einen echten Fahrplan („07:35 pünktlich · 07:45 5 min zu spät“), und alle Stellen nennen dieselbe Bahn. Die Tafel merkt, wenn deine Automation nichts schaltet. Das Wetter zeigt 5 Tage, an der Einkaufsliste holst du Abgehaktes mit einem Tipp zurück. Und ein Fund für den Umzug: Dein <b>Kalender-Worker</b> muss die HA-Adresse erlauben.</li>
-  <li><b>Die ganze Tafel sieht neu aus:</b> dunkle Farbwelt überall, Abfahrten wie eine echte Anzeigetafel (60-px-Minuten, echte Linienfarben), Uhr 56 statt 30 px, keine verdeckten Inhalte mehr. Und: Auf dem echten iPad waren Nachtdimmung/Ambient/Übersicht kaputt (Safari-12-CSS) – behoben.</li>
+  <li><b>Dein dringender Fehler ist weg und doppelt abgesichert:</b> Keine Riesen-Uhr mehr nach 1 Stunde. Das Karussell läuft weiter (geprüft nach 2, 6 und 24 h ohne Berührung). Selbst ein Fehler beim Panelwechsel kann es nicht mehr anhalten, ein Wächter wirft es nach spätestens 3 Minuten wieder an.</li>
+  <li><b>Home Assistant komplett:</b> Login mit deinem HA-Konto, Räume in echter Lichtfarbe, Licht/Szenen/Helligkeit mit einem Tipp, deine Automationen als Schnellaktionen mit Countdown, Rückgängig und Wirkungsprüfung, Einkaufsliste zum Abhaken, Bad-Klima mit Lüftungsrat, HomePod mit Radio.</li>
+  <li><b>Die Tafel denkt mit:</b> Sie lernt deinen Rhythmus aus dem HA-Verlauf. Morgens taucht aus dem Dunkel der eine Satz auf, der zählt („nimm die 23 um 07:35“). Morgengruß, Tagesblick, Arbeitsweg und Lern-Vorschlag nennen <i>dieselbe</i> pünktliche Bahn, seit heute früh auch abends und am Wochenende (2d).</li>
+  <li><b>Mehr Alltag:</b> „Tagesblick“ morgens und abends („Morgen früh“), amtliche DWD-Warnungen (im Tagesblick jetzt mit Zeitraum und Rat: „heute 12–19 Uhr · lose Gegenstände sichern“), Müll am Vorabend, Regenradar, tagesschau in 100 s. Das Quiz ist jetzt <b>deutsch</b>, mit eigenen Bremen-Fragen.</li>
+  <li><b>Die ganze Tafel sieht neu aus:</b> dunkle Farbwelt, Abfahrten wie eine echte Anzeigetafel, keine abgeschnittenen Titel und keine verdeckten Inhalte mehr, Sprüche nach dem Originalwortlaut. Auf dem echten iPad waren Nachtdimmung/Ambient/Übersicht kaputt (Safari-12-CSS) – behoben.</li>
 </ol>
 </div>
 
@@ -77,14 +75,16 @@
 <p class="note">Alles Schritt für Schritt (und warum GitHub Pages dafür nicht reicht): <a href="HOME_ASSISTANT.md">HOME_ASSISTANT.md</a>. Fragen an dich: <a href="FRAGEN.md">FRAGEN.md</a> – darin auch zwei Fehler, die beim Nachbauen deiner echten Automationen aufgefallen sind.</p>
 </div>
 
-<h2>1 · Der dringende Fehler: Riesen-Uhr nach einer Stunde</h2>
+<p class="note" style="margin-top:22px">Inhalt: <a href="#s1">1 Riesen-Uhr</a> · <a href="#s2">2 Home Assistant</a> · <a href="#s2b">2b Morgengruß</a> · <a href="#s2c">2c Neu seit 6 Uhr</a> · <a href="#s2d"><b>2d Neu seit 8 Uhr</b></a> · <a href="#s3">3 Animationen</a> · <a href="#s4">4 Lernen</a> · <a href="#s5">5 Clips</a> · <a href="#s6">6 iPad-Fehler</a> · <a href="#s7">7 Ideen</a> · <a href="#s8">8 Zur Wahl</a> · <a href="#s9">9 Lücken</a></p>
+
+<h2 id="s1">1 · Der dringende Fehler: Riesen-Uhr nach einer Stunde</h2>
 <p class="note">Playwright spult die Zeit ohne jede Berührung vor. Vorher: Ambient-Modus nach 1 h, Karussell steht. Nachher: Ambient nur noch, wenn laut HA niemand zu Hause ist.</p>
 <div class="pair">
   <figure><img src="belege/2026-10-10/dauerlauf/vorher-nach-24h.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Nach 24 h: Riesen-Uhr, Karussell steht.</figcaption></figure>
   <figure><img src="belege/2026-10-10/dauerlauf/nachher-nach-24h.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Nach 2/6/24 h: Panels wechseln weiter (hier mitten im Übergang).</figcaption></figure>
 </div>
 
-<h2>2 · Home Assistant – alle Ansichten</h2>
+<h2 id="s2">2 · Home Assistant – alle Ansichten</h2>
 <p class="note">Simulator mit deinem Haushalt (Struktur aus deiner privaten, nicht eingecheckten haushalt.json). Bedienung wirklich durchgespielt: <code>node tool/pruefe-ha.js</code> – alle Prüfungen grün.</p>
 <div class="grid">
   <figure><img src="belege/2026-10-10/ha/01-login.png" alt=""><figcaption><b>Login</b> mit deinem HA-Konto (offizieller Ablauf, nur Refresh-Token gespeichert, nie das Passwort). Formular oben – die iPad-Tastatur braucht unten Platz.</figcaption></figure>
@@ -99,7 +99,7 @@
   <figure><img src="belege/2026-10-10/ha/24-begruessung.png" alt=""><figcaption><b>Heimkommen:</b> Tafel springt aufs Zuhause-Panel und begrüßt dich.</figcaption></figure>
 </div>
 
-<h2>2b · Der erste Moment des Tages: Morgengruß</h2>
+<h2 id="s2b">2b · Der erste Moment des Tages: Morgengruß</h2>
 <p class="note">Erste Bewegung am Schlafzimmer-Melder zwischen 5 und 11 Uhr (hier nach „Gute Nacht“, Tafel schwarz). Probe: <code>node tool/pruefe-morgengruss.js --jetzt 2026-10-12T05:50</code> – Montag, Samstag und nachts geprüft, alles grün.</p>
 <div class="pair">
   <figure><img src="belege/2026-10-10/morgengruss/vorher-03-aufwachen-350ms.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>350 ms nach der Bewegung: Abfahrten, Gruß und Tagesblick liegen halbdurchsichtig übereinander.</figcaption></figure>
@@ -114,7 +114,7 @@
   <figure><img src="belege/2026-10-10/morgengruss/abfahrten-richtung-01-departures.png" alt=""><figcaption><b>Nebenbei behoben:</b> Die 23 fährt an der Föhrenstraße in beide Richtungen – die Aktentasche „Arbeit an …“ stand bisher auch an „23 Universität“. Jetzt nur noch in deiner Richtung.</figcaption></figure>
 </div>
 
-<h2>2c · Neu seit 6 Uhr (Sitzung 3)</h2>
+<h2 id="s2c">2c · Neu seit 6 Uhr (Sitzung 3)</h2>
 <h3>Tagesblick: ein Fahrplan statt leerer Fläche</h3>
 <p class="note">Die Bahnkarte war zu 60 % leer und beantwortete die zweite Frage des Morgens nicht: „Und wenn ich die nicht schaffe?“ Jetzt stehen darunter die Bahn davor, die empfohlene und die nächsten – mit Losgehzeit, Ankunft und Ampel. „Zuhause“ nennt die Räume, in denen Licht brennt; an trockenen Tagen zeigt das Wetter „Bedeckt/Wolkig“ statt einer Spalte leerer Regenbalken. Jede Karte wird nach dem Zeichnen eingepasst – mit Hinweiszeile unten wird nichts abgeschnitten.</p>
 <div class="pair">
@@ -211,7 +211,59 @@
   <figure><img src="belege/2026-10-10/ha-extras/15-klima.png" alt=""><figcaption>Klima mit Thermostaten (−/+), Draußen-Karte in der freien Zelle.</figcaption></figure>
 </div>
 
-<h2>3 · Animationen, die etwas bedeuten</h2>
+<h2 id="s2d">2d · Neu seit 8 Uhr (Sitzung 4)</h2>
+<p class="note">Frischer Rundgang über alle Panels (Samstag früh und Montagabend, mit HA-Simulator) mit dem Blick eines Designers. Gefunden und behoben wurde nur, was man auf dem Bild sieht oder was falsch war.</p>
+
+<h3>Tagesblick: Unwetter als Streifen mit Zeitraum und Rat, die Bahn behält ihren Fahrplan</h3>
+<p class="note">Die DWD-Warnung war eine eigene Karte, zu zwei Dritteln leer. Sie nahm der „Bahn zur Arbeit“ den Fahrplan weg und stand unten im Band ein zweites Mal. Beim Unwetter stand dort „ACHTUNG! Hinweis auf mögliche Gefahren: …“. Jetzt steht oben ein Streifen mit allem, was man morgens wissen muss: wann, wie stark, was tun. Das Band wiederholt die Warnung auf diesem Panel nicht mehr. Außerdem kündigte die Karte „Regen ab 14 Uhr“ an, die Stundenliste sprang aber von 13 auf 15 Uhr. Jetzt steht die Regenstunde in der Liste. (Warnungstexte im echten Bright-Sky-Format, Windböen wie die echte Warnung für Bremen von heute.)</p>
+<div class="strip"><img src="belege/2026-10-10/s4/tagesblick-warn/vergleich-mo-wind.png" alt=""></div>
+<div class="strip"><img src="belege/2026-10-10/s4/tagesblick-warn/vergleich-sa-unwetter.png" alt=""></div>
+<div class="strip"><img src="belege/2026-10-10/s4/tagesblick-warn/vergleich-zuhause.png" alt=""></div>
+<p class="note">Unten: „10 Lichter an“ stand über einer Liste mit nur „Wohnzimmer 4“. Die Tafel hatte die Räume gestrichen, um den Batterie-Hinweis zu behalten, der ohnehin im Band steht. Jetzt weicht der Hinweis.</p>
+
+<h3>Arbeitsweg abends: dieselbe pünktliche Bahn statt einer zu späten</h3>
+<p class="note">Abends und am Wochenende stand im Arbeitsweg „Linie 23 · ab 07:45“, die kommt um 08:05 an, also 5 Minuten zu spät. Daneben empfahl der Tagesblick die 07:35. Jetzt rechnen beide gleich: die späteste Bahn, die mit 5 Minuten Puffer pünktlich ankommt (<code>belege/2026-10-10/s4/arbeitsbahn/vorher.log</code> / <code>nachher.log</code>).</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s4/arbeitsbahn/vorher-10-12-19-arbeitsweg.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Montag 19:30: „Linie 23 · ab 07:45“ (Ankunft 08:05).</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s4/arbeitsbahn/nachher-10-12-19-arbeitsweg.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>„Bahn zur Arbeit Di: 23 um 07:35 · los 07:27 · an 07:55“, genau wie im Tagesblick „Morgen früh“.</figcaption></figure>
+</div>
+
+<h3>Allgemeinwissen auf Deutsch, mit Bremen-Fragen</h3>
+<p class="note">Die Open Trivia DB kennt nur Englisch („Who crowned Charlemagne …“), eine Stunde lang dieselbe Frage. Jetzt gibt es eine eigene Sammlung mit 131 Fragen (<code>quiz.js</code>), nur zeitlose Fakten, in 7 Kategorien, darunter <b>„Bremen &amp; Norden“</b> (Roland, Schnoor, Freimarkt seit 1035, Werders Double 2004 …). Bei jedem Erscheinen kommt eine neue Frage, auch nach dem Neuladen keine Wiederholung. Antippen und Auflösung wie bisher. Die englische Quelle bleibt umschaltbar (FRAGEN 17).<br>Alle Fragen wurden unabhängig gegengeprüft, danach 13 nachgebessert. Bei vier war eine „falsche“ Antwort ebenfalls richtig, zum Beispiel war Bremen auch im Rheinischen Städtebund, und Munch hat ebenfalls eine „Sternennacht“ gemalt.</p>
+<div class="strip"><img src="belege/2026-10-10/s4/quiz/vergleich.png" alt=""></div>
+
+<h3>Spruch des Tages: Originalwortlaut statt Internet-Zitat</h3>
+<p class="note">An der Wand stand „Was du dem Augenblick ausgeschlagen, bringt keine Ewigkeit zurück. – Schiller“. Bei Schiller heißt es „Was man von der Minute ausgeschlagen, gibt keine Ewigkeit zurück“. Insgesamt sechs Falschzitate sind jetzt nach dem Original korrigiert: Schiller, Lichtenberg, Lessing, Busch, Nietzsche (das bekannte „Wer ein Warum zum Leben hat …“ ist Viktor Frankls Umformulierung) und Einstein (Velo-Brief statt Internet-Fassung).</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s4/sprueche/vorher-schiller-01-quote.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Falsch zitiert.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s4/sprueche/nachher-schiller-01-quote.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Wortlaut aus „Resignation“.</figcaption></figure>
+</div>
+
+<h3>Kopfzeile: Titel nie mehr abgeschnitten</h3>
+<p class="note">Mit HA-Knopf stand fast die ganze Zeit „Abfahrten — Föhrenstra“, „Veranstaltungen — Bre“, „Musik-Charts Deutsc“. Der unsichtbare „Als Nächstes“-Hinweis belegte weiter Platz. Jetzt hat der Titel Vorrang. Der Hinweis erscheint nur, wenn er ganz passt, sonst kürzer („Gleich: Wetter“) oder gar nicht (<code>tool/pruefe-kopftitel.js</code>: vorher 8 ✗, nachher alle ✓).</p>
+<div class="strip"><img src="belege/2026-10-10/s4/titel/vergleich.png" alt=""></div>
+
+<h3>Medien: ein lange pausierter HomePod kommt nicht mehr jede Runde</h3>
+<p class="note">„Pausiert“ zählte als „läuft“. Ein HomePod bleibt nach dem Anhalten oft stundenlang pausiert, dann stand „Pausiert im Büro – Levitating“ in jeder Karussell-Runde. Jetzt bleibt Pausiertes 30 Minuten im Karussell (<code>medienPauseMin</code>), danach nur in der Übersicht, damit du weiterhören kannst. Sobald wieder Musik läuft, ist das Panel sofort zurück (<code>tool/pruefe-medien-pause.js</code>: alte Fassung ✗, neue alle ✓).</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s4/rundgang-sa/17-medien.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Kam bei pausiertem HomePod in jeder Runde.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s4/medien/uebersicht-pausiert-45min.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Nach 45 Minuten Pause: nicht mehr in der Runde, aber oben in der Übersicht („Medien“).</figcaption></figure>
+</div>
+
+<h3>Code-Review dieser Sitzung (zwei Funde, beide behoben)</h3>
+<p class="note">Ein unabhängiges Review der heutigen Änderungen fand zwei Fehler. (1) Fand die Tafel morgens keine passende Bahn mehr (Arbeitsbeginn knapp, Linie fällt aus), fragte sie abwechselnd „heute“ und „nächster Arbeitstag“ ab. Beide verdrängten sich aus dem Zwischenspeicher: <b>768 Abrufe in 45 Sekunden</b>, jetzt 2 (<code>tool/pruefe-abruf-schleife.js</code>). Den Fehler hatte ich mit der Abend-Bahn selbst eingebaut, er war nie auf <code>main</code>. (2) Bei zwei DWD-Warnungen verschwand die zweite auf dem Tagesblick ganz. Jetzt steht sie im Band, und ein Tipp auf den Streifen öffnet den vollen DWD-Text.</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s4/tagesblick-warn/zwei-zwei-warnungen.png" alt=""><figcaption>Streifen: die wichtigste Warnung. Band: die zweite („Frost ab 20 Uhr“).</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s4/tagesblick-warn/zwei-streifen-getippt.png" alt=""><figcaption>Tipp auf den Streifen: der volle amtliche Text.</figcaption></figure>
+</div>
+
+<h3>Dauerbetrieb</h3>
+<p class="note">24-h-Zeitraffer nach den Änderungen an Kopfzeile, Tagesblick, Quiz und Arbeitsweg (Uhr in 10-Minuten-Sprüngen, alle Abrufe echt): DOM, Timer, Listener und Bilder wachsen in keinem 3-h-Abschnitt, 6× Neuladen, keine Seitenfehler (<code>belege/2026-10-10/s4/zeitraffer.log</code>). Die HA-Probe ist ebenfalls komplett grün.</p>
+
+<h3>Bewusst nicht gebaut</h3>
+<p class="note">„Beste Zeit zum Lüften“ für die leere Mitte der Draußen-Karte im Raumklima: Mit der echten Vorhersage für Bremen trocknet Lüften im Oktober den ganzen Tag fast gleich gut (2,4–3,0 g/m³ Unterschied). Ein Zeitfenster wäre Deko gewesen. Im Sommer wäre es sinnvoll, das kann später kommen.</p>
+
+<h2 id="s3">3 · Animationen, die etwas bedeuten</h2>
 <p class="note">Nur über transform/opacity (Safari 12, A7-Chip). Videos aus Playwright-WebKit; darunter je ein Bildstreifen.</p>
 <div class="grid">
   <figure><video src="belege/2026-10-10/animationen/licht-kachel.webm" controls muted loop playsinline></video><figcaption><b>Licht an/aus:</b> Schein in der echten Lampenfarbe blendet ein, Glühbirne füllt sich von unten.</figcaption></figure>
@@ -229,7 +281,7 @@
 <div class="strip"><img src="belege/2026-10-10/animationen/schnellaktion-streifen.png" alt=""></div>
 <div class="strip"><img src="belege/2026-10-10/animationen/licht-kachel-streifen.png" alt=""></div>
 
-<h2>4 · Die Tafel lernt dich kennen</h2>
+<h2 id="s4">4 · Die Tafel lernt dich kennen</h2>
 <p class="note">Aus 4 Wochen (simuliertem) HA-Verlauf und der Bedienung der Tafel – lokal, ohne Cloud. Erst ab 3 gleichen Situationen, nie automatisch schalten, „×“ lehnt ab und macht den Vorschlag seltener. Geprüft mit <code>node tool/pruefe-lernen.js</code> zu festen Uhrzeiten.</p>
 <div class="grid">
   <figure><img src="belege/2026-10-10/lernen/werktag-morgens.png" alt=""><figcaption><b>Mo 07:12:</b> „Du gehst werktags meist um 07:32 los – Linie … um 07:37, in 17 Min los“.</figcaption></figure>
@@ -238,7 +290,7 @@
   <figure><img src="belege/2026-10-10/lernen/einstellungen-gelernt.png" alt=""><figcaption><b>Einstellungen</b> (lange auf die Uhr drücken): „Was die Tafel gelernt hat“ + „Vergessen“.</figcaption></figure>
 </div>
 
-<h2>5 · Regenradar und tagesschau in 100 Sekunden</h2>
+<h2 id="s5">5 · Regenradar und tagesschau in 100 Sekunden</h2>
 <div class="pair">
   <figure><img src="belege/vorher/03-wetter.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Wetter: die rechte Hälfte leer.</figcaption></figure>
   <figure><img src="belege/2026-10-10/clips/v2-01-weather.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Regenradar der letzten ~2 h als Bildfolge, Zuhause markiert – nur wenn Regen relevant ist.</figcaption></figure>
@@ -247,7 +299,7 @@
   <figure><img src="belege/2026-10-10/clips/v2-02-tagesschau.png" alt=""><figcaption><b>tagesschau in 100 Sekunden</b> morgens/abends, stumm, Titel im Rand statt über der Bauchbinde. Speicherprobe: 50 Wiedergaben, nie mehr als ein Video, Speicher sinkt (113 → 96 MB).</figcaption></figure>
 </div>
 
-<h2>6 · Was auf dem echten iPad kaputt war</h2>
+<h2 id="s6">6 · Was auf dem echten iPad kaputt war</h2>
 <p class="note">Safari 12 kennt <code>inset</code> und Flex-<code>gap</code> nicht. Simulierte iPad-Ansicht (CSS ohne diese Angaben):</p>
 <div class="pair">
   <figure><img src="belege/vorher/21-ipad-sim-panel-uebersicht.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Panel-Übersicht als kleiner Kasten oben links (Overlay 0×0 px).</figcaption></figure>
@@ -256,7 +308,7 @@
   <figure><img src="belege/2026-10-10/safari12-css/c-ipad-sim-nachher-15-nacht.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Nachts wirklich gedimmt.</figcaption></figure>
 </div>
 
-<h2>7 · Ideen umgesetzt: die ganze Tafel</h2>
+<h2 id="s7">7 · Ideen umgesetzt: die ganze Tafel</h2>
 <p class="note"><a href="IDEEN.md">IDEEN.md</a> geht jedes Panel kritisch durch (Maße, Farben, Kontraste). Die ersten sechs der Top-10 sind gebaut: dunkle Farbwelt überall, Abfahrten als echte Anzeigetafel, Uhr 56 px mit einheitlicher Kopfzeile, Hinweiszeile statt Müll-Chip über dem Inhalt, ruhiger Panel-Wechsel, Fußball-Fehler.</p>
 <div class="pair">
   <figure><img src="belege/vorher/01-abfahrten.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Minuten 30 px (kleiner als das Ziel), Pastell-Plaketten, Banner wiederholt die erste Zeile, Uhr 30 px in einer Pille.</figcaption></figure>
@@ -329,7 +381,7 @@
   <figure><img src="belege/2026-10-10/nachher-s3/14-sport.png" alt=""><figcaption>Fußball</figcaption></figure>
 </div>
 
-<h2>8 · Zur Wahl (FRAGEN.md)</h2>
+<h2 id="s8">8 · Zur Wahl (FRAGEN.md)</h2>
 <p class="note">Beides ist gebaut und per <code>config.js</code> umschaltbar; ich arbeite mit dem Vorschlag weiter, bis du entscheidest.</p>
 <h3>Farbwelt – <code>farbwelt: "dunkel" | "auto" | "hell"</code> (Vorschlag: dunkel)</h3>
 <div class="pair">
@@ -361,7 +413,7 @@
   <li>Außerdem in FRAGEN.md: Radar-Karte (Esri), tagesschau-Zeiten, Schnellaktionen-Zuordnung, Müll-Feiertagsregel bitte gegen den echten Kalender prüfen.</li>
 </ul>
 
-<h2>9 · Ehrliche Lücken</h2>
+<h2 id="s9">9 · Ehrliche Lücken</h2>
 <ul class="gaps">
   <li>Alles nur im <b>Desktop-WebKit</b> und gegen den <b>Simulator</b> geprüft – nicht auf dem iPad, nicht gegen dein echtes HA. Das erste echte Anmelden ist der eigentliche Test.</li>
   <li>Schieberegler: Mausziehen ist geprüft; echte Touch-Ereignisse lassen sich im Desktop-WebKit nicht erzeugen. Der Touch-Code (touchstart/move mit preventDefault) ist Safari-12-tauglich geschrieben, aber am iPad unbestätigt.</li>
@@ -377,6 +429,7 @@
   <li>Die Wirkungsprüfung warnt auch, wenn „Gute Nacht“/„Arbeiten“ nichts zu tun hat, weil schon alles so ist, wie die Automation es will. Das ist selten; falls es stört: FRAGEN 21.</li>
   <li>Kalender nach dem Umzug nach HA: nur mit der Änderung im Worker (FRAGEN 20). Geprüft per <code>curl</code> mit der HA-Herkunft, nicht am iPad.</li>
   <li><b>Code-Review von heute früh</b> (zweiter Durchgang, alles behoben): Der Tagesblick hätte eine kurz vorher gestrichene Bahn empfehlen können (alte gezielte Abfrage), die Wirkungsprüfung hatte Fehlalarm-Fälle, und – schon länger: <b>Fußball-Anstoßzeiten standen auf dem iPad 2 h falsch</b> (Safari 12 liest Zeiten ohne Zone als UTC); jetzt aus der UTC-Angabe.</li>
+  <li><b>Sitzung 4:</b> Die Quizfragen sind selbst geschrieben und unabhängig gegengeprüft (13 nachgebessert). Wenn dir eine Frage falsch vorkommt: <code>quiz.js</code>, eine Zeile pro Frage. Der Warnstreifen ist mit Texten im echten Bright-Sky-Format geprüft (Windböen wie heute in Bremen, Unwetter und Frost erfunden), nicht mit einer echten Unwetterlage. Die Medien-Regel („30 Minuten pausiert“) hängt daran, dass dein HomePod in HA auf „paused“ bleibt. Geht er stattdessen auf „idle“, verschwindet das Panel wie bisher sofort.</li>
 </ul>
 
 <p class="note" style="margin-top:50px">Ansehen: <code>./vorschau.sh</code> → <code>http://localhost:8765/MORGEN.html</code>. Live ausprobieren ohne dein HA: <code>node tool/ha-simulator/server.js</code> → <code>http://localhost:8124/local/tafel/index.html</code> (Login tafel / tafel-passwort).</p>
