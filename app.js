@@ -5478,8 +5478,16 @@ function setNextHint(ms) {
     const next = peekNextPanel();
     const meta = next ? PANEL_NAV_META[next] : null;
     if (!meta || next === activeSequence[panelIndex]) return;
-    el.textContent = "Als Nächstes: " + meta.label;
-    el.classList.add("is-shown");
+    // Nur ganz oder gar nicht: der Titel daneben hat Vorrang (style.css).
+    const texte = ["Als Nächstes: " + meta.label, "Gleich: " + meta.label];
+    for (let i = 0; i < texte.length; i++) {
+      el.textContent = texte[i];
+      if (el.scrollWidth <= el.clientWidth + 1) {
+        el.classList.add("is-shown");
+        return;
+      }
+    }
+    el.textContent = "";
   }, Math.max(0, ms - 3000));
 }
 

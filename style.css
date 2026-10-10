@@ -3995,7 +3995,20 @@ html, body {
   box-shadow: none;
 }
 
+/* Der Titel hat Vorrang: Vorher teilten sich Titel und (auch der schon
+   ausgeblendete) Hinweis den Platz, mit HA-Knopf war "Abfahrten —
+   Föhrenstr…" abgeschnitten. Jetzt gibt nur der Hinweis nach; passt er
+   nicht ganz, zeigt app.js ihn kürzer oder gar nicht. */
+.topbar-left .topbar-title {
+  flex-shrink: 0;
+  max-width: 100%;
+}
+
 .topbar-next {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin-left: 16px;
   font-size: 15px;
   color: var(--ink-dim);
