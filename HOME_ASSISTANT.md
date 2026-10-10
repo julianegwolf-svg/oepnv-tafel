@@ -62,6 +62,39 @@ const allowOrigin = ERLAUBT.indexOf(origin) !== -1 ? origin : ERLAUBT[0];
 ```
 **Prüfen am iPad:** lange auf die Uhr drücken → Einstellungen → **Datenquellen**. Jede Quelle zeigt, wann sie zuletzt geladen hat; „Termine – lädt nicht“ samt der Adresse, die der Worker erlauben muss, heißt: dieser Schritt fehlt noch.
 
+### 6. Musik-Charts: ein Sensor in Home Assistant (sonst bleibt das Panel weg)
+Die bisherigen „Charts“ waren Deezers Hörer-Playlist „Top Germany“. Am 10.10. standen davon nur 2 der Top 10 auch in den **Offiziellen Deutschen Charts**, dafür viel US-Country. Apple Music „Meistgespielt – Deutschland“ trifft 9 von 10, auch die Nr. 1 stimmt (Vergleich: `belege/2026-10-10/s6/musik/vergleich-charts.txt`). Apple erlaubt aber keinen Abruf direkt aus dem Browser. Deshalb holt Home Assistant die Liste einmal pro Stunde, und die Tafel liest sie über die bestehende Verbindung mit. **Ohne diesen Sensor zeigt die Tafel kein Musik-Panel.** Lieber keins als falsche Charts.
+
+In `configuration.yaml` ergänzen (Datei-Editor oder Samba), dann **Entwicklerwerkzeuge → YAML → Alle YAML-Konfigurationen neu laden**, bei Bedarf HA neu starten:
+```yaml
+rest:
+  - resource: https://rss.marketingtools.apple.com/api/v2/de/music/most-played/10/songs.json
+    scan_interval: 3600
+    sensor:
+      - name: Musik Charts
+        unique_id: tafel_musik_charts
+        value_template: "{{ value_json.feed.updated }}"
+        json_attributes_path: "$.feed"
+        json_attributes:
+          - results
+
+# Optional: die Liste nicht stündlich in der Verlaufs-Datenbank speichern
+recorder:
+  exclude:
+    entities:
+      - sensor.musik_charts
+```
+(Gibt es schon einen `recorder:`-Block, nur die `exclude`-Zeilen dort ergänzen.) **Prüfen:** Entwicklerwerkzeuge → Zustände → `sensor.musik_charts` zeigt ein Datum wie „Sat, 10 Oct 2026 08:07:33 +0000“ und ein Attribut `results` mit 10 Titeln. Die Tafel zeigt das Panel dann ohne Neuladen, unten links steht „Apple Music · meistgespielt · Stand …“. Ist der Sensor älter als 4 Tage, blendet die Tafel das Panel wieder aus.
+
+*Ohne HA (GitHub Pages):* Dein Kalender-Worker kann die Liste mit CORS durchreichen. Im Worker vor dem Kalender-Teil:
+```js
+if (new URL(request.url).searchParams.get("musik") === "de") {
+  const r = await fetch("https://rss.marketingtools.apple.com/api/v2/de/music/most-played/10/songs.json", { cf: { cacheTtl: 3600 } });
+  return new Response(await r.text(), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": allowOrigin, "Vary": "Origin", "Cache-Control": "public, max-age=3600" } });
+}
+```
+und in `config.js`: `musikProxy: "https://kalender-worker.julian-e-g-wolf.workers.dev/?musik=de"`.
+
 Gut zu wissen: Die Home-Bildschirm-App unter der neuen Adresse hat eigenen Speicher. Was die Tafel bisher über deine Bedienung gelernt hat (Vorschläge), fängt dort neu an. Der HA-Verlauf liefert die Grundlage aber sofort wieder.
 
 ---
@@ -116,6 +149,7 @@ Die Tafel erkennt alles selbst aus deinen HA-Bereichen. Feinsteuerung (optional)
 | Raum fehlt | Raum hat in HA keine Geräte, die die Tafel anzeigen kann (z. B. Küche ohne Licht/Sensor) – absichtlich |
 | Schnellaktion meldet „hat nichts geschaltet“ (Chip „… wirkt nicht – in HA prüfen“) | HA hat die Automation zwar gestartet, aber kein Gerät hat reagiert – meist bricht sie an einer ungültigen Aktion ab (HA meldet das nicht zurück). In HA: Einstellungen → Automationen → die Automation → **Ablaufverfolgung** zeigt die Stelle. Bei *Bett Fertig*/*Arbeitsmodus*: je Lampe nur `color_temp_kelvin` **oder** `rgb_color` (FRAGEN 19) |
 | Keine Termine mehr (seit dem Umzug nach HA) | Kalender-Worker erlaubt die neue Adresse nicht → Schritt 5; Einstellungen → Datenquellen zeigt „Termine – lädt nicht“ |
+| Kein Musik-Panel | Absichtlich, solange `sensor.musik_charts` fehlt oder älter als 4 Tage ist → Schritt 6 |
 
 ---
 

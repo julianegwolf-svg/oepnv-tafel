@@ -2,7 +2,7 @@
 /*
  * Home-Assistant-Simulator für die SmartTafel.
  *
- *   node tool/ha-simulator/server.js [--extras]
+ *   node tool/ha-simulator/server.js [--extras] [--charts]
  *
  * Bietet auf EINEM Port (Standard 8124):
  *   - WebSocket /api/websocket  (HA-WebSocket-API, Format wie HA 2025/2026)
@@ -40,6 +40,7 @@ const CHAOS_S = Number(process.env.HA_SIM_CHAOS_S || 0);
 const LATENZ_MS = Math.max(0, Number(process.env.HA_SIM_LATENZ_MS || 0));
 const LEISE = process.env.HA_SIM_LEISE === '1';
 const EXTRAS = process.argv.indexOf('--extras') !== -1 || process.env.HA_SIM_EXTRAS === '1';
+const CHARTS = process.argv.indexOf('--charts') !== -1 || process.env.HA_SIM_CHARTS === '1';
 const TOKEN_TTL_S = Math.max(5, Number(process.env.HA_SIM_TOKEN_TTL_S || 1800));
 const KONTEN = process.env.HA_SIM_KONTEN || 'tafel:tafel-passwort,mfa-test:mfa-passwort:123456';
 const WOCHEN = Math.max(0, Math.min(12, Number(process.env.HA_SIM_WOCHEN === undefined ? 4 : process.env.HA_SIM_WOCHEN)));
@@ -75,6 +76,7 @@ function ladeHaushalt() {
 }
 
 const H = ladeHaushalt();
+if (CHARTS) H.ENTITAETEN.push(require('./charts.js').sensor());
 const welt = new Welt(H);
 const sim = new Simulation(welt, H, { tickMs: TICK_MS, log: log, wochen: WOCHEN });
 const dienste = new Dienste(welt, sim);

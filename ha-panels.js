@@ -3244,7 +3244,11 @@
     let kalenderFehlt = false;
     const zeilen = liste.map(function (q) {
       let zustand, text;
-      if (!q.stand) { zustand = "fehlt"; text = "lädt nicht"; if (q.id === "calendar") kalenderFehlt = true; }
+      if (!q.stand) {
+        zustand = "fehlt";
+        text = q.id === "music" && CONFIG.musikQuelle !== "deezer" && !CONFIG.musikProxy ? "braucht HA-Sensor (Schritt 6)" : "lädt nicht";
+        if (q.id === "calendar") kalenderFehlt = true;
+      }
       else if (q.alt) { zustand = "alt"; text = "Stand " + zeit(q.stand); }
       else { zustand = "ok"; text = zeit(q.stand); }
       return '<li class="is-' + zustand + '"><span class="ha-quelle-dot"></span><span class="ha-quelle-name">' + esc(q.name) +

@@ -2279,17 +2279,19 @@ function fetchJsonp(url, timeoutMs) {
 // Links die Nr. 1 groß, rechts die Plätze 2–10 als dichte Liste — statt
 // fünf Karten, die zu 60 % leer waren. Aufsteiger/Neueinsteiger per
 // Vergleich mit dem gestrigen Stand (localStorage, nur 10 IDs).
-const MUSIC_RANK_KEY = "tafelMusikRang";
+// Je Quelle getrennt – sonst wäre nach dem Wechsel Deezer → Apple einen Tag
+// lang jeder Titel "neu".
+function musicRankKey() { return "tafelMusikRang-" + (CONFIG.musikQuelle || "apple"); }
 
 function musicMovement(results) {
   let prev = null;
-  try { prev = JSON.parse(localStorage.getItem(MUSIC_RANK_KEY) || "null"); } catch (e) { prev = null; }
+  try { prev = JSON.parse(localStorage.getItem(musicRankKey()) || "null"); } catch (e) { prev = null; }
   const today = new Date().toDateString();
   const ids = results.map(function (r) { return r.id; });
   // Vergleichsbasis = Stand von einem früheren Tag; einmal täglich fortschreiben.
   let base = prev && prev.day !== today ? prev : (prev && prev.base ? prev.base : null);
   if (!prev || prev.day !== today) {
-    try { localStorage.setItem(MUSIC_RANK_KEY, JSON.stringify({ day: today, ids: ids, base: prev ? { day: prev.day, ids: prev.ids } : null })); } catch (e) { /* egal */ }
+    try { localStorage.setItem(musicRankKey(), JSON.stringify({ day: today, ids: ids, base: prev ? { day: prev.day, ids: prev.ids } : null })); } catch (e) { /* egal */ }
     base = prev ? { day: prev.day, ids: prev.ids } : null;
   }
   return function (id, rank) {
@@ -2302,13 +2304,13 @@ function musicMovement(results) {
   };
 }
 
-function renderMusicTwoColumns(results) {
+function renderMusicTwoColumns(results, info) {
   const move = musicMovement(results);
   const top = results[0];
   let html = '<div class="music2"><div class="music2-hero">' +
     '<img class="music2-cover" alt="" src="' + (top.artworkBig || "") + '">' +
-    '<span class="music2-tag">Nr. 1 in Deutschland</span>' +
-    '<span class="music2-title"></span><span class="music2-artist"></span></div><div class="music2-list">';
+    '<span class="music2-tag"></span>' +
+    '<span class="music2-title"></span><span class="music2-artist"></span><span class="music2-quelle"></span></div><div class="music2-list">';
   results.slice(1, 10).forEach(function (song, i) {
     const m = move(song.id, i + 1);
     html += '<div class="music2-row"><span class="music2-rank">' + (i + 2) + "</span>" +
@@ -2319,8 +2321,10 @@ function renderMusicTwoColumns(results) {
   html += "</div></div>";
   els.musicList.innerHTML = html;
   // Texte per textContent setzen (Titel können Sonderzeichen enthalten).
+  els.musicList.querySelector(".music2-tag").textContent = info.tag;
   els.musicList.querySelector(".music2-title").textContent = top.name || "";
   els.musicList.querySelector(".music2-artist").textContent = top.artistName || "";
+  els.musicList.querySelector(".music2-quelle").textContent = info.quelle;
   const rows = els.musicList.querySelectorAll(".music2-row");
   for (let i = 0; i < rows.length; i++) {
     rows[i].querySelector(".music2-t").textContent = results[i + 1].name || "";
@@ -2328,26 +2332,130 @@ function renderMusicTwoColumns(results) {
   }
 }
 
+// ---------- Musik-Charts: Quelle (Sitzung 6) ----------
+// FEEDBACK 10.10.: "Musik-Charts meistens nicht richtig". Gegenprobe am
+// 10.10.2026 mit den Offiziellen Deutschen Charts (offiziellecharts.de,
+// Woche 09.–15.10.): von Deezers "Top Germany" standen nur 2 der Top 10 in
+// den offiziellen Top 25 (dafür US-Country wie Morgan Wallen, Ella Langley),
+// vom iTunes-Kauf-Chart 4 (drei davon Fassungen von "Patient Zero"), von
+// Apple Music "Meistgespielt – Deutschland" 9
+// (Nr. 1 identisch). Apple liefert aber keine CORS-Freigabe – die Liste
+// kommt deshalb über Home Assistant (REST-Sensor, HOME_ASSISTANT.md
+// Schritt 6) oder einen Proxy (CONFIG.musikProxy). Gibt es beides nicht,
+// bleibt das Panel weg: lieber keins als falsche Charts.
+const MUSIK_MAX_ALTER_MS = 4 * 86400000; // Sensor hängt? Dann nicht mehr zeigen
+let musikHaAngemeldet = false;
+let musikHaTimer = null;
+
+// Apple: "Sat, 10 Oct 2026 08:07:33 +0000" (selbst gelesen – Safari 12
+// soll hier nichts raten müssen)
+function appleFeedZeit(text) {
+  const m = /(\d{1,2}) (\w{3}) (\d{4}) (\d{2}):(\d{2}):(\d{2}) ([+-])(\d{2})(\d{2})/.exec(text || "");
+  if (!m) return 0;
+  const mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(m[2]);
+  if (mon < 0) return 0;
+  const off = (m[7] === "-" ? -1 : 1) * (Number(m[8]) * 60 + Number(m[9]));
+  return Date.UTC(+m[3], mon, +m[1], +m[4], +m[5], +m[6]) - off * 60000;
+}
+
+function appleTitel(results) {
+  return (results || []).filter(function (r) { return r && r.name; }).map(function (r) {
+    const art = String(r.artworkUrl100 || "");
+    return {
+      id: r.id,
+      name: r.name,
+      artistName: r.artistName,
+      artworkUrl100: art.replace(/\/\d+x\d+bb\./, "/120x120bb."),
+      artworkBig: art.replace(/\/\d+x\d+bb\./, "/640x640bb."),
+    };
+  });
+}
+
+function musikStandText(ms) {
+  if (!ms) return "";
+  const d = new Date(ms);
+  const heute = new Date().toDateString() === d.toDateString();
+  return "Stand " + (heute ? "heute " : d.toLocaleDateString("de-DE", { weekday: "short" }) + " ") +
+    d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+}
+
+function zeigeMusik(results, info) {
+  if (!results.length) throw new Error("Keine Musikdaten erhalten");
+  if ((CONFIG.musikLayout || "zweispaltig") === "zweispaltig") {
+    renderMusicTwoColumns(results, info);
+  } else {
+    renderMusicCards(results, info);
+  }
+  musicAvailable = true;
+  markFresh("music");
+}
+
+function musikAppleZeigen(feed, weg) {
+  const stand = appleFeedZeit(feed && feed.updated);
+  if (!stand || Date.now() - stand > MUSIK_MAX_ALTER_MS) throw new Error("Musik-Charts zu alt oder ohne Stand (" + weg + ")");
+  zeigeMusik(appleTitel(feed.results).slice(0, 10), {
+    tag: "Nr. 1 in Deutschland",
+    quelle: "Apple Music · meistgespielt · " + musikStandText(stand),
+  });
+}
+
+// Liest den HA-Sensor; meldet sich einmal für Änderungen an (ein Listener
+// für die ganze Laufzeit, gebündelt – kein Wachsen).
+function musikAusHA() {
+  const HA = window.TafelHA;
+  if (!HA) return false;
+  if (!musikHaAngemeldet) {
+    musikHaAngemeldet = true;
+    const sensor = CONFIG.musikSensor || "sensor.musik_charts";
+    HA.on(function (typ, id) {
+      if (typ !== "sync" && !(typ === "state" && id === sensor)) return;
+      if (musikHaTimer) return;
+      musikHaTimer = setTimeout(function () { musikHaTimer = null; updateMusic(); }, 1500);
+    });
+  }
+  if (!HA.isConnected()) return false;
+  const st = HA.state(CONFIG.musikSensor || "sensor.musik_charts");
+  const res = st && st.attributes && st.attributes.results;
+  if (!Array.isArray(res) || !res.length) return false;
+  musikAppleZeigen({ updated: st.state, results: res }, "Home Assistant");
+  return true;
+}
+
 function updateMusic() {
   if (!els.musicList) return;
+  const quelle = CONFIG.musikQuelle || "apple";
 
-  // ECHTER BUG, zweiter Anlauf: itunes.apple.com/.../topsongs (voriger
-  // Fix) ist der iTunes-Store-KAUF-Chart, nicht die tatsächliche
-  // Popularität — deshalb wirkten die Titel seltsam/unbekannt statt wie
-  // echte aktuelle Hits. Deezers "Top Germany"-Redaktions-Playlist (von
-  // Deezer selbst kuratiert, laufend aktualisiert) bildet echte
-  // Popularität ab — hat aber KEIN Access-Control-Allow-Origin (per
-  // echtem Browser-fetch()-Test verifiziert, nicht nur curl: "Failed to
-  // fetch"). JSONP (siehe fetchJsonp oben) umgeht das vollständig.
+  if (quelle === "apple") {
+    try {
+      if (musikAusHA()) return;
+    } catch (e) {
+      console.error(e);
+    }
+    if (!CONFIG.musikProxy) {
+      // Ohne HA-Sensor und ohne Proxy gibt es keine verlässliche Quelle.
+      musicAvailable = false;
+      return;
+    }
+    fetch(CONFIG.musikProxy, { cache: "no-store" }).then(function (res) {
+      if (!res.ok) throw new Error("Musik-Proxy: HTTP " + res.status);
+      return res.json();
+    }).then(function (data) {
+      musikAppleZeigen(data && data.feed, "Proxy");
+    }).catch(function (err) {
+      console.error(err);
+      musicAvailable = false;
+    });
+    return;
+  }
+
+  // Nur auf ausdrücklichen Wunsch (musikQuelle: "deezer"): Deezers
+  // Hörer-Liste – ehrlich beschriftet, nicht als deutsche Charts.
   const url = "https://api.deezer.com/playlist/" + CONFIG.musicPlaylistId +
     "/tracks?limit=" + ((CONFIG.musikLayout || "zweispaltig") === "zweispaltig" ? 10 : CONFIG.musicCount);
 
   fetchJsonp(url).then(function (data) {
     if (data && data.error) throw new Error("Deezer-Fehler: " + (data.error.message || data.error.type));
     const entries = (data && Array.isArray(data.data)) ? data.data : [];
-    // Deezer-Feld-Namen auf dieselbe {name, artistName, artworkUrl100}-Form
-    // bringen wie zuvor — der Rest der Rendering-Logik unten bleibt dadurch
-    // unverändert.
     const results = entries.map(function (t) {
       const album = t.album || {};
       return {
@@ -2358,88 +2466,81 @@ function updateMusic() {
         artworkBig: album.cover_big || album.cover_medium || album.cover,
       };
     });
-    if (!results.length) throw new Error("Keine Musikdaten erhalten");
-
-    if ((CONFIG.musikLayout || "zweispaltig") === "zweispaltig") {
-      renderMusicTwoColumns(results);
-      musicAvailable = true;
-      markFresh("music");
-      return;
-    }
-
-    els.musicList.innerHTML = "";
-    const top = results[0];
-
-    if (top) {
-      const hero = document.createElement("div");
-      hero.className = "music-hero";
-
-      const art = document.createElement("img");
-      art.className = "music-hero-art";
-      art.src = top.artworkUrl100 || "";
-      art.alt = "";
-      hero.appendChild(art);
-
-      const text = document.createElement("div");
-      text.className = "music-hero-text";
-
-      const tag = document.createElement("span");
-      tag.className = "music-hero-tag";
-      tag.textContent = "👑 Nr. 1 in Deutschland";
-      text.appendChild(tag);
-
-      const title = document.createElement("span");
-      title.className = "music-hero-title";
-      title.textContent = top.name || "";
-      text.appendChild(title);
-
-      const artist = document.createElement("span");
-      artist.className = "music-hero-artist";
-      artist.textContent = top.artistName || "";
-      text.appendChild(artist);
-
-      hero.appendChild(text);
-      els.musicList.appendChild(hero);
-    }
-
-    results.slice(1, CONFIG.musicCount).forEach(function (song, i) {
-      const row = document.createElement("div");
-      row.className = "music-item";
-
-      const rank = document.createElement("span");
-      rank.className = "music-rank";
-      rank.textContent = (i + 2) + ".";
-
-      const art = document.createElement("img");
-      art.className = "music-art";
-      art.src = song.artworkUrl100 || "";
-      art.alt = "";
-
-      const text = document.createElement("span");
-      text.className = "music-text";
-
-      const title = document.createElement("span");
-      title.className = "music-title";
-      title.textContent = song.name || "";
-
-      const artist = document.createElement("span");
-      artist.className = "music-artist";
-      artist.textContent = song.artistName || "";
-
-      text.appendChild(title);
-      text.appendChild(artist);
-
-      row.appendChild(rank);
-      row.appendChild(art);
-      row.appendChild(text);
-      els.musicList.appendChild(row);
-    });
-
-    musicAvailable = true;
-    markFresh("music");
+    zeigeMusik(results, { tag: "Deezer · Top Germany", quelle: "Deezer-Hörer, keine offiziellen Charts" });
   }).catch(function (err) {
     console.error(err);
     musicAvailable = false;
+  });
+}
+
+// Bisheriges Karten-Layout (musikLayout: "karten")
+function renderMusicCards(results, info) {
+  els.musicList.innerHTML = "";
+  const top = results[0];
+
+  if (top) {
+    const hero = document.createElement("div");
+    hero.className = "music-hero";
+
+    const art = document.createElement("img");
+    art.className = "music-hero-art";
+    art.src = top.artworkUrl100 || "";
+    art.alt = "";
+    hero.appendChild(art);
+
+    const text = document.createElement("div");
+    text.className = "music-hero-text";
+
+    const tag = document.createElement("span");
+    tag.className = "music-hero-tag";
+    tag.textContent = info.tag;
+    text.appendChild(tag);
+
+    const title = document.createElement("span");
+    title.className = "music-hero-title";
+    title.textContent = top.name || "";
+    text.appendChild(title);
+
+    const artist = document.createElement("span");
+    artist.className = "music-hero-artist";
+    artist.textContent = top.artistName || "";
+    text.appendChild(artist);
+
+    hero.appendChild(text);
+    els.musicList.appendChild(hero);
+  }
+
+  results.slice(1, CONFIG.musicCount).forEach(function (song, i) {
+    const row = document.createElement("div");
+    row.className = "music-item";
+
+    const rank = document.createElement("span");
+    rank.className = "music-rank";
+    rank.textContent = (i + 2) + ".";
+
+    const art = document.createElement("img");
+    art.className = "music-art";
+    art.src = song.artworkUrl100 || "";
+    art.alt = "";
+
+    const text = document.createElement("span");
+    text.className = "music-text";
+
+    const title = document.createElement("span");
+    title.className = "music-title";
+    title.textContent = song.name || "";
+
+    const artist = document.createElement("span");
+    artist.className = "music-artist";
+    artist.textContent = song.artistName || "";
+
+    text.appendChild(title);
+    text.appendChild(artist);
+
+    row.appendChild(rank);
+    row.appendChild(art);
+    row.appendChild(text);
+    els.musicList.appendChild(row);
   });
 }
 

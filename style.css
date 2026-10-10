@@ -3635,6 +3635,14 @@ html, body {
   color: var(--ink-dim);
 }
 
+/* Woher die Liste stammt und wie frisch sie ist (FEEDBACK 10.10.) */
+.music2-quelle {
+  margin-top: auto;
+  font-size: 14px;
+  color: var(--ink-dim);
+  opacity: 0.8;
+}
+
 .music2-list {
   flex: 1;
   min-width: 0;

@@ -234,13 +234,21 @@ const CONFIG = {
   // Breite, Text darunter; "klassisch" = Volltext über dem Foto (bisher).
   nachrichtenLayout: "rechts",
 
-  // Musik-Panel: Deezers offizielle "Top Germany"-Redaktions-Playlist
-  // (von Deezer selbst kuratiert und laufend aktualisiert, echte
-  // Popularitäts-Charts statt Kauf-Charts — siehe ausführlicher
-  // Kommentar bei updateMusic() in app.js für die Historie dahinter).
-  // Playlist-ID über die Deezer-Suche/-Website ermittelbar, falls sie
-  // sich mal ändert: deezer.com nach "Top Germany" durchsuchen, ID steht
-  // in der URL der Playlist.
+  // Musik-Charts (Sitzung 6): Apple Music "Meistgespielt – Deutschland" –
+  // am 10.10.2026 standen 9 der Top 10 auch in den Offiziellen Deutschen
+  // Charts (Deezers "Top Germany": 2). Apple erlaubt keinen Abruf direkt
+  // aus dem Browser, daher kommt die Liste über einen Umweg:
+  //  - musikSensor: REST-Sensor in Home Assistant (HOME_ASSISTANT.md,
+  //    Schritt 6) – wirkt, sobald die Tafel mit HA verbunden ist;
+  //  - musikProxy: Adresse, die das Apple-JSON mit CORS-Freigabe
+  //    durchreicht (z. B. der Kalender-Worker, Schnipsel in
+  //    HOME_ASSISTANT.md) – für GitHub Pages ohne HA.
+  // Ohne beides bleibt das Panel weg (lieber keins als falsche Charts).
+  // musikQuelle: "deezer" holt die alte Deezer-Playlist zurück, dann
+  // ehrlich als "Deezer · Top Germany" beschriftet.
+  musikQuelle: "apple",
+  musikSensor: "sensor.musik_charts",
+  musikProxy: "",
   musicPlaylistId: "1111143121",
   musicCount: 5,
   // "zweispaltig" = Nr. 1 groß links, Plätze 2–10 rechts mit Auf-/Absteigern
