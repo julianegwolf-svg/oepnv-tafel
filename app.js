@@ -3149,6 +3149,10 @@ function updateQuote() {
       quoteAvailable = true;
       return;
     }
+    // Sammlung fehlt (z. B. sprueche.js nicht mitkopiert): kein Rückfall
+    // auf die englische Quelle – auf der Tafel erscheint nichts Englisches.
+    quoteAvailable = false;
+    return;
   }
 
   // Cache-Buster, weil manche CORS-Proxies/CDNs vor dieser API sonst
@@ -3736,6 +3740,11 @@ function updateQuiz(retryCount) {
     // Die Frage wird erst beim Zeigen des Panels gezogen (showPanel) –
     // stündlich nichts tun, sonst wechselte sie womöglich mitten im Raten.
     quizAvailable = true;
+    return;
+  }
+  if ((CONFIG.quizQuelle || "deutsch") === "deutsch") {
+    // quiz.js fehlt: lieber kein Quiz als englische Fragen.
+    quizAvailable = false;
     return;
   }
   retryCount = retryCount || 0;
