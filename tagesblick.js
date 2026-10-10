@@ -182,7 +182,8 @@
       if (!dep) return "";
       const inMin = Math.max(0, Math.round((dep.leaveByMs - Date.now()) / 60000));
       let arbeit = "";
-      if (!frei && s.commutePtMinutes != null && dep.whenMs) {
+      const arbeitsLinie = typeof lastCommuteFirstLine !== "undefined" ? lastCommuteFirstLine : null;
+      if (!frei && s.commutePtMinutes != null && dep.whenMs && (!arbeitsLinie || arbeitsLinie === dep.line)) {
         arbeit = '<div class="tb-line">Bei der Arbeit ca. ' + hhmm(dep.whenMs + s.commutePtMinutes * 60000) + "</div>";
       }
       return '<div class="tb-card tb-bahn">' +

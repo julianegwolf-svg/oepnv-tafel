@@ -540,6 +540,7 @@ let walkTimeRequested = false;
 // wird hier nur zusätzlich für die Ankunfts-Einschätzung in der "Sollte
 // ich jetzt los?"-Karte zwischengespeichert (siehe workArrivalEstimate).
 let lastCommutePtMinutes = null;
+let lastCommuteFirstLine = null;
 
 function haversineMeters(a, b) {
   const R = 6371000;
@@ -749,7 +750,7 @@ function buildDepartureRow() {
   row.className = "row dep-row";
   row.innerHTML =
     '<span class="line-badge dep-badge"></span>' +
-    '<span class="dest-wrap"><span class="dest"></span><span class="walk-hint dep-sub"></span></span>' +
+    '<span class="dest-wrap"><span class="dest"></span><span class="walk-hint dep-sub"></span><span class="dep-work"></span></span>' +
     '<span class="dep-pill"></span>' +
     '<span class="time-cell"><span class="time-min"><span class="dep-min"></span><span class="dep-unit">min</span></span>' +
     '<span class="time-clock"><s class="dep-planned"></s><span class="dep-actual"></span><span class="dep-delay"></span></span></span>';
@@ -922,7 +923,10 @@ function updateDepartureRow(row, dep, now, isNext) {
   // (GTFS-RT Service Alerts; BSAG/VBN haben keine offene Quelle, D20).
   const alertsList = (place.alerts || dep.alerts || []);
   if (alertsList.length && alertsList[0].headerText) subParts.unshift("⚠ " + alertsList[0].headerText);
-  if (isNext && whenDate) {
+  // Ankunft bei der Arbeit nur, solange unbekannt ist, welche Linie
+  // dorthin fährt — sonst übernimmt die Markierung an der richtigen Linie
+  // (vorher stand "Arbeit 07:48" auch bei Linien in die Gegenrichtung).
+  if (isNext && whenDate && !lastCommuteFirstLine) {
     const est = workArrivalEstimate(whenDate);
     if (est) {
       subParts.push((est.diffMin < 0 ? "⚠ Arbeit " : "Arbeit ") +
@@ -931,6 +935,22 @@ function updateDepartureRow(row, dep, now, isNext) {
     }
   }
   row.querySelector(".dep-sub").textContent = subParts.join(" · ");
+
+  // "Zur Arbeit"-Markierung (IDEEN A3): werktags 6–9 Uhr bekommt die
+  // Linie, mit der die ÖPNV-Route zur Arbeit beginnt, eine Aktentasche
+  // und die geschätzte Ankunft.
+  const work = row.querySelector(".dep-work");
+  let workHtml = "";
+  const nowD = new Date(now);
+  if (lastCommuteFirstLine && whenDate && !cancelled && lineName === lastCommuteFirstLine &&
+      nowD.getHours() >= 6 && nowD.getHours() < 9 && isCommuteTime(nowD)) {
+    const estW = workArrivalEstimate(whenDate);
+    if (estW) {
+      workHtml = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M8.5 7.5V5.5c0-.6.4-1 1-1h5c.6 0 1 .4 1 1v2M3 12.5h18"/></svg>' +
+        "Arbeit an " + estW.arrivalDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    }
+  }
+  if (work._html !== workHtml) { work._html = workHtml; work.innerHTML = workHtml; }
 
   // Dringlichkeit als Pille in der Zeile der nächsten Bahn.
   const pill = row.querySelector(".dep-pill");
@@ -4007,6 +4027,12 @@ function updateCommute() {
     ]).then(function (all) {
       const results = { bike: all[0], bus: all[1], car: all[2], forecastDate: departDate };
       lastCommutePtMinutes = (results.bus && typeof results.bus.minutes === "number") ? results.bus.minutes : null;
+      // Erste Linie der ÖPNV-Route = die, die man an der Föhrenstraße nimmt.
+      const firstLine = results.bus && results.bus.lines && results.bus.lines.length ? String(results.bus.lines[0]) : null;
+      if (firstLine !== lastCommuteFirstLine) {
+        lastCommuteFirstLine = firstLine;
+        updateDepartures(); // Markierung sofort zeigen, nicht erst beim nächsten Abruf
+      }
       renderCommuteHero(results);
 
       // Kartenansicht nur mit TomTom-Key (sonst kein Kartenbild abrufbar
@@ -5089,6 +5115,34 @@ function pickNextAvailablePanel() {
   return activeSequence[panelIndex];
 }
 
+// "Als Nächstes: Wetter" in den letzten 3 Sekunden (IDEEN R4): der
+// Wechsel kommt nicht überraschend. Nur schauen, nicht weiterschalten.
+let nextHintTimer = null;
+
+function peekNextPanel() {
+  for (let k = 1; k <= activeSequence.length; k++) {
+    const name = activeSequence[(panelIndex + k) % activeSequence.length];
+    const check = PANEL_AVAILABILITY[name];
+    if (!check || check()) return name;
+  }
+  return null;
+}
+
+function setNextHint(ms) {
+  const el = document.getElementById("topbarNext");
+  if (nextHintTimer) { clearTimeout(nextHintTimer); nextHintTimer = null; }
+  if (el) el.classList.remove("is-shown");
+  if (ms == null || !el) return;
+  nextHintTimer = setTimeout(function () {
+    nextHintTimer = null;
+    const next = peekNextPanel();
+    const meta = next ? PANEL_NAV_META[next] : null;
+    if (!meta || next === activeSequence[panelIndex]) return;
+    el.textContent = "Als Nächstes: " + meta.label;
+    el.classList.add("is-shown");
+  }, Math.max(0, ms - 3000));
+}
+
 function scheduleCarousel() {
   const seq = activeSequence;
   if (!seq || seq.length < 2) return;
@@ -5096,6 +5150,7 @@ function scheduleCarousel() {
   const currentName = seq[panelIndex];
   const duration = durationForPanel(currentName);
   resetProgressBar(duration);
+  setNextHint(duration);
 
   if (carouselTimer) clearTimeout(carouselTimer);
   carouselTimer = setTimeout(function () {
@@ -5171,6 +5226,7 @@ function pauseSlideshowTimers() {
 
 function pauseCarouselIndefinitely() {
   recentlyTouched = true;
+  setNextHint(null);
   if (carouselTimer) { clearTimeout(carouselTimer); carouselTimer = null; }
   if (carouselIdleTimer) { clearTimeout(carouselIdleTimer); carouselIdleTimer = null; }
   freezeProgressBar();
@@ -5194,6 +5250,7 @@ function resumeCarouselFromFraction() {
   if (currentName === "news") startNewsSlideshow(true);
   if (currentName === "sport") startSportSlideshow(true);
 
+  setNextHint(remaining);
   if (carouselTimer) clearTimeout(carouselTimer);
   carouselTimer = setTimeout(function () {
     const nextName = pickNextAvailablePanel();
@@ -5213,6 +5270,7 @@ function deferCarouselAdvance() {
     carouselTimer = null;
     freezeProgressBar();
     pauseSlideshowTimers();
+    setNextHint(null);
   }
 
   if (carouselIdleTimer) clearTimeout(carouselIdleTimer);

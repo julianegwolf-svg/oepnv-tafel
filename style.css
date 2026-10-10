@@ -3894,3 +3894,50 @@ html, body {
 .radio-menu:not(.is-open) .radio-eq i {
   animation-play-state: paused;
 }
+
+
+/* ---------- "Zur Arbeit"-Markierung (IDEEN A3) ---------- */
+.dep-work {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #6fb3d6;
+}
+
+.dep-work:empty {
+  display: none;
+}
+
+.dep-work svg {
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+}
+
+/* ---------- Fortschrittsbalken + "Als Nächstes" (IDEEN R4) ---------- */
+.progress-bar {
+  height: 3px;
+  background: transparent;
+}
+
+.progress-fill {
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+.topbar-next {
+  margin-left: 16px;
+  font-size: 15px;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.topbar-next.is-shown {
+  opacity: 0.85;
+  transform: none;
+}
