@@ -5441,6 +5441,7 @@ function formatMatchDate(d) {
 }
 
 const heimspiele = {}; // je verfolgtem Verein die nächsten Heimspiele
+const vereinsWappen = {}; // Vereinsname → Wappen-URL (OpenLigaDB)
 
 function fetchTeamMatches(teamName) {
   const url = "https://api.openligadb.de/getmatchesbyteam/" + encodeURIComponent(teamName) + "/6/20";
@@ -5471,6 +5472,13 @@ function fetchTeamMatches(teamName) {
     let next = null;
     for (let i = 0; i < matches.length; i++) {
       if (!isOver(matches[i])) { next = matches[i]; break; }
+    }
+
+    // Wappen des Vereins für die News-Karten ohne Foto (kicker)
+    for (let i = 0; i < matches.length && !vereinsWappen[teamName]; i++) {
+      [matches[i].team1, matches[i].team2].forEach(function (t) {
+        if (t && t.teamIconUrl && isFollowedTeam(t, teamName)) vereinsWappen[teamName] = t.teamIconUrl;
+      });
     }
 
     // Heimspiele Bremer Vereine sind Bremer Veranstaltungen (Panel
@@ -5672,7 +5680,17 @@ function buildSportNewsSlide(item, index) {
   const imageUrl = extractNewsImageUrl(item);
 
   const slide = document.createElement("div");
-  slide.className = "sport-slide sport-slide-news" + (index === 0 ? " active" : "");
+  slide.className = "sport-slide sport-slide-news" + (index === 0 ? " active" : "") + (imageUrl ? "" : " ohne-bild");
+
+  const wappen = !imageUrl && item._team ? vereinsWappen[item._team] : "";
+  if (wappen) {
+    const w = document.createElement("img");
+    w.className = "sport-news-wappen";
+    w.alt = "";
+    w.onerror = function () { w.style.display = "none"; };
+    w.src = wappen;
+    slide.appendChild(w);
+  }
 
   if (imageUrl) {
     const media = document.createElement("div");
@@ -5695,6 +5713,10 @@ function buildSportNewsSlide(item, index) {
   badge.className = "news-slide-badge badge-sportnews";
   badge.textContent = "Fußball News";
   content.appendChild(badge);
+  const alter = document.createElement("span");
+  alter.className = "news-slide-alter num";
+  alter.textContent = newsAlterText(newsZeitMs(item));
+  content.appendChild(alter);
 
   if (item.topline) {
     const top = document.createElement("div");
@@ -5755,10 +5777,113 @@ function fetchTeamNews(teamName, count) {
 // erkennbar und in den Stichproben durchweg vereinsbezogen.
 function isFootballRelevant(item) {
   const url = ((item.shareURL || "") + " " + (item.detailsweb || "")).toLowerCase();
-  return url.indexOf("/sport") !== -1 || item.type === "video";
+  if (url.indexOf("/sport") === -1 && item.type !== "video") return false;
+  // Sitzung 6: Die Volltextsuche trifft auch Erwähnungen tief im Artikel
+  // ("SV Elversberg zu Gast bei Union Berlin" bei einer Schalke-Suche) –
+  // ein verfolgter Verein muss in Titel, Dachzeile oder Teaser stehen.
+  const sichtbar = ((item.title || "") + " " + (item.topline || "") + " " + (item.firstSentence || "")).toLowerCase();
+  // Ganze Wörter ("essen" nicht in "Interessenten")
+  return vereinsWoerter().some(function (w) {
+    let i = sichtbar.indexOf(w);
+    while (i !== -1) {
+      const vor = i === 0 ? " " : sichtbar.charAt(i - 1);
+      let nach = sichtbar.charAt(i + w.length) || " ";
+      if (nach === "s") nach = sichtbar.charAt(i + w.length + 1) || " "; // "Schalkes"
+      if (!/[a-zäöüß]/.test(vor) && !/[a-zäöüß]/.test(nach)) return true;
+      i = sichtbar.indexOf(w, i + 1);
+    }
+    return false;
+  });
+}
+
+const VEREIN_ALIASE = { dortmund: ["bvb"], "mönchengladbach": ["gladbach"], essen: ["rwe"], pauli: ["kiezkicker"], werder: ["sv werder"] };
+let vereinsWoerterCache = null;
+function vereinsWoerter() {
+  if (vereinsWoerterCache) return vereinsWoerterCache;
+  const w = [];
+  (CONFIG.sportTeams || []).forEach(function (t) {
+    String(t).toLowerCase().split(/[\s-]+/).forEach(function (teil) {
+      teil = teil.replace(/\.$/, "");
+      if (teil.length >= 4 && ["borussia", "bremen", "rot", "weiss"].indexOf(teil) === -1) w.push(teil);
+      if (VEREIN_ALIASE[teil]) VEREIN_ALIASE[teil].forEach(function (a) { w.push(a); });
+    });
+  });
+  vereinsWoerterCache = w;
+  return w;
+}
+
+// ---------- Fußball-News vom kicker (Sitzung 6) ----------
+// Gegenprobe 10.10.: Die tagesschau-Suche lieferte zu "Werder Bremen" einen
+// 6 Tage alten Liveticker vom Einheitsfest und einen 10 Tage alten
+// Frankfurt-Artikel, zu "Schalke" "SV Elversberg zu Gast bei Union Berlin".
+// Der kicker hat je Verein einen Feed (CORS *, alle paar Minuten frisch,
+// nur dieser Verein). Ohne Bild – die Karte zeigt dann Text auf dunklem
+// Grund. Vereine ohne bekannten Feed (Gladbach: kein Feedname gefunden)
+// fehlen bei den News, ihre Ergebnisse kommen weiter von OpenLigaDB.
+const KICKER_FEEDS = [
+  { wort: "werder", slug: "werder-bremen" },
+  { wort: "pauli", slug: "fc-st-pauli" },
+  { wort: "dortmund", slug: "borussia-dortmund" },
+  { wort: "schalke", slug: "fc-schalke-04" },
+  { wort: "essen", slug: "rot-weiss-essen" },
+];
+
+// "Sat, 10 Oct 2026 06:12:15 GMT" / "+0200" (selbst gelesen, s. appleFeedZeit)
+function rssZeit(text) {
+  const t = String(text || "").replace(/\b(GMT|UTC|Z)\b/, "+0000");
+  return appleFeedZeit(t);
+}
+
+function fetchKickerTeam(team) {
+  const f = KICKER_FEEDS.filter(function (k) { return String(team).toLowerCase().indexOf(k.wort) !== -1; })[0];
+  if (!f) return Promise.resolve([]);
+  return fetch("https://newsfeed.kicker.de/team/" + f.slug).then(function (res) {
+    if (!res.ok) throw new Error("kicker-Feed " + f.slug + ": HTTP " + res.status);
+    return res.text();
+  }).then(function (xml) {
+    const doc = new DOMParser().parseFromString(xml, "text/xml");
+    const items = doc.getElementsByTagName("item");
+    const aus = [];
+    for (let i = 0; i < items.length && aus.length < 6; i++) {
+      const feld = function (n) { const e = items[i].getElementsByTagName(n)[0]; return e ? e.textContent.trim() : ""; };
+      const ms = rssZeit(feld("pubDate"));
+      const titel = feld("title");
+      if (!ms || !titel) continue;
+      aus.push({
+        title: titel,
+        topline: team + " · kicker",
+        firstSentence: feld("description").replace(/<[^>]+>/g, ""),
+        date: new Date(ms).toISOString(),
+        externalId: feld("guid") || feld("link"),
+        _team: team,
+      });
+    }
+    return aus;
+  }).catch(function (err) {
+    console.error(err);
+    return [];
+  });
 }
 
 function fetchFootballNews() {
+  if ((CONFIG.sportNewsQuelle || "kicker") === "kicker") {
+    const teamsK = CONFIG.sportTeams || [];
+    const anzahl = CONFIG.sportNewsCount || 4;
+    return Promise.all(teamsK.map(fetchKickerTeam)).then(function (pools) {
+      const jetzt = Date.now();
+      // Frischeste zuerst, nichts älter als 3 Tage, höchstens 2 je Verein
+      // (Werder darf 3 – Julians Verein).
+      const alle = [].concat.apply([], pools).filter(function (it) { return jetzt - newsZeitMs(it) <= 3 * 86400000; });
+      alle.sort(function (a, b) { return newsZeitMs(b) - newsZeitMs(a); });
+      const jeTeam = {};
+      return alle.filter(function (it) {
+        const n = (jeTeam[it._team] || 0) + 1;
+        if (n > (/werder/i.test(it._team) ? 3 : 2)) return false;
+        jeTeam[it._team] = n;
+        return true;
+      }).slice(0, anzahl);
+    });
+  }
   const teams = CONFIG.sportTeams || [];
   const count = CONFIG.sportNewsCount || 4;
   if (!teams.length) return Promise.resolve([]);
@@ -5781,7 +5906,11 @@ function fetchFootballNews() {
       return true;
     });
 
-    combined.sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
+    // Frisch zuerst, nichts älter als 3 Tage (Sitzung 6: die Suche liefert
+    // auch wochenalte Treffer – lieber weniger Karten als veraltete).
+    const jetzt = Date.now();
+    combined = combined.filter(function (it) { const t = newsZeitMs(it); return t && jetzt - t <= 3 * 86400000; });
+    combined.sort(function (a, b) { return newsZeitMs(b) - newsZeitMs(a); });
     return combined.slice(0, count);
   });
 }

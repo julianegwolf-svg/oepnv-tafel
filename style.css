@@ -2321,6 +2321,33 @@ html, body {
   overflow: hidden;
 }
 
+/* Fußball-News ohne Foto (kicker, Sitzung 6): Wappen groß rechts, Text
+   größer und links – statt einer Zeile Text auf leerer Fläche. */
+.sport-news-wappen {
+  position: absolute;
+  right: 64px;
+  top: 50%;
+  width: 280px;
+  height: 280px;
+  margin-top: -160px;
+  object-fit: contain;
+  opacity: 0.9;
+}
+
+.sport-slide-news.ohne-bild .news-slide-content {
+  padding-right: 400px;
+}
+
+.sport-slide-news.ohne-bild .news-slide-title {
+  font-size: 44px;
+  line-height: 1.15;
+}
+
+.sport-slide-news.ohne-bild .news-slide-body {
+  font-size: 22px;
+  line-height: 1.4;
+}
+
 .sport-slide {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;

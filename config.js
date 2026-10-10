@@ -481,6 +481,9 @@ const CONFIG = {
   // während Großereignissen (WM, Tour de France) komplett von diesen
   // überschwemmt und zeigte praktisch nie etwas zu den eigenen Vereinen.
   sportNewsCount: 6,
+  // Sitzung 6: "kicker" = Vereins-Feeds des kicker (frisch, nur der Verein);
+  // "tagesschau" = bisherige Volltextsuche (lieferte Altes und Fremdes).
+  sportNewsQuelle: "kicker",
 
   // ---------------------------------------------------------------
   // Farbwelt (farbwelt.css): "dunkel" = immer dunkles Blau-Anthrazit wie
