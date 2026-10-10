@@ -2581,6 +2581,30 @@ html, body {
   color: #fff;
 }
 
+.dep-pill {
+  position: relative;
+  /* Feste Mindestbreite: der Balken behält seine Länge, wenn der Text
+     von "in 1 min los" auf "LOS!" wechselt. */
+  min-width: 150px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+/* Ablaufender Balken unter dem Text: so lange ist die Bahn noch zu
+   schaffen (Dauer setzt app.js, updatePillBar). */
+.dep-pill-bar {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 4px;
+  height: 5px;
+  border-radius: 3px;
+  background: currentColor;
+  opacity: 0.9;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
 .dep-row .time-min {
   font-size: 60px;
   line-height: 1;
@@ -2633,6 +2657,24 @@ html, body {
 /* Variante "banner": kompaktes Banner (44 px, 28 px Schrift) statt Pille. */
 .leave-now-banner .leave-now-headline {
   font-size: 28px;
+}
+
+/* Ablaufender Balken am unteren Rand des Banners (wie in der Pille). */
+.leave-now-banner {
+  position: relative;
+  overflow: hidden;
+}
+
+.leave-now-banner .leave-now-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  margin: 0;
+  background: var(--brass);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
 }
 
 

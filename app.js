@@ -680,7 +680,9 @@ function renderLeaveNowBanner(soonestDep, now) {
   els.leaveNowBanner.appendChild(headline);
   els.leaveNowBanner.appendChild(sub);
 
-  const workEstimate = workArrivalEstimate(whenDate);
+  // Ankunft bei der Arbeit nur, wenn mit dieser Linie auch der Arbeitsweg
+  // beginnt (wie die Markierung in der Zeile, IDEEN A3).
+  const workEstimate = (!lastCommuteFirstLine || lineName === lastCommuteFirstLine) ? workArrivalEstimate(whenDate) : null;
   if (workEstimate) {
     const arrivalStr = workEstimate.arrivalDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
     const arrivalLine = document.createElement("div");
@@ -695,6 +697,11 @@ function renderLeaveNowBanner(soonestDep, now) {
 
   els.leaveNowBanner.classList.add("is-visible");
   els.leaveNowBanner.classList.toggle("is-urgent", minutesUntilLeave <= 2);
+  // Gleicher ablaufender Balken wie in der Pille (Variante "zeile").
+  const bar = document.createElement("span");
+  bar.className = "leave-now-bar";
+  els.leaveNowBanner.appendChild(bar);
+  updatePillBar(bar, leaveByMs + 30000, now);
 }
 
 // ---------- Abfahrtstafel (IDEEN A1/A2/A4) ----------
@@ -751,7 +758,7 @@ function buildDepartureRow() {
   row.innerHTML =
     '<span class="line-badge dep-badge"></span>' +
     '<span class="dest-wrap"><span class="dest"></span><span class="walk-hint dep-sub"></span><span class="dep-work"></span></span>' +
-    '<span class="dep-pill"></span>' +
+    '<span class="dep-pill"><span class="dep-pill-text"></span><span class="dep-pill-bar"></span></span>' +
     '<span class="time-cell"><span class="time-min"><span class="dep-min"></span><span class="dep-unit">min</span></span>' +
     '<span class="time-clock"><s class="dep-planned"></s><span class="dep-actual"></span><span class="dep-delay"></span></span></span>';
   return row;
@@ -858,7 +865,15 @@ function renderDepartures(departures) {
   // Platzhalter entfernen, Zeilen in neuer Reihenfolge einsetzen.
   const placeholder = els.rows.querySelector(".row.placeholder");
   if (placeholder) placeholder.parentNode.removeChild(placeholder);
-  ordered.forEach(function (o) { els.rows.appendChild(o.row); });
+  ordered.forEach(function (o) {
+    els.rows.appendChild(o.row);
+    const bar = o.row.querySelector(".dep-pill-bar");
+    if (bar._pending != null) {
+      const end = bar._pending;
+      bar._pending = null;
+      updatePillBar(bar, end, now);
+    }
+  });
 
   // FLIP, Schritt 2: Differenz zurückrechnen und weich auf 0 laufen lassen.
   if (!panelVisible) return;
@@ -879,6 +894,34 @@ function renderDepartures(departures) {
     void row.offsetWidth;
     row.style.transition = "";
     row.style.transform = "";
+  });
+}
+
+// Balken läuft linear ab (transform: scaleX). Volle Länge = 5 Minuten
+// Restzeit; die Pille erscheint 4½ Minuten vor "Los bis". Bei jedem Abruf
+// (alle 30 s) wird er auf den aktuellen Stand gesetzt und läuft von dort
+// weiter – ohne sichtbaren Sprung, aber selbstheilend, falls WebKit eine
+// lange Transition verwirft (passiert beim ersten Zeichnen nach dem Laden).
+const PILL_BAR_SPAN_MS = 5 * 60 * 1000;
+
+function updatePillBar(bar, endMs, now) {
+  // Eine Transition startet nur an einem Element im Dokument – neue Zeilen
+  // holen das nach dem Einsetzen nach (renderDepartures).
+  if (!document.documentElement.contains(bar)) { bar._pending = endMs; return; }
+  if (bar._raf) { cancelAnimationFrame(bar._raf); bar._raf = 0; }
+  bar.style.transition = "none";
+  if (!endMs) { bar.style.transform = "scaleX(0)"; return; }
+  bar.style.transform = "scaleX(" + Math.min(1, Math.max(0, endMs - now) / PILL_BAR_SPAN_MS).toFixed(4) + ")";
+  // Ablaufen erst zwei Frames später starten, wenn der Startwert sicher
+  // gezeichnet ist.
+  bar._raf = requestAnimationFrame(function () {
+    bar._raf = requestAnimationFrame(function () {
+      bar._raf = 0;
+      const left = Math.max(0, endMs - Date.now());
+      const tempo = (window.debugZeit && window.debugZeit.tempo) || 1;
+      bar.style.transition = "transform " + Math.round(left / tempo) + "ms linear";
+      bar.style.transform = "scaleX(0)";
+    });
   });
 }
 
@@ -960,8 +1003,11 @@ function updateDepartureRow(row, dep, now, isNext) {
     if (minutesUntilLeave <= 0) { pillText = "LOS!"; pillCls += " is-now"; }
     else if (minutesUntilLeave <= 4) { pillText = "in " + minutesUntilLeave + " min los"; pillCls += " is-soon"; }
   }
-  pill.textContent = pillText;
+  pill.firstChild.textContent = pillText;
   pill.className = pillCls + (pillText ? " is-shown" : "");
+  // Ablaufender Balken: so viel Zeit bleibt noch, um diese Bahn zu
+  // schaffen – bis 30 s nach "Los bis", dann verschwindet die Zeile.
+  updatePillBar(pill.lastChild, pillText && whenDate ? whenDate.getTime() - walkMinutesToStop * 60000 + 30000 : 0, now);
 
   // Minuten: Fern-Info, nur geänderte Ziffern rollen.
   const minEl = row.querySelector(".dep-min");
