@@ -432,3 +432,27 @@ Grundlage: `belege/2026-10-10/s3/` (alle Panels, Mo 07:20 simuliert; Sa 06:40 ec
 ✅ **E25 – Datenquellen in den Einstellungen** · S · Prio 1 · umgesetzt (809e1a4)
 - Stört: Aus HA geöffnet, lehnt der Kalender-Worker ab – Termine verschwänden still.
 - Änderung: je Quelle „zuletzt geladen“, bei fehlendem Kalender die Adresse, die der Worker erlauben muss; HOME_ASSISTANT.md Schritt 5.
+
+✅ **A6 – Lange Fahrtziele vollständig** · S · Prio 2 · umgesetzt (2553660)
+- Stört: „Weidedamm-Süd via Strese…“, „Ottersberg(b Bremen) Busb…“ – mitten im Wort abgeschnitten.
+- Änderung: „via …“ und „/ 39 Weserpark-Süd“ in die Unterzeile, „Bremen “ vor Zielen in Bremen weg, „Bahnhof“ → „Bf“, Klammerzusätze weg (nur Anzeige).
+
+✅ **HA7 – Einkaufsliste: Abgehaktes mit einem Tipp zurück** · S · Prio 2 · umgesetzt (7e7dd63)
+- Stört: unter der Liste 200 px leer; an der Wand tippt niemand gern auf der Tastatur.
+- Änderung: bis zu 4 zuletzt abgehakte Einträge als „+ Butter“-Chips (44 px hoch), ein Tipp → wieder offen; Chips weichen, wenn die Liste sonst abgeschnitten würde; kleine Kachel „+n weitere“.
+
+✅ **HA8 – Batterie-Hinweis gestaffelt** · S · Prio 3 · umgesetzt (2da69f1)
+- Stört: „2 Geräte mit schwacher Batterie“ wochenlang auf jedem Panel.
+- Änderung: unter 20 % nur auf dem Zuhause-Panel, ab 10 % überall.
+
+✅ **HA9 – Registry live** · M · Prio 2 · umgesetzt (c75259d)
+- Stört: neue/verschobene Geräte erst nach bis zu 3 h.
+- Änderung: Abo auf *_registry_updated, 3 s gebündelt nachladen.
+
+✅ **E26 – Karussell-Wächter** · S · Prio 1 · umgesetzt (f1a369a)
+- Stört: eine einzige Ausnahme beim Panelwechsel hätte den Durchlauf bis zum Neuladen angehalten (Julians wichtigste Beschwerde).
+- Änderung: Fehler abgefangen, Wächter wirft ein grundlos stehendes Karussell nach ≥ 3 min wieder an.
+
+✅ **KO1 – Eine Bahn für alle** · S · Prio 1 · umgesetzt (5f4abae, 44ca3f8)
+- Stört: Arbeitsweg „ab 07:45“, Lern-Vorschlag „Linie 29 um 07:37“, Morgengruß „die 23 um 07:35“ – drei verschiedene Antworten.
+- Änderung: alle nutzen arbeitsBahnHeute().
