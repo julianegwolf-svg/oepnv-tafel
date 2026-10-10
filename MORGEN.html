@@ -48,7 +48,7 @@
 <body>
 <div class="wrap">
 
-<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 07:00</div>
+<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 07:20</div>
 <h1>Deine Tafel ist jetzt eine Smart-Home-Zentrale.</h1>
 <p class="lead">Kurz und ehrlich, was diese Nacht entstanden ist – alles gegen einen Home-Assistant-<b>Simulator</b> mit deinem echten Haushalt getestet, nie gegen dein echtes HA. Die Bilder zeigen Desktop-WebKit bei 1024×768 (wie das iPad), nicht das iPad selbst.</p>
 
@@ -137,6 +137,7 @@
   <figure><img src="belege/2026-10-10/wirkung/streng/02-rueckmeldung.png" alt=""><figcaption><span class="tag vorher">wie echtes HA</span><br>„Gute Nacht hat nichts geschaltet – Automation in HA prüfen“, Knopf gelb, die Tafel bleibt hell (die Lichter sind ja noch an).</figcaption></figure>
   <figure><img src="belege/2026-10-10/wirkung/streng/04-hinweis-danach.png" alt=""><figcaption><span class="tag vorher">danach</span><br>Der Hinweis bleibt im Band, bis die Aktion wieder wirkt (höchstens 12 h). Antippen führt zum Zuhause-Panel.</figcaption></figure>
 </div>
+<p class="note">Nach dem Code-Review nachgeschärft: Ist schon alles aus, warnt die Tafel nicht und dunkelt bei „Gute Nacht“ trotzdem ab (<code>wirkung/streng-still/</code>); Automationen, die weitere Automationen auslösen, werden über die Kontext-Kette erkannt; zwei Aktionen kurz nacheinander stören sich nicht.</p>
 <p class="note">Kein Fehlalarm: Wirkt die Automation (Simulator ohne Fehler, oder „Ich geh raus“, die bei dir korrekt ist), steht wie bisher „erledigt“ und „Gute Nacht“ dunkelt ab (<code>belege/2026-10-10/wirkung/locker/</code>, <code>streng-raus/</code>). Die volle HA-Probe ist weiterhin grün.</p>
 
 <h3>Wetter: die nächsten 5 Tage, keine Wolken mehr über dem Text</h3>
@@ -154,6 +155,12 @@
 <div class="grid">
   <figure><img src="belege/2026-10-10/raten/nachher-quiz-getippt.png" alt=""><figcaption>Antippen durchgespielt: deine Wahl rot, richtig grün, Rest durchgestrichen, Zähler „0/1 richtig“.</figcaption></figure>
   <figure><img src="belege/2026-10-10/los-spur/vergleich-oben-vorher-unten-nachher.png" alt=""><figcaption><b>Abfahrten</b> (oben vorher, unten nachher): Der fast abgelaufene LOS-Balken war nur ein weißer Fleck – jetzt mit Spur. Deine Arbeitslinie 23 hat bei Transitous keine Farbe und verschwand fast – jetzt mit hellem Rand.</figcaption></figure>
+</div>
+
+<h3>Eine Bahn für alle: Arbeitsweg, Tagesblick, Morgengruß</h3>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/arbeitsweg/vorher-mo0720.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Arbeitsweg: „Linie 23 · ab 07:45“ in 12 px – der Tagesblick sagte gleichzeitig „nimm die 23 um 07:35“.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/arbeitsweg/nachher-commute.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>„Bahn zur Arbeit: 23 um 07:35 · los 07:27 · an 07:55“ – dieselbe Rechnung wie überall, 17 px.</figcaption></figure>
 </div>
 
 <h3>Fußball und Raumansicht</h3>
@@ -343,6 +350,7 @@
   <li><b>Wichtig:</b> Deine Automationen <i>Bett Fertig</i> und <i>Arbeitsmodus</i> brechen in echtem HA vermutlich bei der ersten Licht-Aktion ab (FRAGEN 4 und 19). Die Tafel erkennt das jetzt und meldet „hat nichts geschaltet“ (2c) – reparieren musst du sie in HA.</li>
   <li>Die Wirkungsprüfung warnt auch, wenn „Gute Nacht“/„Arbeiten“ nichts zu tun hat, weil schon alles so ist, wie die Automation es will. Das ist selten; falls es stört: FRAGEN 21.</li>
   <li>Kalender nach dem Umzug nach HA: nur mit der Änderung im Worker (FRAGEN 20). Geprüft per <code>curl</code> mit der HA-Herkunft, nicht am iPad.</li>
+  <li><b>Code-Review von heute früh</b> (zweiter Durchgang, alles behoben): Der Tagesblick hätte eine kurz vorher gestrichene Bahn empfehlen können (alte gezielte Abfrage), die Wirkungsprüfung hatte Fehlalarm-Fälle, und – schon länger: <b>Fußball-Anstoßzeiten standen auf dem iPad 2 h falsch</b> (Safari 12 liest Zeiten ohne Zone als UTC); jetzt aus der UTC-Angabe.</li>
 </ul>
 
 <p class="note" style="margin-top:50px">Ansehen: <code>./vorschau.sh</code> → <code>http://localhost:8765/MORGEN.html</code>. Live ausprobieren ohne dein HA: <code>node tool/ha-simulator/server.js</code> → <code>http://localhost:8124/local/tafel/index.html</code> (Login tafel / tafel-passwort).</p>
