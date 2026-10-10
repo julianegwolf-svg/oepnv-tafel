@@ -644,9 +644,30 @@
     });
   }
 
+  // Für die Anwesenheit nur echte, live gesehene Wechsel (Code-Review S8):
+  // Nach einem HA-Neustart haben alle Zustände ein frisches last_changed,
+  // ein Melder kommt von unavailable auf off zurück – das ist keine
+  // Bewegung. Gemerkt wird je Entität nur der letzte Zeitpunkt.
+  const anwEreignis = { bewegung: {}, licht: {} };
+  function merkeAnwesenheitsEreignis(id, alt, neu) {
+    if (!alt || !neu || alt.state === neu.state) return;
+    const dom = domainOf(id);
+    const zeit = Math.min(Date.now(), Date.parse(neu.last_changed) || Date.now());
+    if (dom === "binary_sensor" && listHas(MOTION_CLASSES, attr(neu, "device_class")) && (alt.state === "on" || neu.state === "on")) {
+      anwEreignis.bewegung[id] = zeit;
+    } else if (dom === "light" && alt.state === "off" && neu.state === "on") {
+      // Nur von einer Person geschaltet (App, Dashboard, Tafel): Zeit- und
+      // Sonnen-Automationen haben weder parent_id noch user_id, wären sonst
+      // nicht zu unterscheiden.
+      const ctx = neu.context || {};
+      if (ctx.user_id) anwEreignis.licht[id] = zeit;
+    }
+  }
+
   function onStateChanged(event) {
     const d = event && event.data;
     if (!d || !d.entity_id) return;
+    merkeAnwesenheitsEreignis(d.entity_id, d.old_state, d.new_state);
     if (domainOf(d.entity_id) === "todo" && !todoSubscribed[d.entity_id] && conn) listTodo(conn, d.entity_id);
     if (d.new_state) store.states[d.entity_id] = d.new_state;
     else delete store.states[d.entity_id];
@@ -1180,6 +1201,71 @@
     return home;
   }
 
+  // ---------- Anwesenheit aus mehreren Quellen (FEEDBACK 10.10. 11:56) ----------
+  // person.* allein lag falsch: Julians Person hängt nur am GPS der
+  // Companion-App und stand auf not_home, obwohl das iPhone im WLAN war –
+  // oben stand "Niemand zu Hause". Deshalb zählen zusätzlich:
+  //  - Heimnetz-Tracker (FRITZ!Box: source_type router, Bluetooth), die
+  //    "home" melden und einer Person zugeordnet sind, dazu alle in
+  //    homeAssistant.anwesenheitGeraete,
+  //  - Bewegung/Belegung jetzt oder (live gesehen) in den letzten 30 Minuten,
+  //  - Bedienung der Tafel in den letzten 30 Minuten,
+  //  - ein Licht, das in den letzten 15 Minuten von einer Person (App,
+  //    Dashboard, Tafel: context.user_id) eingeschaltet wurde.
+  // "weg" nur, wenn keine Person zu Hause ist UND nichts davon widerspricht;
+  // bei Widerspruch "unklar" (die Oberfläche formuliert dann neutral).
+  const ANW_BEWEGUNG_MS = 30 * 60 * 1000;
+  const ANW_LICHT_MS = 15 * 60 * 1000;
+
+  function anwesenheit() {
+    const g = model().global;
+    const now = Date.now();
+    const personen = personsHome();
+    const extra = (HA_CFG.anwesenheitGeraete || []);
+    const zugeordnet = {};
+    g.persons.forEach(function (pid) {
+      const tr = attr(store.states[pid], "device_trackers") || [];
+      for (let i = 0; i < tr.length; i++) zugeordnet[tr[i]] = pid;
+    });
+    const signale = [];
+    const ids = Object.keys(store.states);
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i];
+      if (isExcluded(id)) continue;
+      const st = store.states[id];
+      if (!st) continue;
+      const dom = domainOf(id);
+      if (dom === "device_tracker") {
+        if (st.state !== "home") continue;
+        // GPS-Tracker stecken schon im Zustand der Person; zusätzlich zählen
+        // nur Heimnetz-Tracker (FRITZ!Box = router, Bluetooth), die einer
+        // Person zugeordnet sind, und die in anwesenheitGeraete. Kein
+        // Namensmuster mehr: "Küchenuhr", "Galaxy Tab", "Pixel Clock" sind
+        // immer "home" und hätten "weg" für immer verhindert (Code-Review S8).
+        const quelle = attr(st, "source_type");
+        const heimnetz = quelle === "router" || quelle === "bluetooth" || quelle === "bluetooth_le";
+        if (listHas(extra, id) || (heimnetz && zugeordnet[id])) {
+          signale.push({ art: "geraet", id: id, vorMs: 0, quelle: quelle || "" });
+        }
+      } else if (dom === "binary_sensor" && listHas(MOTION_CLASSES, attr(st, "device_class"))) {
+        const t = anwEreignis.bewegung[id];
+        if (st.state === "on") signale.push({ art: "bewegung", id: id, vorMs: 0 });
+        else if (t && now - t < ANW_BEWEGUNG_MS) signale.push({ art: "bewegung", id: id, vorMs: Math.max(0, now - t) });
+      } else if (dom === "light" && st.state === "on" && !isLightGroup(st)) {
+        const t = anwEreignis.licht[id];
+        if (t && now - t < ANW_LICHT_MS) signale.push({ art: "licht", id: id, vorMs: Math.max(0, now - t) });
+      }
+    }
+    const bedient = window.tafelZuletztBedient || 0;
+    if (bedient && now - bedient < ANW_BEWEGUNG_MS) signale.push({ art: "tafel", id: "", vorMs: Math.max(0, now - bedient) });
+    signale.sort(function (a, b) { return a.vorMs - b.vorMs; });
+    let stand = "unbekannt";
+    if (personen.length) stand = "da";
+    else if (signale.length) stand = "unklar";
+    else if (g.persons.length) stand = "weg";
+    return { stand: stand, personen: personen, signale: signale };
+  }
+
   function on(fn) {
     if (listeners.indexOf(fn) === -1) listeners.push(fn);
   }
@@ -1226,6 +1312,7 @@
     model: model,
     roomSummary: roomSummary,
     personsHome: personsHome,
+    anwesenheit: anwesenheit,
     callService: callService,
     fetchHistory: fetchHistory,
     name: friendlyName,

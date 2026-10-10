@@ -784,7 +784,13 @@ async function steuerRoute(req, res, url) {
     const alt = welt.zustand(body.entity_id);
     if (!alt && body.state === undefined) return antwortJson(res, 400, { fehler: 'state fehlt' });
     const attrs = Object.assign({}, alt ? alt.attributes : {}, body.attributes || {});
-    welt.setze(body.entity_id, body.state === undefined ? alt.state : body.state, attrs, welt.kontext());
+    // vor_s: Zustand gilt seit so vielen Sekunden (last_changed in der
+    // Vergangenheit, z. B. "Bewegung endete vor 40 min"); automation: true =
+    // Kontext mit parent_id, als hätte eine Automation geschaltet.
+    const opt = Number(body.vor_s) > 0 ? { zeit: jetzt() - Number(body.vor_s) } : undefined;
+    // benutzer: true = wie in der App/im Dashboard geschaltet (context.user_id)
+    const kontextNeu = body.automation ? welt.kontext(welt.kontext()) : (body.benutzer ? welt.kontext(null, 'sim-benutzer') : welt.kontext());
+    welt.setze(body.entity_id, body.state === undefined ? alt.state : body.state, attrs, kontextNeu, opt);
     sim.uebernimm(body.entity_id);
     return antwortJson(res, 200, JSON.parse(zustandJson(welt.zustand(body.entity_id))));
   }

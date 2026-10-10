@@ -13,15 +13,39 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="design.css?v=115">
-<link rel="stylesheet" href="style.css?v=143">
-<link rel="stylesheet" href="farbwelt.css?v=116">
-<link rel="stylesheet" href="ha.css?v=128">
+<link rel="stylesheet" href="design.css?v=116">
+<link rel="stylesheet" href="style.css?v=148">
+<link rel="stylesheet" href="farbwelt.css?v=118">
+<link rel="stylesheet" href="ha.css?v=134">
 <link rel="stylesheet" href="clips.css?v=115">
-<link rel="stylesheet" href="tagesblick.css?v=129">
+<link rel="stylesheet" href="tagesblick.css?v=130">
 <link rel="stylesheet" href="konzepte.css?v=2">
 </head>
 <body>
+  <!-- Farbwelt steht fest, BEVOR irgendein Element gezeichnet wird: Safari 12
+       übernimmt umgeschaltete CSS-Variablen nicht immer in schon gezeichnete
+       Elemente (am iPad waren Abfahrten schwarz auf schwarz, FEEDBACK 10.10.). -->
+  <script src="debug-zeit.js?v=172"></script>
+  <script src="config.js?v=134"></script>
+  <script>
+    // Die letzten JS-Fehler fürs iPad merken (Einstellungen → Anzeige-Prüfung),
+    // dort gibt es keine Konsole.
+    window.tafelFehler = [];
+    window.tafelFehlerZahl = 0;
+    window.addEventListener("error", function (e) {
+      var t = new Date();
+      window.tafelFehlerZahl++;
+      window.tafelFehler.push(("0" + t.getHours()).slice(-2) + ":" + ("0" + t.getMinutes()).slice(-2) + " " +
+        String(e.message || "Fehler").slice(0, 140) + (e.filename ? " (" + String(e.filename).split("/").pop().split("?")[0] + ":" + e.lineno + ")" : ""));
+      if (window.tafelFehler.length > 6) window.tafelFehler.shift();
+    });
+    (function () {
+      var c = typeof CONFIG !== "undefined" ? CONFIG : {};
+      var welt = c.farbwelt || "hell";
+      var h = new Date().getHours();
+      if (welt === "dunkel" || (welt === "auto" && (h < 7 || h >= 19))) document.body.className = "farbe-dunkel";
+    })();
+  </script>
   <div class="panel">
     <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
 
@@ -233,21 +257,19 @@
     </div>
   </div>
 
-  <script src="debug-zeit.js?v=171"></script>
-  <script src="config.js?v=130"></script>
   <script src="sprueche.js?v=116"></script>
   <script src="quiz.js?v=116"></script>
-  <script src="ha.js?v=119"></script>
-  <script src="ha-panels.js?v=143"></script>
-  <script src="lernen.js?v=116"></script>
+  <script src="ha.js?v=122"></script>
+  <script src="ha-panels.js?v=151"></script>
+  <script src="lernen.js?v=117"></script>
   <script src="clips.js?v=115"></script>
-  <script src="tagesblick.js?v=133"></script>
+  <script src="tagesblick.js?v=134"></script>
   <script src="warnungen.js?v=116"></script>
   <script src="kalender.js?v=174"></script>
   <script src="bremen-tage.js?v=165"></script>
   <script src="bremen-feste.js?v=160"></script>
-  <script src="fussball-live.js?v=176"></script>
-  <script src="konzepte.js?v=4"></script>
-  <script src="app.js?v=175"></script>
+  <script src="fussball-live.js?v=178"></script>
+  <script src="konzepte.js?v=5"></script>
+  <script src="app.js?v=180"></script>
 </body>
 </html>

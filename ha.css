@@ -2895,7 +2895,7 @@ body.ha-ruhe .ha-dot {
 }
 
 #panel-klima.active .ha-spark-wrap::after {
-  animation: haReveal 1.2s cubic-bezier(0.22, 0.61, 0.36, 1) 0.2s both;
+  animation: haReveal 1.2s cubic-bezier(0.22, 0.61, 0.36, 1) 0.2s backwards;
 }
 
 /* Cover-Überblendung bei Titelwechsel. */
@@ -3159,4 +3159,106 @@ body.ha-ruhe .ha-dot {
 
 .ha-hero.is-allein .ha-hero-artist {
   font-size: 26px;
+}
+
+/* Anzeige-Prüfung (Sitzung 8): eine Spalte, Fehlertexte über die volle
+   Breite, damit ein Foto vom iPad alles Nötige zeigt. */
+.ha-setup-anzeige ul {
+  grid-template-columns: 1fr;
+}
+
+.ha-setup-anzeige li:not(.is-ok):not(.is-alt):not(.is-fehlt) .ha-quelle-name {
+  padding-left: 18px;
+}
+
+.ha-setup-anzeige .ha-anzeige-fehler {
+  height: auto;
+  min-height: 24px;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--c-warn);
+}
+
+/* Cover (Sitzung 8): Schein in der Grundfarbe des Covers (app.js-Probe
+   über ein 8×8-Bild), ohne Animation – nur ein Schatten am Cover selbst,
+   damit er immer passt. Radio ohne Titel: Kachel mit dem Sendernamen. */
+.ha-hero.has-cover-schein .ha-cover-l {
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 170px 46px rgba(var(--cover-rgb), 0.5);
+}
+
+.ha-cover-sender {
+  padding: 8%;
+  background: linear-gradient(150deg, #2c3d55 0%, #1c2736 100%);
+  color: #efe9df;
+  text-align: center;
+}
+
+.ha-sender-name {
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+
+.ha-cover-l .ha-sender-name {
+  font-size: 56px;
+}
+
+.ha-hero.is-allein .ha-cover-l .ha-sender-name {
+  font-size: 72px;
+}
+
+.ha-cover-s .ha-sender-name {
+  font-size: 12px;
+}
+
+/* Leisten in der Lichtfarbe (FEEDBACK 10.10. 12:42): Füllung kommt als
+   Inline-Verlauf (ha-panels.js, leistenFarbe); auf hellen Farben dunkle
+   Zahl statt weißer. */
+.ha-slider.has-lichtfarbe.is-hell .ha-slider-value {
+  color: #1b2431;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.35);
+}
+
+/* Aktive Szene: die ganze Kachel im Szenenfarbverlauf statt nur eines
+   kleinen Farbfelds und eines bernsteinfarbenen Rands. */
+.ha-scene.is-active {
+  border-color: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35), 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.ha-scene.is-active .ha-scene-tint {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border-radius: 0;
+  opacity: 0.72;
+  box-shadow: none;
+}
+
+.ha-scene.is-active .ha-scene-name {
+  font-weight: 800;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+/* ---------- Helle Farbwelt: Feinschliff (Sitzung 8) ----------
+   Auf Weiß wirkten der schwarze Cover-Schatten schmutzig und der dunkle
+   Vorschlags-Chip wie ein Fremdkörper. */
+body:not(.farbe-dunkel) .ha-cover-l {
+  box-shadow: 0 16px 38px rgba(20, 24, 30, 0.18);
+}
+
+body:not(.farbe-dunkel) .ha-hero.has-cover-schein .ha-cover-l {
+  box-shadow: 0 16px 38px rgba(20, 24, 30, 0.16), 0 0 170px 46px rgba(var(--cover-rgb), 0.34);
+}
+
+body:not(.farbe-dunkel) .ha-hint.is-vorschlag {
+  background: #fff6e8;
+  border-color: rgba(176, 112, 42, 0.55);
+  color: #4a3418;
 }

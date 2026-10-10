@@ -45,6 +45,7 @@ Benötigt nur `ws` aus `tool/node_modules` (Node ≥ 18). Beenden mit Strg+C.
 | `HA_SIM_SZENEN_BEREICH` | – | `1` = diese Szenen wie nach Zuordnung in der HA-Oberfläche einem Bereich zuweisen (über den Namensanfang „Wohnzimmer · …“); ohne: kein Bereich, wie direkt nach dem Einbau |
 | `HA_SIM_AUTOMATIONEN` | – | Pfad zu einer zusätzlichen Automations-YAML (z. B. `tool/ha-simulator/wecklicht.yaml`), läuft wie die echten; `trigger: time` mit `at: input_datetime.x` löst an genau diesem Tag zu dieser Minute aus |
 | `HA_SIM_HELFER` | – | Helfer anlegen, z. B. `input_datetime.wecklicht` (Datum + Uhrzeit, Dienst `input_datetime.set_datetime`) |
+| `HA_SIM_OHNE_COVER` | – | `1` (oder Liste von entity_ids) = Lautsprecher ohne `entity_picture`, wie ein HomePod bei Radio/AirPlay |
 | `HA_SIM_STRENG` | – | `1` = Automationen brechen bei ungültigen Aktionen ab wie in echtem HA (z. B. `rgb_color` + `color_temp_kelvin` zusammen). Ohne: der Simulator nimmt beim echten Haushalt jeweils die erste Angabe, damit die Wirkung sichtbar bleibt. |
 
 ## WebSocket `/api/websocket`

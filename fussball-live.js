@@ -83,19 +83,54 @@
     return "90'+";
   }
 
-  function torschuetzen(m) {
+  // Torschützen kurz wie im Videotext: "N. Füllkrug" → "Füllkrug",
+  // "Daniel Svensson" → "Svensson", "Kevin De Bruyne" → "De Bruyne".
+  function spielerName(name) {
+    const teile = String(name || "").replace(/^(\s*[A-ZÄÖÜ]\.\s*)+/, "").trim().split(/\s+/);
+    if (teile.length <= 1) return teile[0] || "";
+    for (let i = 1; i < teile.length - 1; i++) {
+      if (/^(de|da|di|do|dos|das|du|van|von|der|den|ten|ter|el|al|le|la|mac)$/i.test(teile[i])) return teile.slice(i).join(" ");
+    }
+    return teile[teile.length - 1];
+  }
+
+  // OpenLigaDB: matchMinute 92 + isOvertime = Nachspielzeit → "90+2'";
+  // 47 + isOvertime = Nachspielzeit der ersten Halbzeit → "45+2'"
+  // (Code-Review S8: alle 27 solchen Tore 2024/25 fielen vor der Pause).
+  function torMinute(g) {
+    const m = g.matchMinute;
+    if (!m) return "";
+    if (g.isOvertime && m > 90 && m < 100) return "90+" + (m - 90) + "'";
+    if (g.isOvertime && m > 45 && m < 60) return "45+" + (m - 45) + "'";
+    return m + "'";
+  }
+
+  // Je Mannschaft die Tore als "80' Svensson", "90+2' Füllkrug (Elfm.)".
+  // streng: nur zurückgeben, wenn für die Mannschaft so viele benannte Tore
+  // da sind, wie sie laut Stand geschossen hat (OpenLigaDB trägt Namen oft
+  // erst später nach) – eine halbe Liste sähe wie die ganze aus.
+  function torschuetzen(m, streng) {
     const t1 = [];
     const t2 = [];
+    const zahl = [0, 0];
     let vorher = [0, 0];
     (m.goals || []).slice().sort(function (a, b) { return (a.scoreTeam1 + a.scoreTeam2) - (b.scoreTeam1 + b.scoreTeam2); }).forEach(function (g) {
       if (g.scoreTeam1 == null) return;
       const fuerEins = g.scoringTeamId && m.team1 && m.team1.teamId ? g.scoringTeamId === m.team1.teamId : g.scoreTeam1 > vorher[0];
       vorher = [g.scoreTeam1, g.scoreTeam2];
-      // OpenLigaDB trägt Namen oft erst später nach – ohne Namen nichts erfinden
+      zahl[fuerEins ? 0 : 1]++;
+      // ohne Namen nichts erfinden
       if (!g.goalGetterName) return;
-      const text = (g.matchMinute ? g.matchMinute + "' " : "") + g.goalGetterName + (g.isOwnGoal ? " (ET)" : g.isPenalty ? " (11 m)" : "");
+      const zeit = torMinute(g);
+      const text = (zeit ? zeit + " " : "") + spielerName(g.goalGetterName) + (g.isOwnGoal ? " (ET)" : g.isPenalty ? " (Elfm.)" : "");
       (fuerEins ? t1 : t2).push(text);
     });
+    if (streng) {
+      // Gegen das amtliche Endergebnis prüfen, nicht gegen die Torliste selbst
+      const end = (m.matchResults || []).filter(function (r) { return r && r.resultTypeID === 2 && r.pointsTeam1 != null; })[0];
+      const s = end ? [end.pointsTeam1, end.pointsTeam2] : standVon(m);
+      return [t1.length === s[0] && zahl[0] === s[0] ? t1 : [], t2.length === s[1] && zahl[1] === s[1] ? t2 : []];
+    }
     return [t1, t2];
   }
 
@@ -352,6 +387,8 @@
     // Für Proben: sofort abrufen statt auf den Takt zu warten
     takt: takt,
     zustand: function (id) { return spiele[id] || null; },
+    // Auch fürs letzte Ergebnis im Sport-Panel (app.js, buildSportSlide)
+    torschuetzen: function (m) { return torschuetzen(m, true); },
     anzahl: function () { return Object.keys(spiele).length; },
   };
   if (CFG.aktiv === false) {

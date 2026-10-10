@@ -48,12 +48,13 @@
 <body>
 <div class="wrap">
 
-<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 13:25</div>
+<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 13:50</div>
 <h1>Deine Tafel ist jetzt eine Smart-Home-Zentrale.</h1>
 <p class="lead">Kurz und ehrlich, was diese Nacht entstanden ist – alles gegen einen Home-Assistant-<b>Simulator</b> mit deinem echten Haushalt getestet, nie gegen dein echtes HA. Die Bilder zeigen Desktop-WebKit bei 1024×768 (wie das iPad), nicht das iPad selbst.</p>
 
 <div class="summary">
 <ol>
+  <li><b>Neu seit 12:30 (<a href="#s2h">2h</a>), deine Reihenfolge 1–7 ist komplett:</b> Die schwarzen Abfahrten vom echten iPad sind umgebaut (bitte am iPad bestätigen: lange auf die Uhr drücken → <b>Anzeige-Prüfung</b>). Kein Gummiband mehr beim Wischen. Leisten und Kacheln leuchten in der echten Lichtfarbe, die aktive Szene ist deutlich markiert. „Niemand zu Hause“ stimmt. Torschützen beim letzten Ergebnis. Cover für Musik, Radio und Podcasts. <b>Weiß ist jetzt die Standard-Farbwelt.</b></li>
   <li><b>Dein dringender Fehler ist weg und doppelt abgesichert:</b> Keine Riesen-Uhr mehr nach 1 Stunde, das Karussell läuft weiter (geprüft nach 2, 6 und 24 h), ein Wächter wirft es notfalls wieder an. Ein älterer Fehler kann die Live-Tafel am <b>19.10.</b> einfrieren. Auf <code>ausbau</code> ist er behoben, siehe Kasten unten.</li>
   <li><b>Neu seit 11:30: 20 Konzepte für Erweiterungen, drei davon als Prototyp zum Ausprobieren</b> (<a href="#k">gleich hier unten</a>): die <i>Tschüss-Karte</i> beim Scan deines Tür-Tags, ein <i>Wecklicht</i> passend zur ersten Bahn und das <i>Werder-Tor-Licht</i>. Alle sind standardmäßig aus.</li>
   <li><b>Home Assistant komplett, jetzt mit 35 Szenen wie in der Hue-App</b> (<a href="#s2g">2g</a>): Hell, Konzentrieren, Lesen, Entspannen … und Farbszenen in Wohnzimmer, Schlafzimmer und Büro, auch für die IKEA-Lampen. Dazu Login mit deinem HA-Konto, Licht mit einem Tipp, deine Automationen als Schnellaktionen, Einkaufsliste, Bad-Klima und HomePod.</li>
@@ -98,6 +99,7 @@
 
 <div class="todo">
 <div class="eyebrow">Was du tun musst, damit es am iPad läuft (≈ 10 Minuten)</div>
+<p style="margin:10px 0 4px"><b style="color:var(--alert)">Vor dem nächsten Übernehmen nach <code>main</code>:</b> bitte zusammengefasst übernehmen (<code>git merge --squash ausbau</code>), nicht vorspulen. Warum, steht in FRAGEN 36 (lokal).</p>
 <p style="margin:10px 0 4px"><b style="color:var(--alert)">Vor Montag, 19.10.:</b> Die Live-Tafel auf <code>main</code> kann an manchen Tagen komplett einfrieren („Auf den Tag genau“ mit Ereignissen vor Christus, am 19.10. die Schlacht bei Zama). Entweder <code>ausbau</code> übernehmen oder die eine Zeile aus <a href="FRAGEN.md">FRAGEN 26</a> auf <code>main</code> ändern (2e).</p>
 <ol>
   <li>In HA das Add-on <b>Samba share</b> starten, am Mac <code>smb://homeassistant.local</code> → Freigabe <b>config</b> verbinden.</li>
@@ -108,11 +110,13 @@
   <li><b>Optional, neu:</b> 35 Szenen einbauen. Die Datei <code>ha-vorschlag/scenes.yaml</code> liegt nur auf deinem Mac und ist nicht eingecheckt. Inhalt nach <code>/config/scenes.yaml</code>, dann Entwicklerwerkzeuge → YAML → „Szenen neu laden“ (HOME_ASSISTANT.md, Schritt 7).</li>
   <li><b>Optional, neu:</b> Prototypen ausprobieren, in <code>config.js</code> → <code>konzepte</code>. Fürs Wecklicht in HA einen Helfer und eine Automation anlegen (Schritt 8).</li>
   <li><s>Bett Fertig / Arbeitsmodus reparieren</s> – erledigt, danke.</li>
+  <li><b>Neu, empfohlen:</b> Anwesenheit in HA verlässlich machen: Companion-App-Standort „Immer“, FRITZ!Box Tools, Tracker der Person zuordnen (HOME_ASSISTANT.md, Schritt 9).</li>
+  <li><b>Neu:</b> Am iPad einmal lange auf die Uhr drücken → <b>Anzeige-Prüfung</b> fotografieren, dann sehe ich, ob die Abfahrten-Farben dort stimmen.</li>
 </ol>
 <p class="note">Alles Schritt für Schritt (und warum GitHub Pages dafür nicht reicht): <a href="HOME_ASSISTANT.md">HOME_ASSISTANT.md</a>. Fragen an dich: <a href="FRAGEN.md">FRAGEN.md</a> – darin auch zwei Fehler, die beim Nachbauen deiner echten Automationen aufgefallen sind.</p>
 </div>
 
-<p class="note" style="margin-top:22px">Inhalt: <a href="#s1">1 Riesen-Uhr</a> · <a href="#s2">2 Home Assistant</a> · <a href="#s2b">2b Morgengruß</a> · <a href="#s2c">2c Neu seit 6 Uhr</a> · <a href="#s2d">2d Neu seit 8 Uhr</a> · <a href="#s2e">2e Neu seit 9 Uhr</a> · <a href="#k"><b>Konzepte</b></a> · <a href="#s2f">2f Inhalte, die stimmen · live</a> · <a href="#s2g"><b>2g Szenen</b></a> · <a href="#s3">3 Animationen</a> · <a href="#s4">4 Lernen</a> · <a href="#s5">5 Clips</a> · <a href="#s6">6 iPad-Fehler</a> · <a href="#s7">7 Ideen</a> · <a href="#s8">8 Zur Wahl</a> · <a href="#s9">9 Lücken</a></p>
+<p class="note" style="margin-top:22px">Inhalt: <a href="#s1">1 Riesen-Uhr</a> · <a href="#s2">2 Home Assistant</a> · <a href="#s2b">2b Morgengruß</a> · <a href="#s2c">2c Neu seit 6 Uhr</a> · <a href="#s2d">2d Neu seit 8 Uhr</a> · <a href="#s2e">2e Neu seit 9 Uhr</a> · <a href="#k"><b>Konzepte</b></a> · <a href="#s2f">2f Inhalte, die stimmen · live</a> · <a href="#s2g">2g Szenen</a> · <a href="#s2h"><b>2h iPad-Fixes, Gummiband, Lichtfarbe, Weiß, Anwesenheit, Tore, Cover</b></a> · <a href="#s3">3 Animationen</a> · <a href="#s4">4 Lernen</a> · <a href="#s5">5 Clips</a> · <a href="#s6">6 iPad-Fehler</a> · <a href="#s7">7 Ideen</a> · <a href="#s8">8 Zur Wahl</a> · <a href="#s9">9 Lücken</a></p>
 
 <h2 id="s1">1 · Der dringende Fehler: Riesen-Uhr nach einer Stunde</h2>
 <p class="note">Playwright spult die Zeit ohne jede Berührung vor. Vorher: Ambient-Modus nach 1 h, Karussell steht. Nachher: Ambient nur noch, wenn laut HA niemand zu Hause ist.</p>
@@ -432,6 +436,63 @@
 </ul>
 <p class="note">Außerdem behoben: Das Wecklicht ignoriert Termine vor 5 Uhr und sieht auch Termine jenseits der sechs Einträge des Termine-Panels. Das Tor-Licht holt das Wiederherstellen nach einem Verbindungsabbruch nach. Im Simulator lösten Zeit-Auslöser bei manchen Uhrzeiten eine Minute zu früh aus. Alle Proben danach ✓: Szenen, Tür-Check, Wecklicht, Tor-Licht, HA-Gesamtprobe, Fußball live, Musik, Dauerlauf mit eingeschalteten Prototypen (6 min, nichts wächst).</p>
 
+<h2 id="s2h">2h · Neu seit 12:30 (Sitzung 8): was du am iPad sofort siehst</h2>
+
+<h3>Abfahrten „schwarz auf schwarz“ am echten iPad – umgebaut, bitte bestätigen</h3>
+<p class="note">Ehrlich: <b>Am echten iPad waren die ersten Abfahrtszeilen kaputt</b>, im Desktop-WebKit nie. Ein altes WebKit ließ sich hier nicht starten (kein Docker, kein iOS-12-Simulator, alte Playwright-Fassungen nicht mehr abrufbar). Deshalb habe ich gegen die belegten Safari-12-Fehler umgebaut:</p>
+<ul class="gaps">
+  <li>Die dunkle Farbwelt schaltete ihre Farben per Klasse erst <i>nach</i> dem ersten Zeichnen um. WebKit übernimmt so umgeschaltete Variablen nicht immer (<a href="https://bugs.webkit.org/show_bug.cgi?id=170708">WebKit-Fehler 170708</a>). Jetzt steht die Farbwelt fest, bevor irgendetwas gezeichnet wird. Schaltet „auto“ später um, wird die Tafel einmal ganz neu aufgebaut.</li>
+  <li>Die Zeilen haben jetzt feste, deckende Farben statt durchscheinender Verläufe über Variablen. iOS 12.2–12.5 zeichnet Durchscheinendes auf GPU-Ebenen teils schwarz (<a href="https://bugs.webkit.org/show_bug.cgi?id=197654">WebKit-Fehler 197654</a>, erst in iOS 13 behoben).</li>
+  <li>Der LOS-Balken lief als minutenlange Animation, also als Dauer-Ebene mitten in Zeile 1. Jetzt läuft er im Sekundentakt der Uhr. <code>transparent</code> in Verläufen (Safari 12 blendet über Schwarz) ist überall ersetzt, und beendete Einblend-Animationen halten auf keinem Panel mehr eine Ebene.</li>
+  <li><b>Für dich am iPad:</b> Lange auf die Uhr drücken → <b>Anzeige-Prüfung</b>. Sie zeigt die tatsächlich berechneten Farben der ersten Zeile mit Kontrast und die letzten JS-Fehler. Ein Foto davon genügt mir. Ist eine Zeile trotzdem unlesbar, baut ein Wächter die Tafel neu auf und notiert das dort.</li>
+</ul>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s8/abfahrten/vergleich-dunkel.png" alt=""><figcaption>Gleiche Optik, aber feste Farben. <code>tool/pruefe-abfahrten-safari12.js</code> 19 ✓: Klasse steht vor dem ersten Panel, Kontrast 13,6 : 1 (dunkel) bzw. 16,6 : 1 (hell), Umschalten zur Laufzeit, Balken ohne Daueranimation.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s8/abfahrten-probe/einstellungen-anzeige-pruefung.png" alt=""><figcaption><b>Anzeige-Prüfung</b> in den Einstellungen, hier mit absichtlich unlesbar gemachter Zeile (der Wächter hat es notiert).</figcaption></figure>
+</div>
+
+<h3>„Niemand zu Hause“ nur noch, wenn es stimmt</h3>
+<p class="note">Deine Person hängt nur am GPS der Companion-App. Jetzt zählen zusätzlich: Telefon im WLAN (FRITZ!Box), Bewegung im Schlafzimmer (30 min), Bedienung der Tafel (30 min) und ein von Hand eingeschaltetes Licht (15 min). Bei Widerspruch steht das Signal da statt einer falschen Aussage, und es kommt weder Ambient noch „Niemand da – Licht an“. Damit auch HA selbst richtig liegt: HOME_ASSISTANT.md, <b>Schritt 9</b>. Probe <code>tool/pruefe-anwesenheit.js</code>: 13 ✓, der alte Stand fällt bei 5 davon durch.</p>
+<div class="strip"><img src="belege/2026-10-10/s8/anwesenheit/vergleich.png" alt=""></div>
+
+<h3>Torschützen beim letzten Ergebnis</h3>
+<p class="note">Geprüft gegen das echte Spiel Dortmund – Werder 2:2 vom Freitag. Der Verlauf 0:2 → 2:2 mit spätem Füllkrug-Tor ist laut kicker-Feed bestätigt. Steht nur da, wenn OpenLigaDB alle Tore benannt hat, denn eine halbe Liste sähe wie die ganze aus.</p>
+<div class="strip"><img src="belege/2026-10-10/s8/torschuetzen/vergleich.png" alt=""></div>
+
+<h3>HomePod mit Cover</h3>
+<p class="note">HA liefert für den HomePod bei Radio/AirPlay kein Bild. Jetzt sucht die Tafel das Cover über die iTunes-Suche (ohne Schlüssel) und nimmt es nur, wenn Titel <i>und</i> Interpret passen. „Get Lucky“ von „Helene Fischer“ bekommt also kein Daft-Punk-Cover. Radio im Format „Nena - 99 Luftballons“ wird getrennt, Radio ohne Titel zeigt den Sendernamen. Hinter dem Cover leuchtet ein Schein in seiner Farbe. Probe <code>tool/pruefe-cover.js</code>: 15 ✓ mit echten Titeln.</p>
+<div class="strip"><img src="belege/2026-10-10/s8/cover/vergleich.png" alt=""></div>
+<div class="strip"><img src="belege/2026-10-10/s8/cover/radio.png" alt=""></div>
+<p class="note"><b>Podcasts (seit 13:35):</b> „Mord auf Ex“ lief mit Fragezeichen. Das ist Safaris Zeichen für ein Bild, das nicht lädt. Kaputte HA-Bilder erkennt die Tafel jetzt und weicht auf die iTunes-Suche aus, Podcasts bekommen das Cover der Sendung (geprüft mit „MORD AUF EX“).</p>
+
+<h3>Kein Gummiband mehr beim Wischen</h3>
+<p class="note">Safari 12 zog die ganze Tafel beim senkrechten Wischen mit. Jetzt ist die Seite festgenagelt, und nur Bereiche, die wirklich scrollen (Raumansicht, Einstellungen), dürfen scrollen, an ihrem Rand aber auch nicht weiter. Blättern per Wischen und die Lampenregler laufen weiter. <code>tool/pruefe-gummiband.js</code>: 11 ✓, erstmals mit echten Touch-Ereignissen, auch das Ziehen eines Lampenreglers.</p>
+
+<h3>Leisten und Kacheln in der echten Lichtfarbe, aktive Szene als ganze Kachel</h3>
+<p class="note">Bei „Frühling“ im Büro blieben die Leisten goldbraun. Jetzt füllt jede Lampenleiste in ihrer Lichtfarbe (aus HA: Farbe, sonst Farbtemperatur, die Desk-Lampe warmweiß). Die Raumleiste ist ein Verlauf durch alle Lampenfarben, die Zahl wird auf hellen Farben dunkel. Die aktive Szene füllt ihre ganze Kachel mit dem Szenenverlauf. Die Zuhause-Kachel zeigt je Lampenfarbe einen eigenen Lichtkegel statt einer Mischfarbe. Geprüft mit deinen echten Szenen Frühling, Polarlicht und Sonnenuntergang: <code>tool/pruefe-lichtfarbe.js</code> 13 ✓.</p>
+<div class="strip"><img src="belege/2026-10-10/s8/lichtfarbe/vergleich-buero.png" alt=""></div>
+<div class="strip"><img src="belege/2026-10-10/s8/lichtfarbe/vergleich-wohnzimmer.png" alt=""></div>
+<div class="strip"><img src="belege/2026-10-10/s8/lichtfarbe/vergleich-zuhause.png" alt=""></div>
+
+<h3>Weiß als Standard</h3>
+<p class="note"><code>config.js</code> → <code>farbwelt: "hell"</code>. Alle Home-Assistant-Panels haben jetzt eine helle Fassung: fast weißer Grund, weiße Karten mit kurzem, weichem Schatten, Akzente und Zustandsfarben dunkler für Kontrast aus 3–4 m. Wetter, Fußball und tagesschau bleiben als Vollbild-Panels dunkel, nachts dimmt die Tafel wie bisher. Zurück zu dunkel geht mit einer Zeile (<code>"dunkel"</code> oder <code>"auto"</code>).</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s8/hell/vergleich-15-home.png" alt=""><figcaption>Zuhause: dunkel → weiß.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s8/hell/vergleich-12-tagesblick.png" alt=""><figcaption>Tagesblick: dunkel → weiß.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s8/hell/vergleich-01-departures.png" alt=""><figcaption>Abfahrten: dunkel → weiß.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s8/hell/vergleich-17-medien.png" alt=""><figcaption>Medien: dunkel → weiß.</figcaption></figure>
+</div>
+<div class="strip"><img src="belege/2026-10-10/s8/hell/vergleich-bogen.png" alt=""><p class="note">Alle 17 Panels, links dunkel, rechts weiß. Musik und Termine zeigen „Lädt…“ nur, weil der Kalender-Worker die Test-Adresse localhost nicht erlaubt.</p></div>
+
+<h3>Code-Review dieser Sitzung (6 Funde, alle behoben)</h3>
+<ul class="gaps">
+  <li>Die Anwesenheit hätte eine <b>Küchenuhr</b> oder ein Tablet im WLAN als „jemand ist da“ gewertet und damit „Niemand zu Hause“ nie mehr erlaubt. Jetzt zählen nur Tracker, die dir zugeordnet sind.</li>
+  <li>Nach einem <b>HA-Neustart</b> hätten alle Melder und Lampen wie frisch geschaltet gewirkt (30 bzw. 15 min falsche Anwesenheit), und Licht von einer Sonnenuntergangs-Automation zählte als „von Hand“. Jetzt zählen nur live gesehene Wechsel, Licht nur, wenn eine Person es geschaltet hat.</li>
+  <li>Die große <b>Minutenzahl</b> der Abfahrten hing noch an einer Variable, genau die Stelle für „schwarz auf schwarz“. Jetzt ist sie fest eingefärbt.</li>
+  <li>Außerdem: Der Karussell-Balken sprang nach einem Farbwechsel auf voll, Tore in der Nachspielzeit der ersten Halbzeit stehen jetzt als „45+2'“, und die Anzeige-Prüfung zählt alle Meldungen.</li>
+</ul>
+<p class="note">Geprüft danach: Anwesenheit 16 ✓, Abfahrten/Safari 12 20 ✓, Torschützen 9 ✓, Cover 17 ✓, Gummiband 11 ✓, Lichtfarbe 13 ✓, HA-Gesamtprobe ✓, Lernen ✓, Tor-Licht ✓, Fußball live ✓, 24-h-Zeitraffer (nichts wächst, 6× neu geladen, keine Seitenfehler) ✓. Alles weiter nur Desktop-WebKit + Simulator.</p>
+
 <h2 id="s3">3 · Animationen, die etwas bedeuten</h2>
 <p class="note">Nur über transform/opacity (Safari 12, A7-Chip). Videos aus Playwright-WebKit; darunter je ein Bildstreifen.</p>
 <div class="grid">
@@ -469,6 +530,7 @@
 </div>
 
 <h2 id="s6">6 · Was auf dem echten iPad kaputt war</h2>
+<p class="note"><b>10.10. 11:59, von dir gemeldet:</b> Die ersten Abfahrtszeilen waren schwarz und leer. Umgebaut in <a href="#s2h">2h</a>, am iPad noch zu bestätigen.</p>
 <p class="note">Safari 12 kennt <code>inset</code> und Flex-<code>gap</code> nicht. Simulierte iPad-Ansicht (CSS ohne diese Angaben):</p>
 <div class="pair">
   <figure><img src="belege/vorher/21-ipad-sim-panel-uebersicht.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Panel-Übersicht als kleiner Kasten oben links (Overlay 0×0 px).</figcaption></figure>
@@ -585,6 +647,7 @@
 
 <h2 id="s9">9 · Ehrliche Lücken</h2>
 <ul class="gaps">
+  <li><b>Neu (Sitzung 8):</b> Der Abfahrten-Fehler vom iPad ist <i>nicht nachgestellt</i>, sondern gegen die belegten Safari-12-Fehler umgebaut. Erst dein Foto der Anzeige-Prüfung bestätigt es (FRAGEN 33). Das weiße Design ist ein erster, sorgfältiger Durchgang über alle 17 Panels, Wetter, Fußball und tagesschau bleiben dunkel. Licht vom Hue-Schalter zählt nicht als Anwesenheit, weil HA es nicht von einer Zeit-Automation unterscheiden kann. Die iTunes-Cover hängen an der Schreibweise in HA, bei sehr freien Radio-Titeln bleibt das Sender-Bild. Offen nach deiner Reihenfolge: Regenradar-Vorhersage, TV-Sender, Badezimmer-Ansicht, HomePod-Klima, Morgenroutine, KI-Gespräch.</li>
   <li><b>Neu (Sitzung 7):</b> Die Szenenfarben der IKEA-Farblampe sind aus den Hue-Farben umgerechnet, ob sie im Raum gleich wirken, zeigt erst dein echtes Licht. Die 20 Minuten Übergang beim Wecklicht sind laut HA erlaubt (bis 6553 s), ob die IKEA-Lampe dabei gleichmäßig dimmt, ist nicht dokumentiert. Das Tor-Licht lief nur gegen ein nachgestelltes Spiel. Die Prototypen sind nur gegen den Simulator geprüft.</li>
   <li>Alles nur im <b>Desktop-WebKit</b> und gegen den <b>Simulator</b> geprüft – nicht auf dem iPad, nicht gegen dein echtes HA. Das erste echte Anmelden ist der eigentliche Test.</li>
   <li>Schieberegler: Mausziehen ist geprüft; echte Touch-Ereignisse lassen sich im Desktop-WebKit nicht erzeugen. Der Touch-Code (touchstart/move mit preventDefault) ist Safari-12-tauglich geschrieben, aber am iPad unbestätigt.</li>

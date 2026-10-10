@@ -702,11 +702,49 @@
     return false;
   }
 
+  // Lichtfarbe einer Lampe (FEEDBACK 10.10. 12:42: Leisten in der echten
+  // Lichtfarbe): rgb_color, sonst aus Farbtemperatur bzw. hs_color
+  // gerechnet, sonst warmes Weiß (z. B. die Desk-Lampe, nur Helligkeit).
+  function kelvinRgb(k) {
+    const t = clamp(k, 1500, 6500) / 100;
+    const r = t <= 66 ? 255 : 329.7 * Math.pow(t - 60, -0.1332);
+    const g = t <= 66 ? 99.47 * Math.log(t) - 161.12 : 288.12 * Math.pow(t - 60, -0.0755);
+    const b = t >= 66 ? 255 : (t <= 19 ? 0 : 138.52 * Math.log(t - 10) - 305.04);
+    return [Math.round(clamp(r, 0, 255)), Math.round(clamp(g, 0, 255)), Math.round(clamp(b, 0, 255))];
+  }
+
+  function hsRgb(h, s) {
+    const f = function (n) {
+      const k = (n + h / 60) % 6;
+      return Math.round(255 * (1 - s / 100 * Math.max(0, Math.min(k, 4 - k, 1))));
+    };
+    return [f(5), f(3), f(1)];
+  }
+
   function lightRgb(st) {
     if (!st || st.state !== "on") return null;
     const rgb = HA.attr(st, "rgb_color");
     if (rgb && rgb.length === 3) return rgb;
+    const mired = HA.attr(st, "color_temp");
+    const k = HA.attr(st, "color_temp_kelvin") || (mired ? 1e6 / mired : null);
+    if (k) return kelvinRgb(k);
+    const hs = HA.attr(st, "hs_color");
+    if (hs && hs.length === 2) return hsRgb(hs[0], hs[1]);
     return [255, 214, 160];
+  }
+
+  // Füllung der Helligkeitsleiste in der Lichtfarbe, deckend (Safari 12:
+  // durchscheinende Flächen auf GPU-Ebenen, s. farbwelt.css): eine Lampe
+  // von 55 % zur vollen Farbe, mehrere Lampen als Verlauf durch ihre
+  // Farben. hell = Zahl auf der Leiste braucht dunkle Schrift.
+  function leistenFarbe(farben) {
+    const css = function (c) { return "rgb(" + c.map(function (x) { return Math.round(x); }).join(",") + ")"; };
+    const start = farben.length === 1 ? farben[0].map(function (x) { return x * 0.55; }) : farben[0];
+    const lum = (0.2126 * start[0] + 0.7152 * start[1] + 0.0722 * start[2]) / 255;
+    return {
+      bg: "linear-gradient(90deg," + (farben.length === 1 ? css(start) + "," + css(farben[0]) : farben.map(css).join(",")) + ")",
+      hell: lum > 0.55,
+    };
   }
 
   // ---------- Schieberegler ----------
@@ -818,16 +856,17 @@
     }
   }
 
-  function sliderHtml(kind, id, f, extraCls, disabled) {
+  function sliderHtml(kind, id, f, extraCls, disabled, farben) {
     f = clamp(f || 0, 0, 1);
+    const lf = farben && farben.length ? leistenFarbe(farben) : null;
     // Farbtemperatur: Griff links → Zahl rechts, damit er sie nicht verdeckt.
     return '<div class="ha-slider ha-slider-' + kind + (extraCls ? " " + extraCls : "") + (disabled ? " is-disabled" : "") +
-      (kind === "ct" && f < 0.45 ? " is-wert-rechts" : "") +
+      (kind === "ct" && f < 0.45 ? " is-wert-rechts" : "") + (lf ? " has-lichtfarbe" + (lf.hell && f > 0.12 ? " is-hell" : "") : "") +
       '" data-act="regler" data-slider="' + kind + '" data-id="' + esc(id) + '">' +
       '<div class="ha-slider-track">' +
       (kind === "ct"
         ? '<div class="ha-slider-knob" style="left:' + (f * 100).toFixed(1) + '%"></div>'
-        : '<div class="ha-slider-fill" style="transform:scaleX(' + f.toFixed(3) + ')"></div>') +
+        : '<div class="ha-slider-fill" style="transform:scaleX(' + f.toFixed(3) + ")" + (lf ? ";background:" + lf.bg : "") + '"></div>') +
       "</div>" +
       '<span class="ha-slider-value num">' + esc(sliderLabel(kind, id, f)) + "</span>" +
       "</div>";
@@ -1282,6 +1321,25 @@
   }
 
   // ---------- Panel "Zuhause" ----------
+  // Anwesenheit aus mehreren Quellen (HA.anwesenheit, FEEDBACK 10.10.
+  // 11:56): "Niemand zu Hause" nur, wenn nichts widerspricht. Melden die
+  // Personen "unterwegs", aber es gab gerade Bewegung, Bedienung oder ein
+  // eingeschaltetes Licht, steht das Signal da statt einer falschen Aussage.
+  function raumIn(name) {
+    return (/(küche|diele|kammer|garage|halle|terrasse)$/i.test(name) ? "in der " : "im ") + name;
+  }
+
+  function anwesenheitsSignalText(sig) {
+    const min = Math.round(sig.vorMs / 60000);
+    const vor = min >= 1 ? " vor " + min + " Min" : "";
+    const raum = sig.id ? HA.areaName(HA.areaIdOf(sig.id)) : "";
+    if (sig.art === "bewegung") return "Bewegung" + (raum ? " " + raumIn(raum) : "") + (min >= 1 ? vor : " gerade eben");
+    if (sig.art === "tafel") return min >= 1 ? "Tafel" + vor + " bedient" : "Tafel gerade bedient";
+    if (sig.art === "licht") return "Licht" + (raum ? " " + raumIn(raum) : "") + (min >= 1 ? vor : " gerade") + " eingeschaltet";
+    if (sig.art === "geraet") return HA.name(sig.id) + (sig.quelle === "router" ? " ist im WLAN" : " ist zu Hause");
+    return "";
+  }
+
   function personsLine() {
     const g = HA.model().global;
     if (!g.persons.length) return "";
@@ -1293,10 +1351,23 @@
       if (st && st.state === "home") home.push(first);
       else away.push(first);
     });
-    if (!home.length) return "Niemand zu Hause";
+    if (!home.length) {
+      // Widerspruch: das Signal als Titel, was die Handys melden in die
+      // Unterzeile (personsZusatz) – im Titel wurde es abgeschnitten.
+      const a = HA.anwesenheit();
+      if (a.stand === "unklar" && a.signale.length) return esc(anwesenheitsSignalText(a.signale[0]));
+      return "Niemand zu Hause";
+    }
     let text = home.length === 1 ? home[0] + " ist zu Hause" : home.slice(0, -1).join(", ") + " und " + home[home.length - 1] + " sind zu Hause";
     if (away.length) text += '<span class="ha-title-dim"> · ' + away.join(", ") + " unterwegs</span>";
     return text;
+  }
+
+  function personsZusatz() {
+    const g = HA.model().global;
+    if (!g.persons.length || HA.personsHome().length) return "";
+    if (HA.anwesenheit().stand !== "unklar") return "";
+    return g.persons.map(function (id) { return HA.name(id).split(" ")[0]; }).join(", ") + " laut Handy unterwegs";
   }
 
   function homeSummaryParts() {
@@ -1337,15 +1408,33 @@
   // Mischfarbe aller brennenden Lampen für den Lichtschein der Kachel.
   function roomGlow(room) {
     let r = 0, g = 0, b = 0, n = 0, bri = 0;
+    const farben = [];
     room.lights.forEach(function (id) {
       const st = eff(id);
       const rgb = lightRgb(st);
       if (!rgb) return;
       r += rgb[0]; g += rgb[1]; b += rgb[2]; n++;
+      if (farben.length < 4 && !farben.some(function (c) { return Math.abs(c[0] - rgb[0]) + Math.abs(c[1] - rgb[1]) + Math.abs(c[2] - rgb[2]) < 40; })) farben.push(rgb);
       bri += HA.attr(st, "brightness") != null ? HA.attr(st, "brightness") : 255;
     });
     if (!n) return null;
-    return { rgb: [Math.round(r / n), Math.round(g / n), Math.round(b / n)], level: bri / n / 255 };
+    return { rgb: [Math.round(r / n), Math.round(g / n), Math.round(b / n)], farben: farben, level: bri / n / 255 };
+  }
+
+  // Schein der Raumkachel: eine Farbe als Lichtkegel oben links; mehrere
+  // verschiedene Lampenfarben (Szene „Frühling“) als Verlauf über die
+  // Oberkante – eine Mischfarbe sah bei Farbszenen nur schlammig aus.
+  function glowBackground(glow) {
+    const c = function (rgb, a) { return "rgba(" + rgb.join(",") + "," + a + ")"; };
+    if (glow.farben.length < 2) {
+      return "radial-gradient(ellipse 95% 85% at 10% 0%," + c(glow.rgb, 0.36) + "," + c(glow.rgb, 0) + " 70%)";
+    }
+    // je Farbe ein Lichtkegel entlang der Oberkante (keine Maske – auf dem
+    // A7 zu teuer, s. style.css)
+    return glow.farben.map(function (f, i) {
+      const x = Math.round(8 + i / (glow.farben.length - 1) * 84);
+      return "radial-gradient(ellipse 55% 85% at " + x + "% 0%," + c(f, 0.4) + "," + c(f, 0) + " 70%)";
+    }).join(",");
   }
 
   function roomTileHtml(room) {
@@ -1423,7 +1512,7 @@
     }
 
     const glowStyle = glow
-      ? "opacity:" + clamp(0.5 + glow.level * 0.5, 0.5, 1).toFixed(2) + ";background:radial-gradient(ellipse 95% 85% at 10% 0%,rgba(" + glow.rgb.join(",") + ",0.36),rgba(" + glow.rgb.join(",") + ",0) 70%)"
+      ? "opacity:" + clamp(0.5 + glow.level * 0.5, 0.5, 1).toFixed(2) + ";background:" + glowBackground(glow)
       : "opacity:0";
 
     return '<div class="' + cls + '" data-act="raum" data-raum="' + esc(room.id) + '">' +
@@ -1617,8 +1706,9 @@
     els.homeEyebrow.textContent = "Zuhause";
     const pl = personsLine();
     const parts = homeSummaryParts();
+    const zusatz = personsZusatz();
     setTitel(els.homeTitle, pl || esc(parts[0]));
-    setHtml(els.homeSub, esc((pl ? parts : parts.slice(1)).join("  ·  ")));
+    setHtml(els.homeSub, esc((zusatz ? [zusatz] : []).concat(pl ? parts : parts.slice(1)).join("  ·  ")));
     renderActions();
   }
 
@@ -1670,7 +1760,7 @@
       '<button type="button" class="ha-toggle ha-ctl' + (on ? " is-on" : "") + (unavailable ? " is-disabled" : "") + '" data-act="licht" data-id="' + esc(id) + '" aria-label="An/Aus"><span class="ha-toggle-knob"></span></button>' +
       "</div>";
     if (!unavailable && lightSupports(st, "brightness")) {
-      html += sliderHtml("hell", id, bri, "ha-ctl");
+      html += sliderHtml("hell", id, bri, "ha-ctl", false, rgb ? [rgb] : null);
     }
     if (on && (lightSupports(st, "ct") || lightSupports(st, "color"))) {
       html += '<div class="ha-light-colors">';
@@ -1857,19 +1947,230 @@
     return { playing: "spielt", paused: "pausiert", idle: "bereit", off: "aus", on: "an", standby: "Standby", unavailable: "nicht erreichbar" }[s] || s;
   }
 
+  // ---------- Cover (FEEDBACK 10.10.: HomePod „Spielt jetzt“ ohne Cover) ----------
+  // 1. entity_picture aus HA (relativ → zur HA-Adresse auflösen),
+  // 2. sonst das Cover aus der iTunes-Suche (schlüsselfrei, CORS offen) –
+  //    nur wenn Titel UND Interpret passen, lieber keins als ein falsches,
+  // 3. Radio ohne Titelangabe: Kachel mit dem Sendernamen.
+  // Zwischengespeichert: höchstens 40 Titel, Fehlschläge 10 min.
+  const coverCache = {};
+  const coverReihe = [];
+  let coverLaeuft = false;
+
+  function normTitel(t) {
+    return String(t || "").toLowerCase()
+      .replace(/\([^)]*\)|\[[^\]]*\]/g, " ")
+      .replace(/\s(feat|ft)\.?\s.*$/, " ")
+      .replace(/[^a-z0-9äöüß]+/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  // Radio liefert oft "Interpret - Titel" in media_title (ICY).
+  function titelUndInterpret(st) {
+    let title = String(HA.attr(st, "media_title") || "");
+    let artist = String(HA.attr(st, "media_artist") || "");
+    if (!artist) {
+      const m = /^(.+?)\s+[-–]\s+(.+)$/.exec(title);
+      if (m) { artist = m[1]; title = m[2]; }
+    }
+    return { title: title.trim(), artist: artist.trim() };
+  }
+
+  function interpretPasst(gefunden, gesucht) {
+    const a = normTitel(gefunden);
+    const g = normTitel(gesucht);
+    const woerter = g.split(" ").filter(function (w) { return w.length > 2; });
+    if (!woerter.length) return a.indexOf(g) !== -1;
+    return woerter.some(function (w) { return a.indexOf(w) !== -1; });
+  }
+
+  function titelPasst(gefunden, gesucht) {
+    const a = normTitel(gefunden);
+    const g = normTitel(gesucht);
+    return !!a && !!g && (a === g || a.indexOf(g) === 0 || g.indexOf(a) === 0);
+  }
+
+  function merkeCover(key, url, kurz) {
+    if (!coverCache[key]) coverReihe.push(key);
+    coverCache[key] = { url: url, bis: kurz ? Date.now() + 10 * 60 * 1000 : 0 };
+    while (coverReihe.length > 40) delete coverCache[coverReihe.shift()];
+  }
+
+  function itunesSuche(url) {
+    let uhr = null;
+    const zeitlimit = new Promise(function (res, rej) { uhr = setTimeout(function () { rej(new Error("Zeitlimit")); }, 8000); });
+    return Promise.race([fetch(url).then(function (r) {
+      if (!r.ok) throw new Error("iTunes HTTP " + r.status);
+      return r.json();
+    }), zeitlimit]).then(function (d) {
+      clearTimeout(uhr);
+      return (d && d.results) || [];
+    }, function (e) {
+      clearTimeout(uhr);
+      throw e;
+    });
+  }
+
+  function gross(url) {
+    return String(url).replace(/\/\d+x\d+bb\./, "/600x600bb.");
+  }
+
+  // Podcasts (FEEDBACK 10.10. 12:37: „Mord auf Ex“): das Cover der Sendung.
+  // Sendungsname steht je nach Quelle in media_album_name, media_artist
+  // oder (ohne beides) im Titel.
+  function suchePodcast(ti) {
+    const sendung = ti.sendung || ti.artist || ti.title;
+    // Ohne Typangabe "podcast" nur bei exakt gleichem Sendungsnamen – sonst
+    // bekäme ein unbekannter Song das Cover einer zufällig ähnlich
+    // benannten Sendung.
+    const passt = function (name) { return ti.podcast ? titelPasst(name, sendung) : normTitel(name) === normTitel(sendung); };
+    return itunesSuche("https://itunes.apple.com/search?media=podcast&entity=podcast&limit=5&country=DE&term=" + encodeURIComponent(sendung)).then(function (liste) {
+      const t = liste.filter(function (r) { return r && (r.artworkUrl600 || r.artworkUrl100) && passt(r.collectionName); })[0];
+      return t ? gross(t.artworkUrl600 || t.artworkUrl100) : "";
+    });
+  }
+
+  function sucheSong(ti) {
+    if (!ti.artist) return Promise.resolve("");
+    return itunesSuche("https://itunes.apple.com/search?entity=song&limit=5&country=DE&term=" + encodeURIComponent(ti.artist + " " + ti.title)).then(function (liste) {
+      const t = liste.filter(function (r) {
+        return r && r.artworkUrl100 && titelPasst(r.trackName, ti.title) && interpretPasst(r.artistName, ti.artist);
+      })[0];
+      return t ? gross(t.artworkUrl100) : "";
+    });
+  }
+
+  function holeCover(key, ti) {
+    coverLaeuft = true;
+    // Podcast: zuerst die Sendung; Musik: zuerst der Song, sonst (z. B. ein
+    // Podcast ohne Typangabe) noch die Sendung.
+    const erst = ti.podcast ? suchePodcast(ti) : sucheSong(ti);
+    erst.then(function (url) {
+      if (url || ti.podcast || !(ti.sendung || ti.artist)) return url;
+      return suchePodcast(ti);
+    }).then(function (url) {
+      merkeCover(key, url);
+    }).catch(function () {
+      merkeCover(key, "", true);
+    }).then(function () {
+      coverLaeuft = false;
+      scheduleFlush(0);
+    });
+  }
+
+  function itunesCover(st) {
+    const ti = titelUndInterpret(st);
+    ti.podcast = /podcast/i.test(String(HA.attr(st, "media_content_type") || ""));
+    ti.sendung = String(HA.attr(st, "media_album_name") || HA.attr(st, "media_series_title") || "").trim();
+    if (!ti.title || (!ti.artist && !ti.podcast && !ti.sendung)) return null;
+    const key = (ti.podcast ? "p:" : "") + normTitel(ti.sendung || ti.artist) + "|" + normTitel(ti.title);
+    const c = coverCache[key];
+    if (c && c.bis && Date.now() > c.bis) delete coverCache[key];
+    else if (c) return c.url || null;
+    if (!coverLaeuft) holeCover(key, ti);
+    return null;
+  }
+
+  // Bilder, die nicht geladen haben (HA-Proxy liefert manchmal nichts –
+  // Safari zeigt dann ein Fragezeichen): merken und auf iTunes ausweichen.
+  const kaputteBilder = {};
+  const kaputtReihe = [];
+  document.addEventListener("error", function (ev) {
+    const img = ev.target;
+    if (!img || img.tagName !== "IMG" || !img.closest || !img.closest(".ha-cover")) return;
+    const src = img.getAttribute("src");
+    if (!src || kaputteBilder[src]) return;
+    kaputteBilder[src] = true;
+    kaputtReihe.push(src);
+    while (kaputtReihe.length > 20) delete kaputteBilder[kaputtReihe.shift()];
+    scheduleFlush(0);
+  }, true);
+
   function coverUrl(st) {
     const pic = HA.attr(st, "entity_picture");
-    if (!pic) return null;
-    if (/^https?:\/\//.test(pic)) return pic;
-    return (HA.settings().base || "") + pic;
+    if (pic) {
+      const url = /^https?:\/\//.test(pic) ? pic : (HA.settings().base || "") + pic;
+      if (!kaputteBilder[url]) return url;
+    }
+    if (st.state !== "playing" && st.state !== "paused") return null;
+    const it = itunesCover(st);
+    return it && !kaputteBilder[it] ? it : null;
+  }
+
+  function radioSender(st) {
+    const cid = HA.attr(st, "media_content_id");
+    if (!cid) return null;
+    const s = radioStations().filter(function (x) { return x.url === cid; })[0];
+    return s ? s.name : null;
+  }
+
+  // Für die Farbprobe muss das Bild CORS-sauber laden: iTunes-Bilder
+  // (Access-Control-Allow-Origin: *) und Bilder von der eigenen Adresse.
+  function coverMitFarbe(url) {
+    return /^https:\/\/is\d-ssl\.mzstatic\.com\//.test(url) || url.charAt(0) === "/" || url.indexOf(location.origin + "/") === 0;
   }
 
   function coverHtml(st, cls) {
-    const url = coverUrl(st);
+    const url = st.state !== "off" ? coverUrl(st) : null;
     const isTv = HA.attr(st, "device_class") === "tv";
     // data-key = Bild-URL: bei Titelwechsel entsteht ein neues <img>, das
     // per CSS einblendet (Überblendung statt hartem Sprung).
-    return '<span class="ha-cover ' + cls + '">' + (url && st.state !== "off" ? '<img data-key="' + esc(url) + '" src="' + esc(url) + '" alt="">' : icon(isTv ? "tv" : "speaker")) + "</span>";
+    if (url) {
+      return '<span class="ha-cover ' + cls + '"><img data-key="' + esc(url) + '"' + (coverMitFarbe(url) ? ' crossorigin="anonymous"' : "") +
+        ' src="' + esc(url) + '" alt=""></span>';
+    }
+    const sender = (st.state === "playing" || st.state === "paused") ? radioSender(st) : null;
+    if (sender) return '<span class="ha-cover ha-cover-sender ' + cls + '"><span class="ha-sender-name">' + esc(sender) + "</span></span>";
+    return '<span class="ha-cover ' + cls + '">' + icon(isTv ? "tv" : "speaker") + "</span>";
+  }
+
+  // Grundfarbe des Covers (8×8-Probe, kräftige Pixel zählen mehr) für den
+  // Schein hinter dem Cover. Je Bild einmal, höchstens 40 gemerkt.
+  const coverFarben = {};
+  const coverFarbReihe = [];
+  function coverFarbe(img) {
+    if (coverFarben[img.src] !== undefined) return coverFarben[img.src];
+    let farbe = null;
+    try {
+      const c = document.createElement("canvas");
+      c.width = 8;
+      c.height = 8;
+      const x = c.getContext("2d");
+      x.drawImage(img, 0, 0, 8, 8);
+      const d = x.getImageData(0, 0, 8, 8).data;
+      let r = 0, g = 0, b = 0, w = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        const mx = Math.max(d[i], d[i + 1], d[i + 2]);
+        const mn = Math.min(d[i], d[i + 1], d[i + 2]);
+        const gewicht = 0.15 + (mx - mn) / 255 * (mx > 40 ? 1 : 0.2);
+        r += d[i] * gewicht; g += d[i + 1] * gewicht; b += d[i + 2] * gewicht; w += gewicht;
+      }
+      r /= w; g /= w; b /= w;
+      // Auf dunklem Grund sichtbar, aber nie grell: Helligkeit 90–200.
+      const hell = Math.max(r, g, b) || 1;
+      const k = hell < 90 ? 90 / hell : hell > 200 ? 200 / hell : 1;
+      farbe = Math.round(r * k) + ", " + Math.round(g * k) + ", " + Math.round(b * k);
+    } catch (e) {
+      farbe = null; // Bild ohne CORS-Freigabe: kein Schein
+    }
+    coverFarben[img.src] = farbe;
+    coverFarbReihe.push(img.src);
+    while (coverFarbReihe.length > 40) delete coverFarben[coverFarbReihe.shift()];
+    return farbe;
+  }
+
+  function coverScheinSetzen() {
+    const hero = els.medienBody && els.medienBody.querySelector(".ha-hero");
+    const img = hero && hero.querySelector(".ha-cover-l img[crossorigin]");
+    if (!hero) return;
+    const setzen = function () {
+      const f = img ? coverFarbe(img) : null;
+      if (f) hero.style.setProperty("--cover-rgb", f);
+      hero.classList.toggle("has-cover-schein", !!f);
+    };
+    if (img && !(img.complete && img.naturalWidth)) {
+      hero.classList.remove("has-cover-schein");
+      img.onload = setzen;
+    } else setzen();
   }
 
   function switchRowHtml(id, room) {
@@ -1916,7 +2217,9 @@
           '<button type="button" class="ha-pill-btn ha-ctl' + (lit ? " is-on" : "") + '" data-act="raum-licht" data-raum="' + esc(room.id) + '">' + icon(lit ? "lightsoff" : "bulb") +
           "<span>" + (lit ? "Alle aus" : "Alle an") + "</span></button></div>";
         if (room.lights.length > 1) {
-          main += '<div class="ha-master"><span class="ha-master-label">Ganzer Raum</span>' + sliderHtml("raum", room.id, avgBri, "ha-ctl") + "</div>";
+          // Raumleiste als Verlauf aus den Farben der brennenden Lampen.
+          const farben = room.lights.map(function (id) { return lightRgb(eff(id)); }).filter(Boolean);
+          main += '<div class="ha-master"><span class="ha-master-label">Ganzer Raum</span>' + sliderHtml("raum", room.id, avgBri, "ha-ctl", false, farben.length ? farben : null) + "</div>";
         }
         main += room.lights.map(function (id) { return lightRowHtml(id, room); }).join("");
       }
@@ -2359,8 +2662,10 @@
     if (isDraggingIn(els.medienBody)) return;
     const dur = HA.attr(st, "media_duration");
     const pos = mediaPosition(st);
-    const title = HA.attr(st, "media_title") || stateLabel(st.state);
-    const artist = HA.attr(st, "media_artist") || HA.attr(st, "media_album_name") || "";
+    // Radio meldet oft "Interpret - Titel" in einem Feld: getrennt zeigen.
+    const ti = titelUndInterpret(st);
+    const title = ti.title || stateLabel(st.state);
+    const artist = ti.artist || HA.attr(st, "media_album_name") || "";
     const vol = HA.attr(st, "volume_level");
 
     // Nur ein Lautsprecher (wie bei Julian: ein HomePod): keine Geräteliste
@@ -2406,6 +2711,7 @@
       }).join("") + "</div>";
     }
     setHtml(els.medienBody, html);
+    coverScheinSetzen();
   }
 
   // Fortschritt läuft lokal weiter (HA meldet die Position nur bei
@@ -2511,7 +2817,7 @@
     const m = HA.model();
     const g = m.global;
     const now = Date.now();
-    const nobodyHome = g.persons.length > 0 && HA.personsHome().length === 0;
+    const nobodyHome = HA.anwesenheit().stand === "weg";
 
     m.rooms.forEach(function (room) {
       const sum = HA.roomSummary(room);
@@ -2902,11 +3208,13 @@
     if (REAKTION.niemandDaAmbient === false) return;
     const g = HA.model().global;
     if (!g.persons.length) return;
-    const away = HA.personsHome().length === 0;
+    // "unklar" (Person unterwegs, aber Bewegung/Bedienung/Licht) zählt als
+    // da: lieber hell bleiben als jemanden im Dunkeln stehen lassen.
+    const away = HA.anwesenheit().stand === "weg";
     if (away && !absentAmbient && !absentTimer) {
       absentTimer = setTimeout(function () {
         absentTimer = null;
-        if (HA.personsHome().length === 0 && typeof enterAmbientMode === "function") {
+        if (HA.anwesenheit().stand === "weg" && typeof enterAmbientMode === "function") {
           absentAmbient = true;
           enterAmbientMode();
           const amb = document.getElementById("ambientOverlay");
@@ -3023,6 +3331,9 @@
   // aktualisieren sich auch ohne neue HA-Ereignisse.
   function minuteTick() {
     if (!built) return;
+    // Bewegung/Bedienung/Licht zählen nur 15–30 Minuten – ohne neues
+    // Ereignis aus HA muss die Anwesenheit trotzdem neu bewertet werden.
+    if (HA.isConnected()) checkAbsence();
     scheduleFlush(0);
   }
 
@@ -3307,6 +3618,7 @@
       "</div></div>" +
       '<div class="ha-setup-result" id="haSetupResult"></div>' +
       quellenHtml() +
+      anzeigeHtml() +
       (window.TafelLernen
         ? '<div class="ha-setup-learned"><span class="ha-setup-label">Was die Tafel gelernt hat</span><ul>' +
           TafelLernen.beschreibung().map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>" +
@@ -3342,6 +3654,35 @@
       ? '<p class="ha-setup-note">Termine laden nicht: Dein Kalender-Worker muss diese Adresse erlauben – <b>' + esc(herkunft) + "</b> (HOME_ASSISTANT.md, Schritt 5).</p>"
       : "";
     return '<div class="ha-setup-quellen"><span class="ha-setup-label">Datenquellen · zuletzt geladen</span><ul>' + zeilen + "</ul>" + hinweis + "</div>";
+  }
+
+  // Anzeige-Prüfung fürs echte iPad (FEEDBACK 10.10. 11:59: Abfahrten
+  // schwarz auf schwarz, nur am Gerät): Gerät, Farbwelt, die tatsächlich
+  // berechneten Farben der ersten Abfahrtszeile mit Kontrast und die
+  // letzten JS-Fehler – ein Foto davon reicht zur Fehlersuche.
+  function anzeigeHtml() {
+    const ios = /OS (\d+)_(\d+)(?:_(\d+))? like Mac/.exec(navigator.userAgent);
+    const geraet = (/iPad/.test(navigator.userAgent) ? "iPad" : /iPhone/.test(navigator.userAgent) ? "iPhone" : "Browser") +
+      (ios ? " · iOS " + ios[1] + "." + ios[2] + (ios[3] ? "." + ios[3] : "") : "") + " · " + window.innerWidth + "×" + window.innerHeight;
+    const welt = document.body.classList.contains("farbe-dunkel") ? "dunkel" : "hell";
+    const zeilen = ['<li><span class="ha-quelle-name">Gerät</span><span class="ha-quelle-stand">' + esc(geraet) + "</span></li>",
+      '<li><span class="ha-quelle-name">Farbwelt</span><span class="ha-quelle-stand">' + esc(welt + " (Einstellung: " + (CONFIG.farbwelt || "hell") + ")") + "</span></li>"];
+    const zeile = document.querySelector("#departureRows .dep-row");
+    if (zeile && typeof tafelKontrast === "function") {
+      [[".dest", "Abfahrt: Ziel"], [".time-min", "Abfahrt: Minuten"]].forEach(function (p) {
+        const k = tafelKontrast(zeile.querySelector(p[0]));
+        if (!k) return;
+        const gut = k.verhaeltnis >= 4.5;
+        zeilen.push('<li class="is-' + (gut ? "ok" : "fehlt") + '"><span class="ha-quelle-dot"></span><span class="ha-quelle-name">' + esc(p[1]) +
+          '</span><span class="ha-quelle-stand num">' + esc(k.schrift + " auf " + k.grund + " · " + k.verhaeltnis.toFixed(1).replace(".", ",") + " : 1") + "</span></li>");
+      });
+    }
+    const fehler = (window.tafelFehler || []).slice(-4);
+    const zahl = window.tafelFehlerZahl || fehler.length;
+    zeilen.push('<li class="is-' + (zahl ? "alt" : "ok") + '"><span class="ha-quelle-dot"></span><span class="ha-quelle-name">Meldungen seit dem Laden</span><span class="ha-quelle-stand">' +
+      (zahl ? zahl + (zahl > fehler.length ? " (die letzten " + fehler.length + ")" : "") : "keine") + "</span></li>");
+    fehler.forEach(function (f) { zeilen.push('<li class="ha-anzeige-fehler">' + esc(f) + "</li>"); });
+    return '<div class="ha-setup-quellen ha-setup-anzeige"><span class="ha-setup-label">Anzeige-Prüfung</span><ul>' + zeilen.join("") + "</ul></div>";
   }
 
   function defaultSetupUrl() {

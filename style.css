@@ -60,6 +60,16 @@ html, body {
   user-select: none;
 }
 
+/* Kein Gummiband (FEEDBACK 10.10. 12:37): Safari 12 zieht die ganze Seite
+   beim senkrechten Wischen nach, auch mit overflow:hidden. Festgenagelter
+   body + touchmove-Sperre in app.js (gummibandSperren); scrollen dürfen nur
+   echte Scroll-Bereiche (-webkit-overflow-scrolling: touch). */
+body {
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
 /* Echtes Vollbild: kein Rand mehr irgendwo auf .panel selbst — der
    sichtbare "billige Rahmen/Hintergrund" um jedes Panel war genau dieses
    Padding hier. Uhr/Radio/Übersicht sind kein Layout-Element mehr,
@@ -400,8 +410,8 @@ html, body {
   width: 200%;
   height: 200%;
   background:
-    radial-gradient(circle at 30% 30%, rgba(169, 121, 63, 0.28), transparent 45%),
-    radial-gradient(circle at 70% 70%, rgba(91, 107, 120, 0.28), transparent 45%);
+    radial-gradient(circle at 30% 30%, rgba(169, 121, 63, 0.28), rgba(169, 121, 63, 0) 45%),
+    radial-gradient(circle at 70% 70%, rgba(91, 107, 120, 0.28), rgba(91, 107, 120, 0) 45%);
   animation: ambientDrift 70s ease-in-out infinite;
   will-change: transform;
 }
@@ -755,9 +765,9 @@ html, body {
 
 /* Gehzeit-Indikator: signalisiert, wie dringend man los muss, um den
    jeweiligen Bus noch zu Fuß zu erreichen. */
-.row.walk-ok { border-left-color: var(--ok); background: linear-gradient(90deg, rgba(63, 125, 82, 0.07), transparent 40%), var(--glass-bg); }
-.row.walk-soon { border-left-color: var(--brass); background: linear-gradient(90deg, rgba(169, 121, 63, 0.09), transparent 40%), var(--glass-bg); }
-.row.walk-late { border-left-color: var(--danger); background: linear-gradient(90deg, rgba(177, 64, 47, 0.09), transparent 40%), var(--glass-bg); }
+.row.walk-ok { border-left-color: var(--ok); background: linear-gradient(90deg, rgba(63, 125, 82, 0.07), rgba(63, 125, 82, 0) 40%), var(--glass-bg); }
+.row.walk-soon { border-left-color: var(--brass); background: linear-gradient(90deg, rgba(169, 121, 63, 0.09), rgba(169, 121, 63, 0) 40%), var(--glass-bg); }
+.row.walk-late { border-left-color: var(--danger); background: linear-gradient(90deg, rgba(177, 64, 47, 0.09), rgba(177, 64, 47, 0) 40%), var(--glass-bg); }
 
 /* "Emaille"-Look statt flacher Füllfarbe: sanfter Verlauf + Innenschatten
    (heller oben, dunkler unten) simuliert eine leicht gewölbte, polierte
@@ -896,7 +906,7 @@ html, body {
   width: 340px;
   height: 340px;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--sky-glow, rgba(255, 255, 255, 0.22)) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--sky-glow, rgba(255, 255, 255, 0.22)) 0%, var(--sky-glow-0, rgba(255, 255, 255, 0)) 70%);
   pointer-events: none;
   z-index: -1;
 }
@@ -2109,7 +2119,7 @@ html, body {
   overflow: hidden;
   border-left: 10px solid var(--accent);
   background:
-    radial-gradient(620px 620px at 106% 116%, rgba(var(--accent-rgb), 0.4), transparent 65%),
+    radial-gradient(620px 620px at 106% 116%, rgba(var(--accent-rgb), 0.4), rgba(var(--accent-rgb), 0) 65%),
     linear-gradient(165deg, rgba(var(--accent-rgb), 0.22) 0%, rgba(var(--accent-rgb), 0.04) 45%, var(--glass-bg) 100%);
 }
 
@@ -2374,7 +2384,7 @@ html, body {
   top: 0; left: 0; right: 0; bottom: 0;
   z-index: 0;
   opacity: 0.6;
-  background: radial-gradient(circle at 18% 25%, var(--team-color, #5b6b78) 0%, transparent 58%);
+  background: radial-gradient(circle at 18% 25%, var(--team-color, #5b6b78) 0%, var(--team-color-0, rgba(91, 107, 120, 0)) 58%);
 }
 
 .sport-slide-content {
@@ -2438,7 +2448,7 @@ html, body {
   height: 96px;
   object-fit: contain;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-  animation: sportCrestPop 0.55s cubic-bezier(0.22, 0.9, 0.32, 1.2) both;
+  animation: sportCrestPop 0.55s cubic-bezier(0.22, 0.9, 0.32, 1.2) backwards;
 }
 
 .sport-slide-team:nth-child(3) .sport-slide-crest {
@@ -2711,6 +2721,43 @@ html, body {
   font-weight: 700;
 }
 
+/* Safari 12 / iOS 12.5 (FEEDBACK 10.10. 11:59): Am echten iPad waren die
+   ersten Abfahrtszeilen schwarz und leer, im Desktop-WebKit nie. Die
+   Zeilen bekommen deshalb feste, DECKENDE Farben statt Variablen und
+   durchscheinender Verläufe:
+   – WebKit übernimmt umgeschaltete Variablen nicht immer in schon
+     gezeichnete Elemente (WebKit-Fehler 170708), die Farbwelt schaltet
+     aber per Klasse am <body> um.
+   – iOS 12.2–12.5 zeichnet durchscheinende Flächen auf GPU-Ebenen teils
+     schwarz (WebKit-Fehler 197654, erst in iOS 13 behoben); Zeilen werden
+     beim Einblenden/Nachrücken kurz zu solchen Ebenen.
+   Werte = bisherige Optik (Glas 86 % Weiß über --bg, Tönung 7–9 %), vorab
+   ausgerechnet. Dunkle Farbwelt: farbwelt.css. */
+.row.dep-row {
+  background: #fdfdfc;
+  border-color: #e3ded4;
+  color: #1c1d1f;
+  /* Weiß: kurzer, weicher Schatten – der lange Glas-Schatten legte einen
+     grauen Schleier zwischen die Zeilen. */
+  box-shadow: 0 1px 2px rgba(20, 24, 30, 0.06), 0 4px 12px rgba(20, 24, 30, 0.06);
+}
+
+.row.dep-row.walk-ok { background: linear-gradient(90deg, #f0f4f1 0%, #fdfdfc 40%); border-left-color: #3f7d52; }
+.row.dep-row.walk-soon { background: linear-gradient(90deg, #f6f1ec 0%, #fdfdfc 40%); border-left-color: #a9793f; }
+.row.dep-row.walk-late { background: linear-gradient(90deg, #f7ecea 0%, #fdfdfc 40%); border-left-color: #b1402f; }
+.row.dep-row.is-next { border-color: #a9793f; }
+
+.dep-row .dest,
+.dep-row .time-min { color: #1c1d1f; }
+.dep-row .time-min.now { color: #a9793f; }
+.dep-row .walk-hint,
+.dep-row .dep-unit,
+.dep-row .time-clock,
+.dep-row .dep-planned { color: #767267; }
+.dep-row .dep-delay { color: #b8701c; }
+.dep-pill.is-now { background: #b1402f; color: #ffffff; }
+.dep-pill.is-soon { background: #b8701c; color: #ffffff; }
+
 /* Variante "banner": kompaktes Banner (44 px, 28 px Schrift) statt Pille. */
 .leave-now-banner .leave-now-headline {
   font-size: 28px;
@@ -2807,15 +2854,15 @@ html, body {
 }
 
 .panel.is-waking .topbar {
-  animation: wakeIn 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) 0.1s both;
+  animation: wakeIn 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) 0.1s backwards;
 }
 
 .panel.is-waking .stage {
-  animation: wakeIn 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) 0.25s both;
+  animation: wakeIn 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) 0.25s backwards;
 }
 
 .panel.is-waking.has-hintbar .statusbar {
-  animation: wakeFade 0.5s ease 0.45s both;
+  animation: wakeFade 0.5s ease 0.45s backwards;
 }
 
 @keyframes panelRise {
@@ -4039,8 +4086,8 @@ html, body {
   animation: none;
   will-change: auto;
   background:
-    radial-gradient(circle at 30% 30%, rgba(226, 166, 90, 0.14), transparent 45%),
-    radial-gradient(circle at 70% 70%, rgba(111, 179, 214, 0.12), transparent 45%);
+    radial-gradient(circle at 30% 30%, rgba(226, 166, 90, 0.14), rgba(226, 166, 90, 0) 45%),
+    radial-gradient(circle at 70% 70%, rgba(111, 179, 214, 0.12), rgba(111, 179, 214, 0) 45%);
 }
 
 .ambient-info {

@@ -105,3 +105,45 @@
   border-radius: var(--r-l);
   box-shadow: var(--shadow-1);
 }
+
+/* ---------------------------------------------------------------
+   Helle Farbwelt (FEEDBACK 10.10. 11:51: weißes iPad, weißer Rahmen,
+   weiße Wand → Weiß als Standard). Gilt, solange <body> NICHT
+   "farbe-dunkel" trägt – die Klasse steht schon vor dem ersten Zeichnen
+   fest (index.html), es wird also nichts zur Laufzeit umgeschaltet.
+   Akzente und Zustandsfarben dunkler als in Dunkel, damit sie auf Weiß
+   aus 3–4 m den nötigen Kontrast haben; Schatten weich und kurz.
+   --------------------------------------------------------------- */
+body:not(.farbe-dunkel) {
+  --c-bg: #f4f3f0;
+  --c-bg-2: #eeece8;
+  --c-surface: #ffffff;
+  --c-surface-2: #f7f6f3;
+  --c-surface-3: #e9e6e0;
+  --c-line: rgba(27, 29, 33, 0.08);
+  --c-line-2: rgba(27, 29, 33, 0.14);
+
+  --c-text: #1b1d21;
+  --c-text-2: #555a62;
+  --c-text-3: #80858d;
+
+  --c-accent: #b0702a;
+  --c-accent-rgb: 176, 112, 42;
+  --c-accent-2: #2a7fb0;
+  --c-accent-2-rgb: 42, 127, 176;
+
+  --c-on: #e09a2c;
+  --c-on-rgb: 224, 154, 44;
+  --c-off: #c7cbd1;
+  --c-ok: #2b9460;
+  --c-ok-rgb: 43, 148, 96;
+  --c-warn: #cf7a22;
+  --c-warn-rgb: 207, 122, 34;
+  --c-alert: #cf4334;
+  --c-alert-rgb: 207, 67, 52;
+  --c-heat: #d9692f;
+  --c-cool: #2a7fb0;
+
+  --shadow-1: 0 1px 2px rgba(20, 24, 30, 0.06), 0 6px 18px rgba(20, 24, 30, 0.07);
+  --shadow-2: 0 2px 6px rgba(20, 24, 30, 0.08), 0 18px 44px rgba(20, 24, 30, 0.16);
+}

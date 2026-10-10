@@ -955,7 +955,13 @@ class Simulation {
       }
     }
     a.device_class = m.cfg.device_class;
-    if (medium) a.entity_picture = '/api/media_player_proxy/' + id + '?token=' + m.token + '&cache=' + m.cache;
+    // HA_SIM_OHNE_COVER=1 (oder Liste von entity_ids): wie Julians HomePod bei
+    // Radio/AirPlay – HA liefert dann kein entity_picture (Sitzung 8).
+    const ohneCover = process.env.HA_SIM_OHNE_COVER || '';
+    if (m.bildExtern !== undefined && m.bildExtern !== null) a.entity_picture = m.bildExtern;
+    else if (medium && m.bildExtern !== null && !(ohneCover === '1' || ohneCover.split(',').indexOf(id) !== -1)) {
+      a.entity_picture = '/api/media_player_proxy/' + id + '?token=' + m.token + '&cache=' + m.cache;
+    }
     a.supported_features = f;
     return this.welt.setze(id, m.zustand, a, ctx, opt);
   }
@@ -1760,6 +1766,13 @@ class Simulation {
     if (m) {
       m.zustand = s.state;
       if (typeof a.volume_level === 'number') m.lautstaerke = a.volume_level;
+      // Titel von außen gesetzt (Steuer-API, Proben): wie ein AirPlay-/Radio-
+      // Strom ohne Titelwechsel weiterführen, statt beim nächsten Schreiben
+      // wieder die eigene Playlist zu zeigen. entity_picture von außen bleibt.
+      if (typeof a.media_title === 'string' && a.media_title) {
+        m.radio = { name: a.media_title, kuenstler: a.media_artist || null, url: a.media_content_id || null, typ: 'music' };
+      }
+      if (a.entity_picture !== undefined) m.bildExtern = a.entity_picture || null;
       return;
     }
     if (id === 'vacuum.saugi') {

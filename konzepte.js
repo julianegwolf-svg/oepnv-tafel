@@ -380,7 +380,7 @@
     if (!KC.torLicht || torLaeuft || !HA() || !HA().isConnected()) return false;
     const hauptverein = KC.torLichtVerein || ((typeof CONFIG !== "undefined" && CONFIG.sportTeams) || [])[0];
     if (hauptverein && info.team !== hauptverein) return false;
-    if (!HA().personsHome().length) return false;
+    if (HA().anwesenheit().stand === "weg") return false;
     const lampen = torLampen();
     if (!lampen.length) return false;
     torLaeuft = true;

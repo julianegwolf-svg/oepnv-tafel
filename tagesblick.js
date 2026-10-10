@@ -559,7 +559,11 @@
     const name = (function () {
       const HA = window.TafelHA;
       if (!HA || !HA.isConnected()) return "";
-      const home = HA.personsHome();
+      // Person "unterwegs", aber Bewegung/Bedienung (HA.anwesenheit "unklar")
+      // und nur eine Person im Haushalt: dann ist das sie.
+      const a = HA.anwesenheit();
+      const alle = HA.model().global.persons;
+      const home = a.personen.length ? a.personen : (a.stand === "unklar" && alle.length === 1 ? alle : []);
       return home.length ? HA.name(home[0]).split(" ")[0] : "";
     })();
     const frei = freierTag(tag);

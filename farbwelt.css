@@ -134,3 +134,31 @@ body.farbe-dunkel .line-badge.bus:not(.has-color),
 body.farbe-dunkel .line-badge.tram:not(.has-color) {
   box-shadow: inset 0 0 0 2px rgba(219, 228, 236, 0.3), 0 2px 6px rgba(0, 0, 0, 0.3);
 }
+
+/* Abfahrten auf dem echten iPad (Safari 12) schwarz und leer (FEEDBACK
+   10.10. 11:59): feste, deckende Farben statt Variablen und
+   durchscheinender Verläufe – Begründung bei .row.dep-row in style.css.
+   Werte = bisherige Optik (Glas 94 % #18212d über #0d1219, Tönung 7–9 %,
+   Rand 12 % Off-White), vorab ausgerechnet. */
+body.farbe-dunkel .row.dep-row {
+  background: #17202c;
+  border-color: #313841;
+  color: #efe9df;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+body.farbe-dunkel .row.dep-row.walk-ok { background: linear-gradient(90deg, #1a272f 0%, #17202c 40%); border-left-color: #62c08d; }
+body.farbe-dunkel .row.dep-row.walk-soon { background: linear-gradient(90deg, #24282e 0%, #17202c 40%); border-left-color: #e2a65a; }
+body.farbe-dunkel .row.dep-row.walk-late { background: linear-gradient(90deg, #25232c 0%, #17202c 40%); border-left-color: #e86a5c; }
+body.farbe-dunkel .row.dep-row.is-next { border-color: #e2a65a; }
+
+body.farbe-dunkel .dep-row .dest,
+body.farbe-dunkel .dep-row .time-min { color: #efe9df; }
+body.farbe-dunkel .dep-row .time-min.now { color: #e2a65a; }
+body.farbe-dunkel .dep-row .walk-hint,
+body.farbe-dunkel .dep-row .dep-unit,
+body.farbe-dunkel .dep-row .time-clock,
+body.farbe-dunkel .dep-row .dep-planned { color: #b8b0a3; }
+body.farbe-dunkel .dep-row .dep-delay { color: #f0a04b; }
+body.farbe-dunkel .dep-pill.is-now { background: #e86a5c; color: #ffffff; }
+body.farbe-dunkel .dep-pill.is-soon { background: #f0a04b; color: #2b1d07; }

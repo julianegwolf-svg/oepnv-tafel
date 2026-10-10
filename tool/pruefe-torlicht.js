@@ -182,9 +182,29 @@ function istWeiss(rgb) { return rgb && rgb[0] > 200 && rgb[1] > 200 && rgb[2] > 
   log(!ev.some((e) => istGruen(farbe(e.a))), "Gegentor eines ebenfalls verfolgten Vereins (St. Pauli): kein Licht");
   team2 = { teamId: 31, teamName: "SC Paderborn 07", shortName: "Paderborn", teamIconUrl: "", teamGroupName: null };
   // 3b. niemand zu Hause
+  // Seit Sitzung 8 zählt als "niemand da" (HA.anwesenheit): Person weg UND
+  // seit 30 min keine Bewegung/Bedienung, kein Licht in den letzten 15 min
+  // von Hand eingeschaltet. Die Probe hat die Lampen eben selbst geschaltet –
+  // deshalb so stellen, als brennten sie seit 30 min.
+  const simState = (b) => fetch(SIM + "/sim/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
   const person = await page.evaluate(() => TafelHA.model().global.persons[0]);
-  await fetch(SIM + "/sim/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entity_id: person, state: "not_home" }) });
+  await simState({ entity_id: person, state: "not_home" });
+  const anLampen = await page.evaluate(() => Object.keys(TafelHA.states()).filter((id) => /^light\./.test(id) && TafelHA.state(id).state === "on")
+    .map((id) => ({ id: id, a: TafelHA.state(id).attributes })));
+  for (const l of anLampen) {
+    await simState({ entity_id: l.id, state: "off", automation: true });
+    await simState({ entity_id: l.id, state: "on", vor_s: 1800, attributes: l.a });
+  }
+  const melder = await page.evaluate(() => Object.keys(TafelHA.states()).filter((id) => /^binary_sensor\./.test(id) &&
+    /motion|occupancy|presence/.test(TafelHA.attr(TafelHA.state(id), "device_class") || "")));
+  for (const id of melder) {
+    await simState({ entity_id: id, state: "on", vor_s: 2000 });
+    await simState({ entity_id: id, state: "off", vor_s: 1900 });
+  }
+  await page.evaluate(() => { window.tafelZuletztBedient = 0; });
   await pause(800);
+  const anw = await page.evaluate(() => { const a = TafelHA.anwesenheit(); return a.stand + " " + JSON.stringify(a.signale); });
+  log(/^weg/.test(anw), "Niemand zu Hause (Person weg, 30 min keine Bewegung/Bedienung, Licht brennt seit 30 min): " + anw);
   ev = await tor(3, 2, "Stage", 134);
   log(!ev.some((e) => istGruen(farbe(e.a))), "Niemand zu Hause: Werder-Tor ohne Licht");
   await fetch(SIM + "/sim/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entity_id: person, state: "home" }) });

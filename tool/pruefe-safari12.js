@@ -9,7 +9,10 @@
 //  2. alle *.js auf verbotene Muster (Kommentare/Strings ausgenommen),
 //  3. alle *.css auf verbotene Eigenschaften/Selektoren, inkl. gap in
 //     Flex-Containern (Regeln werden grob geparst; display und gap dürfen
-//     in verschiedenen Regeln für denselben Selektor stehen),
+//     in verschiedenen Regeln für denselben Selektor stehen), "transparent"
+//     in Verläufen (Safari 12 blendet über Schwarz), flow-root, overflow:
+//     clip, logische Eigenschaften, color() (Sitzung 8, Werte aus
+//     @mdn/browser-compat-data für iOS 12.2),
 //  4. Inline-Styles in *.html (inset/aspect-ratio/gap).
 //
 // Ausgabe: je Fund "FEHLER|WARNUNG  datei:zeile  Grund", am Ende
@@ -231,6 +234,10 @@ function pruefeJs(datei) {
   });
   m.strings.forEach((s) => {
     if (lookbehind.test(s.text)) fund("FEHLER", datei, zeileAn(src, s.index), "Regex-Lookbehind im String (new RegExp?) (erst Safari 16.4)");
+    // Inline-Stile aus JS: dieselbe Verlaufsfalle wie im CSS.
+    if (/gradient\(/.test(s.text) && /\btransparent\b/.test(s.text)) {
+      fund("FEHLER", datei, zeileAn(src, s.index), "transparent im Verlauf (Inline-Stil): Safari 12 blendet über Schwarz – rgba(<gleiche Farbe>, 0) verwenden");
+    }
   });
   pruefeKlassenfelder(datei, m.code);
 }
@@ -413,6 +420,20 @@ function pruefeCssText(datei, roh) {
       if (p === "aspect-ratio") fund("FEHLER", datei, d.zeile, "aspect-ratio erst Safari 15 – padding-top-Trick oder feste Höhe");
       if (/\b(color-mix|lab|lch|oklab|oklch|hwb)\(/.test(w)) fund("FEHLER", datei, d.zeile, RegExp.lastMatch + " kennt Safari 12 nicht – feste rgba()-Farbe");
       if (/\bclamp\(/.test(w)) fund("FEHLER", datei, d.zeile, "clamp() erst Safari 13.1");
+      // Sitzung 8 (FEEDBACK 10.10. 11:59, Werte aus @mdn/browser-compat-data für iOS 12.2):
+      if (/gradient\(/.test(w) && /\btransparent\b/.test(w)) {
+        fund("FEHLER", datei, d.zeile, "transparent im Verlauf: Safari 12 blendet über Schwarz (dunkler Saum, caniuse css-gradients Anm. 2) – rgba(<gleiche Farbe>, 0) verwenden");
+      }
+      if (/\bcolor\(/.test(w.replace(/[\w-]color\(/g, ""))) fund("FEHLER", datei, d.zeile, "color() erst Safari 15");
+      if (p === "display" && /\bflow-root\b/.test(w)) fund("FEHLER", datei, d.zeile, "display: flow-root erst Safari 13");
+      if (/^(overflow|overflow-x|overflow-y)$/.test(p) && /\bclip\b/.test(w)) fund("FEHLER", datei, d.zeile, "overflow: clip erst Safari 16 – hidden verwenden");
+      if (/^(margin|padding|border)-(inline|block)$/.test(p) || /^(inline|block)-size$/.test(p) || /^(min|max)-(inline|block)-size$/.test(p)) {
+        fund("FEHLER", datei, d.zeile, p + " (logische Eigenschaft) erst Safari 14.1 – left/right bzw. width/height verwenden");
+      }
+      if (p === "text-wrap") fund("WARNUNG", datei, d.zeile, "text-wrap erst Safari 17.4 – wirkt auf dem iPad nicht");
+      if (/\b(rgba?|hsla?)\(\s*[\d.]+%?\s+[\d.]+%?\s+[\d.]+%?\s*(\/[^)]*)?\)/.test(w)) {
+        fund("WARNUNG", datei, d.zeile, "Farbe ohne Kommas (" + RegExp.lastMatch + ") erst ab iOS 12.2 – Kommaschreibweise ist sicherer");
+      }
       if (/\d(dvh|svh|lvh|dvw|svw|lvw|cqw|cqh|cqi|cqb)\b/.test(w)) fund("FEHLER", datei, d.zeile, "Einheit " + RegExp.$1 + " kennt Safari 12 nicht");
       if (p === "translate" || p === "rotate" || p === "scale") fund("FEHLER", datei, d.zeile, "Einzel-Transform \"" + p + ":\" erst Safari 14.1 – transform: verwenden");
       if (p === "backdrop-filter" && !hat("-webkit-backdrop-filter")) {

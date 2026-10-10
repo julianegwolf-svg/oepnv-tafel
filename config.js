@@ -490,11 +490,12 @@ const CONFIG = {
   sportNewsQuelle: "kicker",
 
   // ---------------------------------------------------------------
-  // Farbwelt (farbwelt.css): "dunkel" = immer dunkles Blau-Anthrazit wie
-  // die Home-Assistant-Panels, "auto" = tagsüber hell, nach Sonnen-
-  // untergang dunkel, "hell" = der bisherige beige Look.
+  // Farbwelt: "hell" = weiß (Standard seit 10.10.: weißes iPad, weiße
+  // Wand; design.css + style.css), "dunkel" = dunkles Blau-Anthrazit
+  // (farbwelt.css), "auto" = tagsüber hell, nach Sonnenuntergang dunkel.
+  // Nachts dimmt die Tafel in jeder Farbwelt (nachtModus).
   // ---------------------------------------------------------------
-  farbwelt: "dunkel",
+  farbwelt: "hell",
 
   // ---------------------------------------------------------------
   // Bewegte Bilder (clips.js): Regenradar im Wetter-Panel ("auto" = nur
@@ -572,10 +573,15 @@ const CONFIG = {
     batterieDringend: 10, // % → Hinweis auf allen Panels
     medienPauseMin: 30, // so lange bleibt "Pausiert" im Karussell (danach nur über die Übersicht)
     stromWarnungW: 3000, // Gesamtverbrauch, ab dem ein Hinweis kommt
+    // Anwesenheit: Außer person.* zählen die einer Person zugeordneten
+    // Heimnetz-Tracker (FRITZ!Box), Bewegung (30 min), Bedienung der Tafel
+    // (30 min) und ein von Hand eingeschaltetes Licht (15 min).
+    // Weitere Tracker, die "zu Hause" bedeuten, z. B. ["device_tracker.julians_iphone"].
+    anwesenheitGeraete: [],
     reaktionen: {
       bewegungWeckt: true, // Bewegung (Melder im Schlafzimmer) weckt aus Ambient/Tiefschlaf
       weckSensoren: [], // leer = jeder Bewegungs-/Belegungsmelder
-      niemandDaAmbient: true, // alle person.* weg → Ambient-Modus
+      niemandDaAmbient: true, // niemand da (Personen weg, keine Bewegung/Bedienung) → Ambient-Modus
       ereignisSprung: true, // Waschmaschine fertig / Tür offen → Zuhause-Panel
       morgengruss: true, // erste Bewegung am Morgen → "Guten Morgen" + der eine Satz des Tages
       morgengrussAb: 5, // frühestens ab dieser Stunde (bis 11 Uhr), einmal pro Tag

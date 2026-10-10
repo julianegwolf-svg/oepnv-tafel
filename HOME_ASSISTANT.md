@@ -143,6 +143,21 @@ Drei Ideen aus **KONZEPTE.md** sind als Prototypen gebaut und gegen den Simulato
   4. Wichtig: Der Benutzer „tafel“ darf den Helfer setzen, Nicht-Admins dürfen Dienste aufrufen. Den 20-Minuten-Übergang der IKEA-Lampe einmal echt ausprobieren. HA erlaubt bis 6553 s, ob die Lampe gleichmäßig dimmt, ist aber nicht dokumentiert.
 - **Werder-Tor-Licht** (`torLicht: true`): Bei einem Werder-Tor blinken die Farblampen im Wohnzimmer, die gerade an sind, dreimal Grün/Weiß (etwa 4 s), danach ist alles wie vorher. Das passiert nur, wenn du zu Hause bist, und in HA ist nichts zu tun. Achtung: Der Stand kommt 30–90 s nach dem Fernsehbild.
 
+### 9. Anwesenheit: damit HA weiß, dass du zu Hause bist (empfohlen)
+Oben stand immer „Niemand zu Hause“, obwohl dein iPhone im WLAN war. Der Grund: Deine Person hängt in HA nur am GPS-Tracker der Companion-App, und der stand auf „unterwegs“. Die Tafel verlässt sich deshalb nicht mehr allein darauf. Sie sagt „Niemand zu Hause“ nur, wenn auch nichts anderes dagegen spricht:
+- keine Bewegung im Schlafzimmer in den letzten 30 min,
+- keine Bedienung der Tafel in den letzten 30 min,
+- kein Licht, das in den letzten 15 min von dir eingeschaltet wurde (App, Dashboard oder Tafel; Automationen zählen nicht),
+- kein Heimnetz-Tracker (FRITZ!Box), der dir zugeordnet ist, meldet „zu Hause“.
+
+Bei Widerspruch steht dort zum Beispiel „Bewegung im Schlafzimmer vor 4 Min“, darunter „Julian laut Handy unterwegs“. Ambient-Modus und „Niemand da – Licht an“ kommen dann nicht.
+
+Damit auch HA selbst richtig liegt (Automationen wie „Rausgehen“ profitieren davon):
+1. **Companion-App:** iPhone → Einstellungen → Home Assistant → Standort → **„Immer“** und „Genaue Position“ an. In der App unter Einstellungen → Companion-App → Standort die Zone „Zuhause“ prüfen (Radius mindestens 100 m).
+2. **FRITZ!Box als zweite Quelle:** In der FRITZ!Box einen eigenen Benutzer mit dem Recht „FRITZ!Box Einstellungen“ anlegen (System → FRITZ!Box-Benutzer), unter Heimnetz → Netzwerk → Netzwerkeinstellungen „Zugriff für Anwendungen zulassen“ (TR-064) und „Statusinformationen über UPnP übertragen“ einschalten. Dann in HA: Einstellungen → Geräte & Dienste → **Integration hinzufügen → „AVM FRITZ!Box Tools“**. Jedes WLAN-Gerät wird ein `device_tracker.…` mit Quelle „router“. HA schaltet neue Tracker standardmäßig ein; nicht benötigte (Fernseher, Drucker …) einfach deaktivieren (Quelle: [HA-Doku FRITZ!Box Tools](https://www.home-assistant.io/integrations/fritz/)).
+3. **Der Person zuordnen:** Einstellungen → Personen → Julian → **Geräte verfolgen** → den FRITZ!Box-Tracker zusätzlich zum iPhone-GPS auswählen. HA nimmt dann „zu Hause“, sobald das iPhone im WLAN ist, auch wenn das GPS hängt.
+4. Optional auf der Tafel: Tracker, die keiner Person zugeordnet sind, aber „jemand ist da“ bedeuten, in `config.js` → `homeAssistant.anwesenheitGeraete` eintragen. Andere WLAN-Geräte (Fernseher, Tablet, Uhr) zählen bewusst nicht, weil sie immer „zu Hause“ melden.
+
 Gut zu wissen: Die Home-Bildschirm-App unter der neuen Adresse hat eigenen Speicher. Was die Tafel bisher über deine Bedienung gelernt hat (Vorschläge), fängt dort neu an. Der HA-Verlauf liefert die Grundlage aber sofort wieder.
 
 ---
@@ -197,6 +212,7 @@ Die Tafel erkennt alles selbst aus deinen HA-Bereichen. Feinsteuerung (optional)
 | Raum fehlt | Raum hat in HA keine Geräte, die die Tafel anzeigen kann (z. B. Küche ohne Licht/Sensor) – absichtlich |
 | Schnellaktion meldet „hat nichts geschaltet“ (Chip „… wirkt nicht – in HA prüfen“) | HA hat die Automation zwar gestartet, aber kein Gerät hat reagiert – meist bricht sie an einer ungültigen Aktion ab (HA meldet das nicht zurück). In HA: Einstellungen → Automationen → die Automation → **Ablaufverfolgung** zeigt die Stelle. Bei *Bett Fertig*/*Arbeitsmodus*: je Lampe nur `color_temp_kelvin` **oder** `rgb_color` (FRAGEN 19) |
 | Keine Termine mehr (seit dem Umzug nach HA) | Kalender-Worker erlaubt die neue Adresse nicht → Schritt 5; Einstellungen → Datenquellen zeigt „Termine – lädt nicht“ |
+| Oben „Niemand zu Hause“, obwohl du da bist | Weder Person noch Telefon im WLAN melden „zu Hause“ und seit 30 min gab es keine Bewegung/Bedienung → Schritt 9 |
 | Kein Musik-Panel | Absichtlich, solange weder `sensor.musik_charts` (höchstens 4 Tage alt) noch der Kalender-Worker (`?musik=de`) eine Liste liefert → Schritt 6 |
 
 ---

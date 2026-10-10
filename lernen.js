@@ -247,7 +247,7 @@
     const minute = jetzt.getHours() * 60 + jetzt.getMinutes();
     const out = [];
     const HA = window.TafelHA;
-    const zuHause = HA && HA.isConnected() ? HA.personsHome().length > 0 : true;
+    const zuHause = HA && HA.isConnected() ? HA.anwesenheit().stand !== "weg" : true;
 
     // a) Schnellaktionen zur gewohnten Zeit (Gute Nacht, Arbeiten …)
     aktionsZiele().forEach(function (a) {

@@ -253,6 +253,8 @@ function tickClock() {
   }
   updateNightDim(now.getHours());
   applyFarbwelt(now);
+  pillBarTick(now);
+  abfahrtenKontrastWaechter(now);
   if (now.getSeconds() % 15 === 0) updateStaleBadge();
   // Nicht an eine bestimmte Sekunde koppeln: fällt die mal aus (voller
   // Hauptthread), liefe der Wächter sonst nicht.
@@ -281,7 +283,103 @@ function applyFarbwelt(now) {
   }
   if (document.body.classList.contains("farbe-dunkel") !== dark) {
     document.body.classList.toggle("farbe-dunkel", dark);
+    farbweltNeuAufbauen();
   }
+}
+
+// Safari 12 übernimmt umgeschaltete CSS-Variablen nicht immer in schon
+// gezeichnete Elemente (WebKit-Fehler 170708) – am iPad standen Abfahrten
+// schwarz auf schwarz. Beim Start setzt index.html die Klasse deshalb vor
+// dem ersten Zeichnen; schaltet "auto" später um (zweimal am Tag), wird
+// die ganze Tafel einmal aus dem Renderbaum genommen und neu aufgebaut –
+// das berechnet jeden Stil frisch.
+function farbweltNeuAufbauen() {
+  const shell = document.querySelector(".panel");
+  if (!shell) return;
+  // display:none beendet laufende Übergänge – der Karussell-Balken spränge
+  // auf voll und das Karussell liefe nach einer Berührung sofort weiter
+  // (Code-Review S8). Stand merken und den Rest danach weiterlaufen lassen.
+  const fill = progressFillEl;
+  const anteil = fill ? currentProgressFraction() : 0;
+  const lauf = fill ? /transform (\d+)ms/.exec(fill.style.transition || "") : null;
+  shell.style.display = "none";
+  void shell.offsetHeight;
+  shell.style.display = "";
+  if (fill && lauf && anteil < 1) {
+    fill.style.transition = "none";
+    fill.style.transform = "scaleX(" + anteil.toFixed(4) + ")";
+    void fill.offsetWidth;
+    fill.style.transition = "transform " + Math.round((1 - anteil) * Number(lauf[1])) + "ms linear";
+    fill.style.transform = "scaleX(1)";
+  }
+}
+
+// ---------- Lesbarkeit prüfen (Safari 12, FEEDBACK 10.10. 11:59) ----------
+// Liest die tatsächlich berechnete Schrift- und Hintergrundfarbe eines
+// Elements (Hintergrund: erster deckende Farbe nach oben, bei Verläufen
+// deren letzte Farbe) und den Kontrast nach WCAG. Genutzt vom Wächter
+// unten und von der Anzeige-Prüfung in den Einstellungen.
+function cssFarbe(text) {
+  const m = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?/.exec(String(text || ""));
+  if (!m) return null;
+  return { r: +m[1], g: +m[2], b: +m[3], a: m[4] == null ? 1 : +m[4] };
+}
+
+function farbeHex(f) {
+  const h = function (n) { return ("0" + Math.round(n).toString(16)).slice(-2); };
+  return f ? "#" + h(f.r) + h(f.g) + h(f.b) : "?";
+}
+
+function tafelKontrast(el) {
+  if (!el) return null;
+  const schrift = cssFarbe(getComputedStyle(el).color);
+  let grund = null;
+  for (let e = el; e && e.nodeType === 1; e = e.parentElement) {
+    const cs = getComputedStyle(e);
+    const bg = cssFarbe(cs.backgroundColor);
+    if (bg && bg.a > 0.5) { grund = bg; break; }
+    const stopps = String(cs.backgroundImage || "").match(/rgba?\([^)]*\)/g);
+    if (stopps && stopps.length) {
+      const letzte = cssFarbe(stopps[stopps.length - 1]);
+      if (letzte && letzte.a > 0.5) { grund = letzte; break; }
+    }
+  }
+  if (!schrift || !grund) return null;
+  const lum = function (f) {
+    const k = function (c) { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    return 0.2126 * k(f.r) + 0.7152 * k(f.g) + 0.0722 * k(f.b);
+  };
+  const l1 = lum(schrift);
+  const l2 = lum(grund);
+  return { schrift: farbeHex(schrift), grund: farbeHex(grund), verhaeltnis: (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05) };
+}
+
+// Wächter: Steht die Abfahrtstafel da und ist das Ziel der ersten Zeile
+// laut WebKit kaum lesbar (unter 3 : 1), wird die Tafel einmal neu
+// aufgebaut (höchstens alle 10 Minuten) und das fürs iPad notiert.
+let kontrastRepariertAm = 0;
+function abfahrtenKontrastWaechter(now) {
+  if (now.getSeconds() % 30 !== 5) return;
+  const panel = document.getElementById("panel-departures");
+  if (!panel || !panel.classList.contains("active")) return;
+  // Ziel und Minuten der ersten Zeile – das schlechtere zählt.
+  const zeile = els.rows.querySelector(".dep-row");
+  let k = null;
+  [".dest", ".time-min"].forEach(function (sel) {
+    const el = zeile ? zeile.querySelector(sel) : null;
+    const m = el && el.textContent ? tafelKontrast(el) : null;
+    if (m && (!k || m.verhaeltnis < k.verhaeltnis)) k = m;
+  });
+  if (!k || k.verhaeltnis >= 3) return;
+  if (now.getTime() - kontrastRepariertAm < 10 * 60 * 1000) return;
+  kontrastRepariertAm = now.getTime();
+  if (window.tafelFehler) {
+    window.tafelFehler.push(now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) +
+      " Abfahrten unlesbar (" + k.schrift + " auf " + k.grund + ") – Farben neu aufgebaut");
+    window.tafelFehlerZahl = (window.tafelFehlerZahl || 0) + 1;
+    if (window.tafelFehler.length > 6) window.tafelFehler.shift();
+  }
+  farbweltNeuAufbauen();
 }
 
 // ---------- Nachtdimmung ----------
@@ -922,12 +1020,6 @@ function renderDepartures(departures) {
   if (placeholder) placeholder.parentNode.removeChild(placeholder);
   ordered.forEach(function (o) {
     els.rows.appendChild(o.row);
-    const bar = o.row.querySelector(".dep-pill-bar");
-    if (bar._pending != null) {
-      const end = bar._pending;
-      bar._pending = null;
-      updatePillBar(bar, end, now);
-    }
   });
 
   // FLIP, Schritt 2: Differenz zurückrechnen und weich auf 0 laufen lassen.
@@ -952,11 +1044,8 @@ function renderDepartures(departures) {
   });
 }
 
-// Balken läuft linear ab (transform: scaleX). Volle Länge = 5 Minuten
-// Restzeit; die Pille erscheint 4½ Minuten vor "Los bis". Bei jedem Abruf
-// (alle 30 s) wird er auf den aktuellen Stand gesetzt und läuft von dort
-// weiter – ohne sichtbaren Sprung, aber selbstheilend, falls WebKit eine
-// lange Transition verwirft (passiert beim ersten Zeichnen nach dem Laden).
+// Balken läuft linear ab (transform: scaleX, siehe pillBarTick). Volle
+// Länge = 5 Minuten Restzeit; die Pille erscheint 4½ Minuten vor "Los bis".
 const PILL_BAR_SPAN_MS = 5 * 60 * 1000;
 
 // Fahrtziel für die Anzeige (Daten bleiben unverändert – istArbeitsBahn
@@ -988,25 +1077,32 @@ function istDunkleFarbe(hex) {
   return 0.2126 * lin(m[1]) + 0.7152 * lin(m[2]) + 0.0722 * lin(m[3]) < 0.035;
 }
 
+// Der Balken wird im Sekundentakt der Uhr nachgeführt (pillBarTick)
+// statt mit einer minutenlangen CSS-Transition: Eine laufende Transition
+// hält auf dem iPad die ganze Zeit eine eigene GPU-Ebene mitten in der
+// ersten Abfahrtszeile (Safari 12 zeichnete dort schwarze Flächen,
+// FEEDBACK 10.10. 11:59). 5 Minuten auf ~110 px = 0,4 px je Sekunde –
+// das Springen sieht man nicht.
+let laufenderPillBar = null;
+
+function pillBarSetzen(bar, now) {
+  const anteil = bar._endMs ? Math.min(1, Math.max(0, bar._endMs - now) / PILL_BAR_SPAN_MS) : 0;
+  const wert = "scaleX(" + anteil.toFixed(4) + ")";
+  if (bar._wert !== wert) { bar._wert = wert; bar.style.transform = wert; }
+}
+
 function updatePillBar(bar, endMs, now) {
-  // Eine Transition startet nur an einem Element im Dokument – neue Zeilen
-  // holen das nach dem Einsetzen nach (renderDepartures).
-  if (!document.documentElement.contains(bar)) { bar._pending = endMs; return; }
-  if (bar._raf) { cancelAnimationFrame(bar._raf); bar._raf = 0; }
-  bar.style.transition = "none";
-  if (!endMs) { bar.style.transform = "scaleX(0)"; return; }
-  bar.style.transform = "scaleX(" + Math.min(1, Math.max(0, endMs - now) / PILL_BAR_SPAN_MS).toFixed(4) + ")";
-  // Ablaufen erst zwei Frames später starten, wenn der Startwert sicher
-  // gezeichnet ist.
-  bar._raf = requestAnimationFrame(function () {
-    bar._raf = requestAnimationFrame(function () {
-      bar._raf = 0;
-      const left = Math.max(0, endMs - Date.now());
-      const tempo = (window.debugZeit && window.debugZeit.tempo) || 1;
-      bar.style.transition = "transform " + Math.round(left / tempo) + "ms linear";
-      bar.style.transform = "scaleX(0)";
-    });
-  });
+  bar._endMs = endMs || 0;
+  pillBarSetzen(bar, now);
+  if (endMs) laufenderPillBar = bar;
+  else if (laufenderPillBar === bar) laufenderPillBar = null;
+}
+
+function pillBarTick(now) {
+  const bar = laufenderPillBar;
+  if (!bar) return;
+  if (!bar._endMs || !document.documentElement.contains(bar)) { laufenderPillBar = null; return; }
+  pillBarSetzen(bar, now.getTime());
 }
 
 function updateDepartureRow(row, dep, now, isNext) {
@@ -1418,18 +1514,18 @@ const WEATHER_SKY_GRADIENTS = {
   // Mittag oder Nachmittag, und wirkte dadurch grell/unrealistisch statt
   // wie ein normaler klarer Himmel. Jetzt ein glaubwürdigerer Blauverlauf,
   // Wärme kommt nur noch dezent vom radialen Glow oben (Sonnenposition).
-  "sun": "radial-gradient(130% 70% at 80% -10%, rgba(255,236,190,0.4), transparent 55%), linear-gradient(165deg, #1c5a8c 0%, #3f86c2 45%, #7ab3dd 80%, #bcd9ec 100%)",
-  "night": "radial-gradient(120% 60% at 50% -20%, rgba(120,150,220,0.18), transparent 60%), linear-gradient(165deg, #060a16 0%, #0f1830 40%, #1b2846 70%, #2a3a5e 100%)",
-  "cloud:day": "radial-gradient(130% 60% at 30% -10%, rgba(255,255,255,0.18), transparent 55%), linear-gradient(165deg, #303a44 0%, #4c5964 40%, #71818d 70%, #9aa7b0 100%)",
-  "cloud:night": "radial-gradient(120% 60% at 50% -15%, rgba(150,160,190,0.12), transparent 60%), linear-gradient(165deg, #0a0e15 0%, #1a212c 40%, #2c3540 70%, #414c58 100%)",
-  "rain:day": "radial-gradient(120% 55% at 30% -10%, rgba(180,210,230,0.15), transparent 55%), linear-gradient(165deg, #182229 0%, #2c3b46 40%, #4a5f6f 70%, #6d8494 100%)",
-  "rain:night": "radial-gradient(120% 55% at 50% -15%, rgba(100,140,180,0.12), transparent 60%), linear-gradient(165deg, #050a10 0%, #101c26 40%, #1c2b38 70%, #2c3f4e 100%)",
-  "storm:day": "radial-gradient(120% 55% at 40% -10%, rgba(180,170,220,0.12), transparent 55%), linear-gradient(165deg, #0c0f14 0%, #1e2530 40%, #3a4453 70%, #57647a 100%)",
-  "storm:night": "radial-gradient(120% 55% at 50% -15%, rgba(120,110,180,0.1), transparent 60%), linear-gradient(165deg, #030407 0%, #0c0f16 40%, #171d28 70%, #232b3a 100%)",
-  "snow:day": "radial-gradient(130% 60% at 30% -10%, rgba(255,255,255,0.28), transparent 55%), linear-gradient(165deg, #2c4256 0%, #4d6a80 40%, #7396ab 70%, #a7c8db 100%)",
-  "snow:night": "radial-gradient(120% 60% at 50% -15%, rgba(160,190,220,0.15), transparent 60%), linear-gradient(165deg, #0a121e 0%, #172236 40%, #263650 70%, #3a4f6b 100%)",
-  "fog:day": "radial-gradient(130% 60% at 40% -10%, rgba(255,255,255,0.22), transparent 55%), linear-gradient(165deg, #3c454c 0%, #5b6469 40%, #838c92 70%, #a7afb4 100%)",
-  "fog:night": "radial-gradient(120% 60% at 50% -15%, rgba(180,185,195,0.1), transparent 60%), linear-gradient(165deg, #0d1013 0%, #1c2024 40%, #2e3338 70%, #43494e 100%)",
+  "sun": "radial-gradient(130% 70% at 80% -10%, rgba(255,236,190, 0.4), rgba(255,236,190, 0) 55%), linear-gradient(165deg, #1c5a8c 0%, #3f86c2 45%, #7ab3dd 80%, #bcd9ec 100%)",
+  "night": "radial-gradient(120% 60% at 50% -20%, rgba(120,150,220, 0.18), rgba(120,150,220, 0) 60%), linear-gradient(165deg, #060a16 0%, #0f1830 40%, #1b2846 70%, #2a3a5e 100%)",
+  "cloud:day": "radial-gradient(130% 60% at 30% -10%, rgba(255,255,255, 0.18), rgba(255,255,255, 0) 55%), linear-gradient(165deg, #303a44 0%, #4c5964 40%, #71818d 70%, #9aa7b0 100%)",
+  "cloud:night": "radial-gradient(120% 60% at 50% -15%, rgba(150,160,190, 0.12), rgba(150,160,190, 0) 60%), linear-gradient(165deg, #0a0e15 0%, #1a212c 40%, #2c3540 70%, #414c58 100%)",
+  "rain:day": "radial-gradient(120% 55% at 30% -10%, rgba(180,210,230, 0.15), rgba(180,210,230, 0) 55%), linear-gradient(165deg, #182229 0%, #2c3b46 40%, #4a5f6f 70%, #6d8494 100%)",
+  "rain:night": "radial-gradient(120% 55% at 50% -15%, rgba(100,140,180, 0.12), rgba(100,140,180, 0) 60%), linear-gradient(165deg, #050a10 0%, #101c26 40%, #1c2b38 70%, #2c3f4e 100%)",
+  "storm:day": "radial-gradient(120% 55% at 40% -10%, rgba(180,170,220, 0.12), rgba(180,170,220, 0) 55%), linear-gradient(165deg, #0c0f14 0%, #1e2530 40%, #3a4453 70%, #57647a 100%)",
+  "storm:night": "radial-gradient(120% 55% at 50% -15%, rgba(120,110,180, 0.1), rgba(120,110,180, 0) 60%), linear-gradient(165deg, #030407 0%, #0c0f16 40%, #171d28 70%, #232b3a 100%)",
+  "snow:day": "radial-gradient(130% 60% at 30% -10%, rgba(255,255,255, 0.28), rgba(255,255,255, 0) 55%), linear-gradient(165deg, #2c4256 0%, #4d6a80 40%, #7396ab 70%, #a7c8db 100%)",
+  "snow:night": "radial-gradient(120% 60% at 50% -15%, rgba(160,190,220, 0.15), rgba(160,190,220, 0) 60%), linear-gradient(165deg, #0a121e 0%, #172236 40%, #263650 70%, #3a4f6b 100%)",
+  "fog:day": "radial-gradient(130% 60% at 40% -10%, rgba(255,255,255, 0.22), rgba(255,255,255, 0) 55%), linear-gradient(165deg, #3c454c 0%, #5b6469 40%, #838c92 70%, #a7afb4 100%)",
+  "fog:night": "radial-gradient(120% 60% at 50% -15%, rgba(180,185,195, 0.1), rgba(180,185,195, 0) 60%), linear-gradient(165deg, #0d1013 0%, #1c2024 40%, #2e3338 70%, #43494e 100%)",
 };
 
 // Leuchtfarbe für den Glow hinter Icon/Temperatur (siehe .weather-big::
@@ -1475,10 +1571,11 @@ function setWeatherScene(fxCategory, isDay) {
   // Glow-Farbe hinterm Icon per CSS-Variable (siehe .weather-big::before) —
   // macht aus der vorher komplett flachen Text-Zeile einen echten
   // Lichtpunkt, ohne eigenes DOM-Element extra dafür zu brauchen.
-  els.weatherPanel.style.setProperty(
-    "--sky-glow",
-    WEATHER_GLOW_COLORS[fxCategory] || "rgba(255, 255, 255, 0.2)"
-  );
+  const glow = WEATHER_GLOW_COLORS[fxCategory] || "rgba(255, 255, 255, 0.2)";
+  els.weatherPanel.style.setProperty("--sky-glow", glow);
+  // Ausblenden in derselben Farbe statt nach "transparent": Safari 12
+  // rechnet Verläufe nach transparent über Schwarz (dunkler Saum).
+  els.weatherPanel.style.setProperty("--sky-glow-0", glow.replace(/,\s*[\d.]+\)$/, ", 0)"));
 }
 
 // Die nächsten 5 Tage als Kacheln: Tag, Symbol, Höchst-/Tiefstwert und
@@ -5431,6 +5528,15 @@ function isFollowedTeam(team, followedName) {
   return n.toLowerCase().indexOf((followedName || "").toLowerCase()) !== -1;
 }
 
+// "#1d9053" → "rgba(29, 144, 83, 0)": Endfarbe für Verläufe, die
+// ausblenden sollen. Safari 12 blendet nach "transparent" über Schwarz
+// (caniuse css-gradients, Anm. 2) – das gab dunkle Säume.
+function farbeOhneDeckkraft(hex) {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex || ""));
+  if (!m) return "rgba(91, 107, 120, 0)";
+  return "rgba(" + parseInt(m[1], 16) + ", " + parseInt(m[2], 16) + ", " + parseInt(m[3], 16) + ", 0)";
+}
+
 function teamColorFor(teamName) {
   const map = CONFIG.sportTeamColors || {};
   return map[teamName] || "#5b6b78";
@@ -5610,6 +5716,7 @@ function buildSportSlide(entry, index) {
   const slide = document.createElement("div");
   slide.className = "sport-slide" + (index === 0 ? " active" : "") + outcomeClass;
   slide.style.setProperty("--team-color", color);
+  slide.style.setProperty("--team-color-0", farbeOhneDeckkraft(color));
   slide.setAttribute("data-match", String(match.matchID));
 
   const glow = document.createElement("div");
@@ -5636,6 +5743,9 @@ function buildSportSlide(entry, index) {
 
   const matchup = document.createElement("div");
   matchup.className = "sport-slide-matchup";
+  // Torschützen beim letzten Ergebnis (FEEDBACK 10.10.): "80' Svensson"
+  // unter der Mannschaft, nur wenn OpenLigaDB alle Tore benannt hat.
+  const tore = score && window.FussballLive && FussballLive.torschuetzen ? FussballLive.torschuetzen(match) : null;
 
   [match.team1, match.team2].forEach(function (team, i) {
     if (i === 1) {
@@ -5669,6 +5779,12 @@ function buildSportSlide(entry, index) {
     nameEl.className = "sport-slide-team-name";
     nameEl.textContent = (team && (team.shortName || team.teamName)) || "?";
     teamEl.appendChild(nameEl);
+    if (tore && tore[i].length) {
+      const toreEl = document.createElement("span");
+      toreEl.className = "sport-live-tore";
+      toreEl.textContent = tore[i].join(" · ");
+      teamEl.appendChild(toreEl);
+    }
     matchup.appendChild(teamEl);
   });
 
@@ -6659,6 +6775,8 @@ function exitAmbientMode() {
 // Timer und beendet den Ambient-Modus sofort, falls gerade aktiv.
 function markUserActivity() {
   recentlyTouched = true;
+  // Für die Anwesenheit (ha.js, anwesenheit): wer die Tafel bedient, ist da.
+  window.tafelZuletztBedient = Date.now();
   armAmbientTimer();
   if (ambientActive) exitAmbientMode();
 }
@@ -6794,6 +6912,51 @@ function initPanelNav() {
 let stageSwipeStartX = null;
 let stageSwipeStartY = null;
 
+// ---------- Kein Gummiband beim Wischen (FEEDBACK 10.10. 12:37) ----------
+// Safari 12 kennt overscroll-behavior nicht: Ohne Sperre rutscht die ganze
+// Tafel beim senkrechten Wischen nach unten/oben und federt zurück. Jedes
+// touchmove wird abgefangen – außer in einem Bereich, der in diese
+// Richtung wirklich noch scrollen kann (Raumansicht, Einstellungen,
+// Listen). Am Rand eines solchen Bereichs wird ebenfalls gesperrt, sonst
+// zieht iOS dort doch wieder die Seite. Waagerechtes Wischen zum
+// Blättern wertet initStageSwipe über touchstart/touchend aus und braucht
+// kein natives Scrollen.
+const gummi = { box: null, x: 0, y: 0 };
+
+function scrollBereich(el) {
+  for (let e = el; e && e.nodeType === 1 && e !== document.body; e = e.parentElement) {
+    const cs = getComputedStyle(e);
+    if ((cs.overflowY === "auto" || cs.overflowY === "scroll") && e.scrollHeight > e.clientHeight + 1) return e;
+  }
+  return null;
+}
+
+function gummiStart(ev) {
+  const t = ev.touches && ev.touches[0];
+  if (!t) return;
+  gummi.x = t.clientX;
+  gummi.y = t.clientY;
+  gummi.box = scrollBereich(ev.target);
+}
+
+function gummiZug(ev) {
+  if (ev.touches && ev.touches.length > 1) { ev.preventDefault(); return; }
+  const t = ev.touches && ev.touches[0];
+  const box = gummi.box;
+  if (!t || !box || !document.documentElement.contains(box)) { ev.preventDefault(); return; }
+  const dx = t.clientX - gummi.x;
+  const dy = t.clientY - gummi.y;
+  if (Math.abs(dx) > Math.abs(dy)) { ev.preventDefault(); return; }
+  const oben = box.scrollTop <= 0;
+  const unten = box.scrollTop + box.clientHeight >= box.scrollHeight - 1;
+  if ((dy > 0 && oben) || (dy < 0 && unten)) ev.preventDefault();
+}
+
+function gummibandSperren() {
+  document.addEventListener("touchstart", gummiStart, { passive: true });
+  document.addEventListener("touchmove", gummiZug, { passive: false });
+}
+
 function initStageSwipe() {
   if (!els.stage) return;
 
@@ -6846,6 +7009,7 @@ function init() {
   initRadioBar();
   initPanelNav();
   initStageSwipe();
+  gummibandSperren();
   armAmbientTimer();
   // Home Assistant (ha.js/ha-panels.js) — ohne Token/Adresse ein No-Op.
   if (window.TafelHAUI) TafelHAUI.init();
