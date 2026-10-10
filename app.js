@@ -970,6 +970,7 @@ let rainStartMinutes = null;
 // (siehe tafelSnapshot weiter unten, lernen.js, ha-panels.js).
 let lastWeatherSnapshot = null;
 let lastDepartureSnapshot = [];
+let lastCalendarEvents = [];
 
 // ---------- Wetter-Icons als eigene SVGs statt Emoji ----------
 // Emoji-Wettericons (☀️🌧️🌙 …) rendern je nach Gerät/Systemschriftart
@@ -1455,7 +1456,7 @@ function updateWeather() {
   const url = "https://api.open-meteo.com/v1/forecast?latitude=" + CONFIG.weatherLat +
     "&longitude=" + CONFIG.weatherLon +
     "&current=temperature_2m,weather_code,is_day,relative_humidity_2m,apparent_temperature,wind_speed_10m" +
-    "&hourly=temperature_2m,weather_code" +
+    "&hourly=temperature_2m,weather_code,precipitation_probability" +
     "&minutely_15=precipitation,weather_code" +
     "&forecast_minutely_15=12" +
     "&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max" +
@@ -1478,6 +1479,14 @@ function updateWeather() {
       lo: data.daily && data.daily.temperature_2m_min ? Math.round(data.daily.temperature_2m_min[0]) : null,
       sunrise: data.daily && data.daily.sunrise && data.daily.sunrise[0] ? parseOpenMeteoLocal(data.daily.sunrise[0]).getTime() : null,
       sunset: data.daily && data.daily.sunset && data.daily.sunset[0] ? parseOpenMeteoLocal(data.daily.sunset[0]).getTime() : null,
+      // Stundenwerte für Tagesblick/"Morgen früh" (tagesblick.js), auf 72 h gekappt.
+      hourly: data.hourly && data.hourly.time ? {
+        time: data.hourly.time.slice(0, 72).map(function (t) { return parseOpenMeteoLocal(t).getTime(); }),
+        temp: (data.hourly.temperature_2m || []).slice(0, 72),
+        code: (data.hourly.weather_code || []).slice(0, 72),
+        pp: (data.hourly.precipitation_probability || []).slice(0, 72),
+      } : null,
+      isDay: isDay,
       at: Date.now(),
     };
 
@@ -2199,6 +2208,9 @@ function updateCalendar() {
       .sort(function (a, b) { return a.start.date.getTime() - b.start.date.getTime(); })
       .slice(0, CONFIG.calendarCount || 6);
 
+    lastCalendarEvents = upcoming.map(function (ev) {
+      return { title: ev.summary, start: ev.start.date.getTime(), allDay: !!ev.start.allDay, location: ev.location || "" };
+    });
     if (!upcoming.length) throw new Error("Keine anstehenden Termine gefunden");
 
     els.calendarList.innerHTML = "";
@@ -3811,7 +3823,9 @@ function tafelSnapshot() {
     rainStartMinutes: rainStartMinutes,
     departures: lastDepartureSnapshot,
     walkMinutes: walkMinutesToStop,
-    waste: waste ? { date: waste.date, text: formatWasteEntry(waste) } : null,
+    waste: waste ? { date: waste.date, text: formatWasteEntry(waste), type: waste.type, label: waste.label, shiftedBecause: waste.shiftedBecause } : null,
+    calendar: lastCalendarEvents,
+    commutePtMinutes: lastCommutePtMinutes,
   };
 }
 
@@ -4307,6 +4321,8 @@ const PANEL_AVAILABILITY = {
   home: function () { return haPanelAvailable("home"); },
   klima: function () { return haPanelAvailable("klima"); },
   medien: function () { return haPanelAvailable("medien"); },
+  // Tagesblick (tagesblick.js): morgens "Heute", abends "Morgen früh".
+  tagesblick: function () { return !!(window.TafelTag && TafelTag.available()); },
   // Video "tagesschau in 100 Sekunden" (clips.js): nur morgens/abends.
   tagesschau: function () { return !!(window.TafelClips && TafelClips.tagesschauAvailable()); },
 };
@@ -4315,7 +4331,7 @@ function haPanelAvailable(name) {
   return !!(window.TafelHAUI && TafelHAUI.panelAvailable(name));
 }
 
-const PANEL_IDS = ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events", "calendar", "home", "klima", "medien", "tagesschau"];
+const PANEL_IDS = ["departures", "commute", "weather", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events", "calendar", "home", "klima", "medien", "tagesschau", "tagesblick"];
 
 // Alle 11 Panels bleiben wegen der Crossfade-Optik dauerhaft im DOM (nur
 // opacity:0 + pointer-events:none statt display:none, siehe .panel-view-
@@ -4390,13 +4406,14 @@ function showPanel(name) {
 
   if (window.TafelHAUI) TafelHAUI.onPanelShown(name);
   if (window.TafelClips) TafelClips.onPanelShown(name);
+  if (window.TafelTag) TafelTag.onPanelShown(name);
   updateTopbarTitle(name);
 }
 
 // Einheitliche Kopfzeile (IDEEN R3): Titel des aktuellen Panels links,
 // Uhr rechts — statt je Panel woanders stehender Mini-Labels. Panels mit
 // eigenem großem Kopf (Home Assistant, Video) zeigen hier keinen Titel.
-const PANELS_OHNE_KOPFTITEL = ["home", "klima", "medien", "tagesschau", "weather"];
+const PANELS_OHNE_KOPFTITEL = ["home", "klima", "medien", "tagesschau", "weather", "tagesblick"];
 const PANELS_VOLLBILD = ["weather", "news", "sport", "tagesschau"];
 
 function updateTopbarTitle(name) {
@@ -4553,6 +4570,7 @@ const PANEL_NAV_META = {
   klima: { icon: "🌡️", label: "Raumklima" },
   medien: { icon: "🔊", label: "Medien" },
   tagesschau: { icon: "📺", label: "tagesschau in 100 s" },
+  tagesblick: { icon: "☀️", label: "Tagesblick" },
 };
 
 let panelNavOpen = false;
@@ -4839,6 +4857,7 @@ function init() {
   if (window.TafelHAUI) TafelHAUI.init();
   if (window.TafelLernen) TafelLernen.init();
   if (window.TafelClips) TafelClips.init();
+  if (window.TafelTag) TafelTag.init();
 
   tickClock();
   setInterval(tickClock, CONFIG.refreshClockMs);

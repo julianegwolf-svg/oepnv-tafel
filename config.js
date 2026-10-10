@@ -95,7 +95,7 @@ const CONFIG = {
   // Wochen nicht stur auswendig lernen lässt.
   // "home", "klima", "medien" sind die Home-Assistant-Panels — ohne
   // eingerichtetes HA werden sie automatisch übersprungen.
-  panelSequence: ["departures", "home", "commute", "weather", "klima", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events", "calendar", "medien", "tagesschau"],
+  panelSequence: ["departures", "tagesblick", "home", "commute", "weather", "klima", "news", "music", "sport", "quote", "trivia", "quiz", "riddle", "events", "calendar", "medien", "tagesschau"],
 
   // Anzeigedauer je Panel in Millisekunden. Fehlt ein Eintrag, gilt
   // panelDurationMs als Standard.
@@ -115,6 +115,7 @@ const CONFIG = {
     klima: 16 * 1000,
     medien: 15 * 1000,
     tagesschau: 105 * 1000, // Video läuft ~100 s
+    tagesblick: 20 * 1000,
   },
   panelDurationMs: 18 * 1000,
 
@@ -131,7 +132,7 @@ const CONFIG = {
   timeBasedPriority: [
     { // Vor der Arbeit: raus aus dem Haus zählt am meisten.
       startHour: 6, endHour: 9,
-      boost: ["departures", "commute", "weather", "klima"],
+      boost: ["tagesblick", "departures", "commute", "weather", "klima"],
       boostFactor: 1.6, muteFactor: 0.7,
     },
     { // Feierabend: der Weg nach Hause plus, ob man noch trocken ankommt.
@@ -141,7 +142,7 @@ const CONFIG = {
     },
     { // Abends zuhause: Unterhaltung/Wissen wichtiger als Pendel-Daten.
       startHour: 19, endHour: 23,
-      boost: ["home", "medien", "news", "music", "quiz", "trivia", "riddle", "events", "sport"],
+      boost: ["tagesblick", "home", "medien", "news", "music", "quiz", "trivia", "riddle", "events", "sport"],
       boostFactor: 1.3, muteFactor: 0.75,
     },
   ],

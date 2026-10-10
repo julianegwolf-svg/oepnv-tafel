@@ -1,0 +1,311 @@
+/* ---------------------------------------------------------------
+   tagesblick.css — "Heute" / "Morgen früh" (tagesblick.js)
+   Dunkles Designsystem (design.css), Fern-Infos ≥ 56 px.
+   --------------------------------------------------------------- */
+#panel-tagesblick.panel-view {
+  padding: 22px 24px 22px;
+  color: var(--c-text);
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(226, 166, 90, 0.12), rgba(226, 166, 90, 0) 55%),
+    radial-gradient(ellipse at 100% 100%, rgba(111, 179, 214, 0.08), rgba(111, 179, 214, 0) 50%),
+    var(--c-bg);
+}
+
+.tb-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.tb-head {
+  flex-shrink: 0;
+  max-width: 540px;
+  min-height: 74px;
+}
+
+.tb-title {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.tb-sub {
+  margin-top: 6px;
+  font-size: 18px;
+  color: var(--c-text-2);
+}
+
+.tb-grid {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  margin-top: 18px;
+  grid-gap: 14px;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-auto-rows: 1fr;
+}
+
+.tb-grid.n-1 {
+  grid-template-columns: 1fr;
+}
+
+.tb-grid.n-2,
+.tb-grid.n-4 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.tb-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 18px 20px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-l);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+
+/* Bei 5 Karten darf das Wetter breit: es ist die meistgestellte Frage. */
+.tb-grid.n-5 .tb-wetter {
+  grid-column: span 2;
+}
+
+.tb-eyebrow {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-accent);
+}
+
+.tb-big {
+  font-size: 60px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.tb-mid {
+  margin-top: 10px;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.tb-line {
+  margin-top: 8px;
+  font-size: 18px;
+  line-height: 1.35;
+  color: var(--c-text-2);
+}
+
+.tb-line.is-nass {
+  color: var(--c-cool);
+  font-weight: 700;
+}
+
+.tb-line.is-hinweis {
+  color: var(--c-warn);
+  font-weight: 600;
+}
+
+.tb-dim {
+  color: var(--c-text-3);
+}
+
+.tb-wetter-main {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.tb-wetter-icon {
+  display: block;
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+  margin-right: 14px;
+}
+
+.tb-wetter-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tb-wetter-text {
+  display: flex;
+  flex-direction: column;
+  margin-left: 20px;
+  font-size: 18px;
+  color: var(--c-text-2);
+}
+
+.tb-wetter-text b {
+  font-size: 24px;
+  color: var(--c-text);
+}
+
+.tb-bahn-main {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.tb-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  height: 46px;
+  margin-right: 16px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: var(--c-surface-3);
+  color: var(--c-text);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.tb-bahn-dest {
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tb-pill {
+  align-self: flex-start;
+  margin-top: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--c-surface-3);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.tb-pill.is-soon {
+  background: var(--c-warn);
+  color: #2b1d07;
+}
+
+.tb-pill.is-now {
+  background: var(--c-alert);
+  color: #fff;
+}
+
+.tb-termin-title {
+  margin-top: 6px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tb-frei .tb-big {
+  color: var(--c-ok);
+}
+
+.tb-muell {
+  border-color: rgba(var(--c-warn-rgb), 0.5);
+}
+
+/* Karten erscheinen beim Zeigen leicht gestaffelt (nur opacity/transform). */
+@keyframes tbIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#panel-tagesblick.active .tb-card {
+  animation: tbIn 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+#panel-tagesblick.active .tb-card:nth-child(2) { animation-delay: 0.08s; }
+#panel-tagesblick.active .tb-card:nth-child(3) { animation-delay: 0.16s; }
+#panel-tagesblick.active .tb-card:nth-child(4) { animation-delay: 0.24s; }
+#panel-tagesblick.active .tb-card:nth-child(5) { animation-delay: 0.32s; }
+
+.tb-hours {
+  display: flex;
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.tb-hour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+  border-radius: 12px;
+  background: var(--c-bg-2);
+}
+
+.tb-hour + .tb-hour {
+  margin-left: 8px;
+}
+
+.tb-hour-t {
+  font-size: 14px;
+  color: var(--c-text-3);
+}
+
+.tb-hour-i {
+  display: block;
+  width: 34px;
+  height: 34px;
+  margin: 4px 0;
+}
+
+.tb-hour-i svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tb-hour-v {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.tb-hour-p {
+  font-size: 13px;
+  color: var(--c-text-3);
+}
+
+.tb-hour-p.is-nass {
+  color: var(--c-cool);
+  font-weight: 700;
+}
+
+/* Komposition: das Wetter (immer die erste Karte) steht links über zwei
+   Reihen, die übrigen Karten rechts daneben — so bleibt der Wettertext
+   ungekürzt und die Stundenleiste hat Platz. */
+.tb-grid.n-3 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.tb-grid.n-4,
+.tb-grid.n-5 {
+  grid-template-columns: 1.15fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.tb-grid.n-3 .tb-wetter,
+.tb-grid.n-4 .tb-wetter,
+.tb-grid.n-5 .tb-wetter {
+  grid-row: span 2;
+  grid-column: auto;
+}

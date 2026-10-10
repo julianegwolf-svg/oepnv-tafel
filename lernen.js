@@ -389,6 +389,12 @@
     ablehnen: ablehnen,
     beschreibung: beschreibung,
     vergessen: vergessen,
+    // Gewohnte Uhrzeit (Minute des Tages) für einen Tag, z. B. "weg" =
+    // Losgehen — für "Morgen früh" im Tagesblick. null, wenn nicht gelernt.
+    typischeZeit: function (art, tag) {
+      const mu = musterHeute(art, tag);
+      return mu ? mu.minute : null;
+    },
     // Für Tests (Simulator mit Wochen-Verlauf): sofort neu lernen.
     neuLernen: function () { daten.haStand = 0; return haHolen(); },
     _daten: function () { return daten; },

@@ -2379,7 +2379,8 @@
     }
     const important = hints.filter(function (h) { return h.prio <= 2 && !h.vorschlag; })[0];
     if (important) second.push(important.text);
-    if (typeof jumpToPanel === "function") jumpToPanel("departures");
+    // Danach der Tagesblick ("Heute"), sonst die Abfahrten.
+    if (typeof jumpToPanel === "function") jumpToPanel(window.TafelTag && TafelTag.available() ? "tagesblick" : "departures");
     showGreeting("Guten Morgen", "Guten Morgen" + (who ? ", " + who : ""), [morningSentence()].concat(second), 9000);
   }
 
