@@ -2853,3 +2853,15 @@ body.ha-ruhe .ha-dot {
   opacity: 1;
   transform: scale(1);
 }
+
+/* Fenster offen + Heizung an: Temperaturzahl färbt sich langsam kühl
+   (AUSBAU 4) — die Wärme geht gerade zum Fenster raus. */
+.ha-room-temp,
+.ha-klima-temp {
+  transition: color 4s ease;
+}
+
+.ha-room.is-venting .ha-room-temp,
+.ha-klima.is-venting .ha-klima-temp {
+  color: var(--c-cool);
+}

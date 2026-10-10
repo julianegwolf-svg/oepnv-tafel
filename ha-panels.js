@@ -1141,6 +1141,8 @@
     let cls = "ha-room";
     if (lit) cls += " is-lit";
     if (sum.openIds.length) cls += " has-open";
+    // Fenster offen + Heizung an: Temperatur färbt sich langsam kühl.
+    if (sum.openIds.length && sum.heating) cls += " is-venting";
     const hasClimate = sum.temp != null || sum.hum != null;
 
     // Große Zeile: Raumklima, sonst Lichtzustand — beides aus 3 m lesbar.
@@ -1804,7 +1806,7 @@
         '<div><div class="ha-advice-text">' + esc(adv.text) + '</div><div class="ha-advice-detail num">' + esc(adv.detail) + "</div></div></div>";
     }
 
-    return '<div class="ha-klima' + (humid ? " is-humid" : "") + (wide ? " is-wide" : "") + '">' +
+    return '<div class="ha-klima' + (humid ? " is-humid" : "") + (wide ? " is-wide" : "") + (sum.openIds.length && sum.heating ? " is-venting" : "") + '">' +
       '<div class="ha-klima-top"><span class="ha-klima-name">' + esc(room.name) + "</span>" + badge + "</div>" +
       '<div class="ha-klima-values"><span class="ha-klima-temp num">' + digits(fmtTemp(sum.temp)) + "</span>" +
       (sum.hum != null ? '<span class="ha-klima-hum num' + (humid ? " is-warn" : "") + '">' + icon("drop") + digits(Math.round(sum.hum)) + " %</span>" : "") +
