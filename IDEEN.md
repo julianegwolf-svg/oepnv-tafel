@@ -1,6 +1,6 @@
 # IDEEN – SmartTafel, Panel für Panel (Bestandsaufnahme 10.10.2026)
 
-> **Stand 10.10.2026, 02:45:** ✅ = umgesetzt (Commit in Klammern), Vorher/Nachher in MORGEN.html. Geschmacksfragen sind als Varianten gebaut und in FRAGEN.md zur Wahl gestellt. Noch offen: A3 („Zur Arbeit“-Markierung in der Abfahrtszeile), R4 (Fortschrittsbalken unten).
+> **Stand 10.10.2026, 03:00:** ✅ = umgesetzt (Commit in Klammern), Vorher/Nachher in MORGEN.html. Geschmacksfragen sind als Varianten gebaut und in FRAGEN.md zur Wahl gestellt. Alle Ideen sind umgesetzt.
 
 Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768, Touch, iPad-Safari-12-Kennung, `?jetzt=2026-10-10T14:00`, Live-Daten, Termine mit Attrappen-Daten). Alle Maße sind CSS-px, gemessen im DOM. Farbnamen `--c-…`, `--f-…`, `--s-…`, `--r-…` stammen aus `design.css`.
 
@@ -42,7 +42,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
   - Doppelte Kicker entfallen.
 - *Warum:* Gleiches Raster überall. Man weiß sofort, wo man hinsehen muss.
 
-**R4 – Fortschrittsbalken** · S · Prio 3
+✅ **R4 – Fortschrittsbalken** · S · Prio 3 · umgesetzt (50952df)
 - *Stört:* 4 px Messing auf einer beigen Spur ganz oben (`progress-bar`). Auf dunklen Panels sieht man eine helle Linie über die volle Breite (`03-wetter.png` oben).
 - *Ändert sich:* 3 px `--c-accent` mit 50 % Deckkraft, keine Spur, am unteren Rand (y 765). In den letzten 3 s steht rechts unten „Als Nächstes: Wetter“ (14 px `--c-text-3`).
 - *Warum:* Ruhiger. Der Wechsel kommt nicht überraschend.
@@ -94,7 +94,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 - *Varianten:* (a) Banner behalten, aber 44 px hoch und 28 px Schrift, (b) Pille in der Zeile wie oben.
 - *Warum:* Handlungsaufforderung und Bahn stehen an einer Stelle statt an zweien.
 
-**A3 – „Zur Arbeit“-Markierung morgens** · S · Prio 2
+✅ **A3 – „Zur Arbeit“-Markierung morgens** · S · Prio 2 · umgesetzt (50952df)
 - *Stört:* Um 07:20 (`16-morgen-abfahrten.png`) sieht man nicht, welche Linie zur Arbeit fährt. Das weiß nur das Arbeitsweg-Panel (`itineraryLineNames`).
 - *Ändert sich:* Mo–Fr 6–9 Uhr bekommen Zeilen, deren Linie in der ÖPNV-Route vorkommt, ein Aktentaschen-Icon 24 px + „Arbeit an 07:52“ 18 px `--c-accent-2` unter dem Ziel.
 - *Warum:* Morgens ist das die einzige Frage, die man an die Tafel hat.
