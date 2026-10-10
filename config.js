@@ -495,7 +495,8 @@ const CONFIG = {
     // fertig, Batterie leer, nicht erreichbar …).
     hinweise: true,
     feuchteGrenze: 65, // % Luftfeuchte → "lüften" (Bad/Küche +10)
-    batterieGrenze: 20, // % → "Batterie fast leer"
+    batterieGrenze: 20, // % → "Batterie fast leer" (auf dem Zuhause-Panel)
+    batterieDringend: 10, // % → Hinweis auf allen Panels
     stromWarnungW: 3000, // Gesamtverbrauch, ab dem ein Hinweis kommt
     reaktionen: {
       bewegungWeckt: true, // Bewegung (Melder im Schlafzimmer) weckt aus Ambient/Tiefschlaf

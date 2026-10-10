@@ -2433,11 +2433,17 @@
       const v = HA.numState(HA.state(id));
       return v != null && v <= limit;
     });
+    // Unter der Grenze (20 %) halten Sensoren oft noch wochenlang – dann
+    // nur auf dem Zuhause-Panel (Prio 4). Auf allen Panels erst, wenn es
+    // wirklich knapp wird (≤ 10 % bzw. CFG.batterieDringend).
+    const dringend = CFG.batterieDringend || 10;
+    const minWert = low.reduce(function (m, id) { return Math.min(m, HA.numState(HA.state(id))); }, 100);
+    const batPrio = minWert <= dringend ? 2 : 4;
     if (low.length === 1) {
       const name = HA.name(low[0]).replace(/\s*(Batterie|Akku|Battery)(stand|\s*level)?\s*$/i, "");
-      out.push({ key: "batterie|" + low[0], prio: 2, icon: "battery", text: "Batterie fast leer: " + name + " (" + Math.round(HA.numState(HA.state(low[0]))) + " %)", ziel: "home" });
+      out.push({ key: "batterie|" + low[0], prio: batPrio, icon: "battery", text: "Batterie fast leer: " + name + " (" + Math.round(HA.numState(HA.state(low[0]))) + " %)", ziel: "home" });
     } else if (low.length > 1) {
-      out.push({ key: "batterie|mehrere", prio: 2, icon: "battery", text: low.length + " Geräte mit schwacher Batterie", ziel: "home" });
+      out.push({ key: "batterie|mehrere", prio: batPrio, icon: "battery", text: low.length + " Geräte mit schwacher Batterie", ziel: "home" });
     }
 
     // Nicht erreichbar erst nach 2 Minuten melden — bei einem HA-Neustart
