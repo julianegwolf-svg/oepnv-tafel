@@ -707,7 +707,10 @@
     const knob = dragging.el.querySelector(".ha-slider-knob");
     const label = dragging.el.querySelector(".ha-slider-value");
     if (fill) fill.style.transform = "scaleX(" + f.toFixed(3) + ")";
-    if (knob) knob.style.left = (f * 100).toFixed(1) + "%";
+    if (knob) {
+      knob.style.left = (f * 100).toFixed(1) + "%";
+      dragging.el.classList.toggle("is-wert-rechts", f < 0.45);
+    }
     if (label) label.textContent = sliderLabel(dragging.kind, dragging.id, f);
     if (!quiet) sliderQueue(dragging.kind, dragging.id, f, false);
   }
@@ -786,7 +789,9 @@
 
   function sliderHtml(kind, id, f, extraCls, disabled) {
     f = clamp(f || 0, 0, 1);
+    // Farbtemperatur: Griff links → Zahl rechts, damit er sie nicht verdeckt.
     return '<div class="ha-slider ha-slider-' + kind + (extraCls ? " " + extraCls : "") + (disabled ? " is-disabled" : "") +
+      (kind === "ct" && f < 0.45 ? " is-wert-rechts" : "") +
       '" data-act="regler" data-slider="' + kind + '" data-id="' + esc(id) + '">' +
       '<div class="ha-slider-track">' +
       (kind === "ct"

@@ -2970,3 +2970,22 @@ body.ha-ruhe .ha-dot {
 .ha-actions .ha-action:first-child:nth-last-child(5) ~ .ha-action .ha-action-name {
   font-size: 16px;
 }
+
+/* Szenennamen zweizeilig statt "Natürliches L…" / "Sonnenunter…". */
+.ha-scene .ha-scene-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+  line-height: 1.15;
+  overflow: hidden;
+}
+
+/* Farbtemperatur: Steht der Griff links, wandert die Zahl nach rechts –
+   vorher lag der Griff über der Zahl ("2|650 K"). */
+.ha-slider.is-wert-rechts .ha-slider-value {
+  margin-left: auto;
+  margin-right: 16px;
+}
