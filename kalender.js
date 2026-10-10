@@ -205,7 +205,18 @@
   }
 
   // Tage (1–31) eines Monats, die zur Regel passen; null = Regel greift nicht
-  function tageImMonat(r, j, mo, starttag) {
+  // BYSETPOS: Positionen aus der sortierten Kandidatenliste einer Periode
+  function setposAnwenden(liste, r) {
+    if (!r.bysetpos || !liste.length) return liste;
+    const aus = [];
+    r.bysetpos.forEach(function (p) {
+      const d = p > 0 ? liste[p - 1] : liste[liste.length + p];
+      if (d && aus.indexOf(d) === -1) aus.push(d);
+    });
+    return aus.sort(function (a, b) { return Date.UTC(a.j, a.mo, a.t) - Date.UTC(b.j, b.mo, b.t); });
+  }
+
+  function tageImMonat(r, j, mo, starttag, ohneSetpos) {
     const anzahl = new Date(Date.UTC(j, mo + 1, 0)).getUTCDate();
     let tage = [];
     if (r.bymonthday) {
@@ -233,7 +244,7 @@
     }
     tage.sort(function (a, b) { return a - b; });
     tage = tage.filter(function (t, i) { return i === 0 || tage[i - 1] !== t; });
-    if (r.bysetpos && tage.length) {
+    if (r.bysetpos && tage.length && !ohneSetpos) {
       const alle = tage;
       tage = [];
       r.bysetpos.forEach(function (p) {
@@ -266,7 +277,7 @@
         if (r.bymonth && r.bymonth.indexOf(d.getUTCMonth() + 1) === -1) continue;
         liste.push({ j: d.getUTCFullYear(), mo: d.getUTCMonth(), t: d.getUTCDate() });
       }
-      return liste;
+      return setposAnwenden(liste, r);
     }
     if (r.freq === "MONTHLY") {
       const m = new Date(Date.UTC(c.j, c.mo + k * r.interval, 1));
@@ -284,21 +295,40 @@
         .sort(function (a, b) { return a - b; })
         .map(function (d) { return { j: j, mo: d.getUTCMonth(), t: d.getUTCDate() }; });
     }
-    const monate = r.bymonth && r.bymonth.length ? r.bymonth.map(function (x) { return x - 1; }) : [c.mo];
+    const ganzesJahr = !(r.bymonth && r.bymonth.length) && !!(r.byday || r.bymonthday);
+    // "20. Montag des Jahres" (BYDAY mit Zahl, ohne BYMONTH): im ganzen Jahr zählen
+    if (ganzesJahr && r.byday && !r.bymonthday && r.byday.some(function (b) { return b.n; })) {
+      const tageImJahr = [];
+      r.byday.forEach(function (b) {
+        const alle = [];
+        for (let d = new Date(Date.UTC(j, 0, 1)); d.getUTCFullYear() === j; d = new Date(d.getTime() + TAG_MS)) {
+          if (d.getUTCDay() === b.wt) alle.push({ j: j, mo: d.getUTCMonth(), t: d.getUTCDate() });
+        }
+        if (!b.n) alle.forEach(function (x) { tageImJahr.push(x); });
+        else {
+          const x = b.n > 0 ? alle[b.n - 1] : alle[alle.length + b.n];
+          if (x) tageImJahr.push(x);
+        }
+      });
+      tageImJahr.sort(function (a, b) { return Date.UTC(a.j, a.mo, a.t) - Date.UTC(b.j, b.mo, b.t); });
+      return setposAnwenden(tageImJahr, r);
+    }
+    const monate = r.bymonth && r.bymonth.length ? r.bymonth.map(function (x) { return x - 1; })
+      : (ganzesJahr ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : [c.mo]);
     const liste = [];
     monate.sort(function (a, b) { return a - b; }).forEach(function (mo) {
       const nurStarttag = !r.byday && !r.bymonthday;
-      tageImMonat(r, j, mo, c.t).forEach(function (t) {
+      tageImMonat(r, j, mo, c.t, true).forEach(function (t) {
         // 29. Februar: nur in Schaltjahren (kein Ausweichen auf den 28.)
         if (nurStarttag && t !== c.t) return;
         liste.push({ j: j, mo: mo, t: t });
       });
     });
-    return liste;
+    return setposAnwenden(liste, r);
   }
 
   // Startzeitpunkte (ms) einer Serie bis bisMs, inkl. DTSTART als erstem
-  function serie(ev, bisMs) {
+  function serie(ev, vonMs, bisMs) {
     const r = ev.regel;
     const c = ev.c;
     const liste = [ev.startMs];
@@ -313,7 +343,16 @@
     }
     const grenze = Math.min(bisMs, untilMs);
     let gezaehlt = 1;
-    for (let k = 0; k < MAX_PERIODEN; k++) {
+    // Ohne COUNT muss nicht ab DTSTART gezählt werden: kurz vor dem Zeitraum
+    // einsteigen (Periodenlänge großzügig, damit nichts übersprungen wird).
+    // Sonst verschwand ein täglicher Termin seit 1965 (Notbremse) und eine
+    // alte Serie kostete bei jedem Abruf spürbar Rechenzeit.
+    let k0 = 0;
+    if (!r.count && vonMs > ev.startMs) {
+      const tage = { DAILY: 1, WEEKLY: 7, MONTHLY: 31, YEARLY: 366 }[r.freq] * r.interval;
+      k0 = Math.max(0, Math.floor((vonMs - ev.startMs) / (tage * TAG_MS)) - 2);
+    }
+    for (let k = k0; k < k0 + MAX_PERIODEN; k++) {
       // Periode beginnt erst hinter der Grenze → fertig (auch wenn die
       // Perioden davor leer waren, z. B. täglich nur im Dezember).
       if (periodenAnfang(r, c, k) > grenze + TAG_MS) break;
@@ -452,7 +491,7 @@
     termine.forEach(function (ev) {
       if (ev.status === "CANCELLED") return;
       const geaendert = ev.recurrenceId == null && ev.uid ? aenderungen[ev.uid] : null;
-      const starts = serie(ev, bisMs);
+      const starts = serie(ev, vonMs, bisMs);
       starts.forEach(function (s) {
         if (ev.exdates[s] || (ev.ganztags && ev.exdates[tagSchluessel(s)])) return;
         if (geaendert && (geaendert[s] || (ev.ganztags && geaendert["t" + tagSchluessel(s)]))) return;

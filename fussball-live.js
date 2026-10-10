@@ -19,7 +19,8 @@
 (function () {
   "use strict";
 
-  const CFG = (window.CONFIG && CONFIG.fussballLive) || {};
+  // const CONFIG (config.js) ist keine window-Eigenschaft – daher typeof
+  const CFG = (typeof CONFIG !== "undefined" && CONFIG.fussballLive) || {};
   const TAKT_MS = CFG.taktMs || 45000;
   const VORLAUF_MS = 30 * 60000;
   const ABRUF_AB_MS = 10 * 60000;
@@ -108,14 +109,17 @@
       const alt = spiele[m.matchID];
       if (alt) {
         // Live-Daten nicht durch den älteren 30-min-Abruf überschreiben
-        if (!alt.abgerufen) alt.m = m;
+        if (!alt.abgerufen) { alt.m = m; alt.gemeldet = jetzt; }
         if (teamRang(teamName) < alt.rang) { alt.team = teamName; alt.rang = teamRang(teamName); }
         return;
       }
-      spiele[m.matchID] = { m: m, team: teamName, rang: teamRang(teamName), tore: null, abgerufen: 0, fehlerSeit: 0, endeSeit: m.matchIsFinished ? Math.min(jetzt, k + 110 * 60000) : 0 };
+      spiele[m.matchID] = { m: m, team: teamName, rang: teamRang(teamName), tore: null, abgerufen: 0, gemeldet: jetzt, fehlerSeit: 0, endeSeit: m.matchIsFinished ? Math.min(jetzt, k + 110 * 60000) : 0 };
     });
     Object.keys(spiele).forEach(function (id) {
-      if (phase(spiele[id], jetzt) === "weg" && jetzt - anstoss(spiele[id].m).getTime() > 0) delete spiele[id];
+      if (phase(spiele[id], jetzt) === "weg" && jetzt - anstoss(spiele[id].m).getTime() > 0) {
+        delete spiele[id];
+        Object.keys(gefeiert).forEach(function (k) { if (k.indexOf(id + "-") === 0) delete gefeiert[k]; });
+      }
     });
     render();
     planen();
@@ -242,8 +246,11 @@
   function chipText(e, ph, jetzt) {
     const s = e.tore || standVon(e.m);
     const paar = kurzName(e.m.team1) + " " + s[0] + ":" + s[1] + " " + kurzName(e.m.team2);
-    const alt = e.fehlerSeit && jetzt - e.abgerufen > 3 * 60000 && e.abgerufen
-      ? " · Stand " + new Date(e.abgerufen).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
+    // Live-Abruf scheitert: ehrlich, von wann der Stand ist (letzter
+    // erfolgreicher Live-Abruf, sonst der 30-min-Abruf von app.js)
+    const standZeit = e.abgerufen || e.gemeldet;
+    const alt = e.fehlerSeit && standZeit && jetzt - standZeit > 3 * 60000
+      ? " · Stand " + new Date(standZeit).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
     if (ph === "vorlauf") {
       return { wort: "", text: "Heute " + anstoss(e.m).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " · " + kurzName(e.m.team1) + " – " + kurzName(e.m.team2) };
     }

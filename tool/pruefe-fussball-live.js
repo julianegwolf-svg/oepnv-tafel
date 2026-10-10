@@ -14,6 +14,10 @@ const path = require("path");
 const arg = (n) => { const i = process.argv.indexOf("--" + n); return i !== -1 ? (process.argv[i + 1] || true) : null; };
 const OUT = arg("out") || "belege/fussball-live";
 const ANSTOSS = new Date(2026, 9, 17, 15, 30).getTime();
+// --aus: config.js mit fussballLive.aktiv=false ausliefern → kein Chip, kein Live-Abruf
+const AUS = process.argv.indexOf("--aus") !== -1;
+// --ausfall: Live-Abruf scheitert ab Anstoß → Chip muss „Stand …“ zeigen
+const AUSFALL = process.argv.indexOf("--ausfall") !== -1;
 const MIN = 60000;
 let fehler = 0;
 function log(ok, text) { if (!ok) fehler++; console.log((ok ? "✓ " : "✗ ") + text); }
@@ -53,15 +57,45 @@ function spiel() {
     const team = decodeURIComponent(/getmatchesbyteam\/([^/]+)/.exec(r.request().url())[1]);
     r.fulfill(json(/werder/i.test(team) ? [spiel()] : []));
   });
-  await page.route(/api\.openligadb\.de\/getmatchdata\//, (r) => { liveAbrufe++; r.fulfill(json([spiel()])); });
+  await page.route(/api\.openligadb\.de\/getmatchdata\//, (r) => {
+    liveAbrufe++;
+    if (AUSFALL) r.fulfill({ status: 503, headers: { "Access-Control-Allow-Origin": "*" }, body: "" });
+    else r.fulfill(json([spiel()]));
+  });
+  if (AUS) {
+    const cfg = fs.readFileSync(path.join(__dirname, "..", "config.js"), "utf8").replace("fussballLive: { aktiv: true", "fussballLive: { aktiv: false");
+    await page.route(/\/config\.js/, (r) => r.fulfill({ status: 200, contentType: "application/javascript", body: cfg }));
+  }
 
+  const chip = () => page.evaluate(() => { const c = document.querySelector("#liveHints .fussball-hint"); return c ? c.textContent : ""; });
   const pad = (n) => String(n).padStart(2, "0");
   const zeit = (ms) => { const d = new Date(ms); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
   await page.goto("http://localhost:8765/index.html?jetzt=2026-10-17T15:05");
+  if (AUS) {
+    await page.waitForTimeout(8000);
+    await page.evaluate((t) => debugZeit.springe(t), ANSTOSS + 23 * MIN);
+    tore.push({ s1: 1, s2: 0, min: 22, name: "Ducksch", team: 134 });
+    await page.evaluate(() => FussballLive.takt());
+    await page.waitForTimeout(800);
+    const c = await chip();
+    log(c === "" && liveAbrufe === 0 && (await page.evaluate(() => FussballLive.anzahl())) === 0, "fussballLive.aktiv=false: kein Chip, kein Live-Abruf, keine Spiele gemerkt");
+    await browser.close();
+    console.log(fehler ? "\nFEHLER ✗ (" + fehler + ")" : "\nALLES ✓");
+    process.exit(fehler ? 1 : 0);
+  }
   await page.waitForFunction(() => window.FussballLive && FussballLive.anzahl() > 0, null, { timeout: 30000 });
+  if (AUSFALL) {
+    await page.evaluate((t) => debugZeit.springe(t), ANSTOSS + 30 * MIN);
+    await page.evaluate(() => FussballLive.takt());
+    await page.waitForTimeout(800);
+    const c = await chip();
+    log(/Bremen 0:0 Paderborn · ~31' · Stand 15:0\d$/.test(c), "Live-Abruf scheitert: Chip nennt den Stand des letzten Abrufs („" + c + "“)");
+    await browser.close();
+    console.log(fehler ? "\nFEHLER ✗ (" + fehler + ")" : "\nALLES ✓");
+    process.exit(fehler ? 1 : 0);
+  }
   await page.evaluate(() => { CONFIG.nightDim = null; CONFIG.nightSleep = null; localStorage.setItem("tafelMorgengruss", "x"); });
 
-  const chip = () => page.evaluate(() => { const c = document.querySelector("#liveHints .fussball-hint"); return c ? c.textContent : ""; });
   const lage = () => page.evaluate(() => {
     const s = document.querySelector('#sportBlock .sport-slide[data-match="83207"]');
     return {

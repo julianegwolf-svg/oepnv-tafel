@@ -159,6 +159,14 @@ const faelle = [
   ["Alle 3 Wochen So+Mo, Wochenbeginn Sonntag", cal([ev(["UID:x4", "SUMMARY:Familie", "DTSTART;TZID=Europe/Berlin:20260104T080000", "RRULE:FREQ=WEEKLY;INTERVAL=3;WKST=SU;BYDAY=SU,MO"])], TZ_BERLIN)],
   ["Täglich, aber nur im Dezember", cal([ev(["UID:x5", "SUMMARY:Adventskalender", "DTSTART;TZID=Europe/Berlin:20201201T070000", "RRULE:FREQ=DAILY;BYMONTH=12"])], TZ_BERLIN)],
   ["Jährlich am 100. und letzten Tag des Jahres", cal([ev(["UID:x6", "SUMMARY:Jahrestage", "DTSTART;TZID=Europe/Berlin:20260101T070000", "RRULE:FREQ=YEARLY;BYYEARDAY=100,-1"])], TZ_BERLIN)],
+  // Szenarien aus dem Code-Review Sitzung 6
+  ["Review: jährlich jeden Montag (YEARLY;BYDAY=MO)", cal([ev(["UID:r1", "SUMMARY:Montag", "DTSTART;TZID=Europe/Berlin:20260105T080000", "RRULE:FREQ=YEARLY;BYDAY=MO"])], TZ_BERLIN)],
+  ["Review: jährlich jeden 1. des Monats (YEARLY;BYMONTHDAY=1)", cal([ev(["UID:r2", "SUMMARY:Erster", "DTSTART;VALUE=DATE:20260101", "RRULE:FREQ=YEARLY;BYMONTHDAY=1"])])],
+  ["Review: letzter Sonntag im März/Oktober, BYSETPOS je Jahr", cal([ev(["UID:r3", "SUMMARY:Uhr umstellen", "DTSTART;VALUE=DATE:20260329", "RRULE:FREQ=YEARLY;BYMONTH=3,10;BYDAY=SU;BYSETPOS=-1"])])],
+  ["Review: wöchentlich Mo–Mi, nur der letzte (WEEKLY;BYSETPOS=-1)", cal([ev(["UID:r4", "SUMMARY:Mittwoch", "DTSTART;TZID=Europe/Berlin:20260105T080000", "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE;BYSETPOS=-1"])], TZ_BERLIN)],
+  ["Review: täglich seit 1965 (Notbremse ab Zeitraum)", cal([ev(["UID:r5", "SUMMARY:Tagebuch", "DTSTART;TZID=Europe/Berlin:19650101T210000", "RRULE:FREQ=DAILY"])], TZ_BERLIN)],
+  ["Review: 20. Montag des Jahres (YEARLY;BYDAY=20MO)", cal([ev(["UID:r6", "SUMMARY:Zwanzigster", "DTSTART;VALUE=DATE:20260518", "RRULE:FREQ=YEARLY;BYDAY=20MO"])])],
+  ["Review: 00:00 ohne Dauer", cal([ev(["UID:r7", "SUMMARY:Müll", "DTSTART;TZID=Europe/Berlin:20261012T000000"])], TZ_BERLIN)],
 ];
 
 let alleOk = true;

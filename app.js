@@ -2433,18 +2433,22 @@ function musicMovement(results) {
   };
 }
 
+function attrWert(t) {
+  return String(t || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
 function renderMusicTwoColumns(results, info) {
   const move = musicMovement(results);
   const top = results[0];
   let html = '<div class="music2"><div class="music2-hero">' +
-    '<img class="music2-cover" alt="" src="' + (top.artworkBig || "") + '">' +
+    '<img class="music2-cover" alt="" src="' + attrWert(top.artworkBig) + '">' +
     '<span class="music2-tag"></span>' +
     '<span class="music2-title"></span><span class="music2-artist"></span><span class="music2-quelle"></span></div><div class="music2-list">';
   results.slice(1, 10).forEach(function (song, i) {
     const m = move(song.id, i + 1);
     html += '<div class="music2-row"><span class="music2-rank">' + (i + 2) + "</span>" +
       '<span class="music2-move' + (m ? " is-" + m : "") + '">' + (m === "auf" ? "▲" : (m === "ab" ? "▼" : (m === "neu" ? "neu" : ""))) + "</span>" +
-      '<img class="music2-art" alt="" src="' + (song.artworkUrl100 || "") + '">' +
+      '<img class="music2-art" alt="" src="' + attrWert(song.artworkUrl100) + '">' +
       '<span class="music2-text"><span class="music2-t"></span><span class="music2-a"></span></span></div>';
   });
   html += "</div></div>";
@@ -2993,7 +2997,8 @@ function updateCalendar() {
       .slice(0, CONFIG.calendarCount || 6)
       .map(function (t) {
         const laeuft = t.start < heuteMs;
-        const mehrtaegig = t.ganztags ? t.ende - t.start > 26 * 3600000 : new Date(t.ende - 1).toDateString() !== new Date(t.start).toDateString();
+        const mehrtaegig = t.ganztags ? t.ende - t.start > 26 * 3600000
+          : t.ende > t.start && new Date(t.ende - 1).toDateString() !== new Date(t.start).toDateString();
         let bis = "";
         if (mehrtaegig) {
           const e = new Date(t.ganztags ? t.ende - 12 * 3600000 : t.ende);
@@ -3339,27 +3344,35 @@ let triviaRevealTimer = null;
 // echten Antwort mischen.
 function buildTriviaChoices(correctYear) {
   const thisYear = new Date().getFullYear();
-  const offsets = [];
-  // Höchstens 200 Würfe: Für Jahre, um die herum es keine zwei gültigen
-  // Kandidaten gibt (vor Christus kommt aus dem Feed als negative Zahl),
-  // lief die Schleife vorher endlos und fror die Tafel ein. Danach feste
-  // Abstände als Rückfall.
-  for (let versuch = 0; offsets.length < 2 && versuch < 200; versuch++) {
-    const sign = Math.random() < 0.5 ? -1 : 1;
-    // In Fünferschritten (10–75 Jahre): Die Hauptseite nimmt runde
-    // Jahrestage, 2026 enden die richtigen Jahre also auf 1 oder 6 – mit
-    // beliebigen Abständen wäre die Lösung an der Endziffer zu erkennen.
-    const delta = sign * 5 * (2 + Math.floor(Math.random() * 14));
-    const candidate = correctYear + delta;
-    if (candidate === correctYear || candidate < 1 || candidate > thisYear) continue;
-    if (offsets.indexOf(candidate) !== -1) continue;
-    offsets.push(candidate);
+  // Kandidaten in Fünferschritten (5–75 Jahre daneben): Die Hauptseite nimmt
+  // runde Jahrestage, 2026 enden die richtigen Jahre also auf 1 oder 6 – mit
+  // beliebigen Abständen wäre die Lösung an der Endziffer zu erkennen.
+  // Höchstens bis Vorjahr ("vor 0 Jahren" wäre keine Antwort). Feste Liste
+  // statt Würfeln bis zum Erfolg – vorher lief eine Schleife für Jahre v. Chr.
+  // endlos und fror die Tafel ein.
+  const unten = [];
+  const oben = [];
+  for (let k = 1; k <= 15; k++) {
+    if (correctYear - 5 * k >= 1) unten.push(correctYear - 5 * k);
+    if (correctYear + 5 * k >= 1 && correctYear + 5 * k <= thisYear - 1) oben.push(correctYear + 5 * k);
   }
-  for (let k = 1; offsets.length < 2 && k < 100; k++) {
-    const c = correctYear + (k % 2 ? 1 : -1) * 10 * Math.ceil(k / 2);
-    if (c !== correctYear && offsets.indexOf(c) === -1 && c <= thisYear) offsets.push(c);
+  // Erst auslosen, die wievielte von drei (nach Jahr sortiert) die richtige
+  // ist – sonst wäre bei jungen Ereignissen die jüngste Zahl fast immer richtig.
+  let unter = Math.floor(Math.random() * 3); // so viele falsche liegen darunter
+  unter = Math.max(2 - oben.length, Math.min(unter, unten.length));
+  const ziehe = function (liste, n) {
+    const pool = liste.slice();
+    const aus = [];
+    while (aus.length < n && pool.length) aus.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    return aus;
+  };
+  let falsch = ziehe(unten, unter).concat(ziehe(oben, 2 - unter));
+  // Notfall (sehr junges und sehr altes Jahr zugleich gibt es nicht, aber sicher ist sicher)
+  for (let d = 1; falsch.length < 2 && d < 100; d++) {
+    const c = correctYear - d;
+    if (c >= 1 && falsch.indexOf(c) === -1) falsch.push(c);
   }
-  const all = [correctYear, offsets[0], offsets[1]];
+  const all = [correctYear].concat(falsch.slice(0, 2));
   for (let i = all.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     const tmp = all[i]; all[i] = all[j]; all[j] = tmp;
@@ -3376,13 +3389,16 @@ function buildTriviaChoices(correctYear) {
 function jahrestagLesen(zeile) {
   let bild = null;
   let t = zeile.replace(/^\*\s*/, "");
-  t = t.replace(/<div[^>]*>\s*\[\[(?:Datei|File|Bild):([^|\]]+)\|([^\]]*)\]\]\s*<\/div>/, function (_, datei, rest) {
+  // Unterschrift darf selbst [[Links]] enthalten (8.6.: „[[Die Gartenlaube|Gartenlaube]]“)
+  t = t.replace(/<div[^>]*>\s*\[\[(?:Datei|File|Bild):([^|\]]+)\|((?:[^\[\]]|\[\[[^\]]*\]\])*)\]\]\s*<\/div>/, function (_, datei, rest) {
     const g = /\{\{Bildgr(?:ö|oe)(?:ß|ss)e\|[^|}]*\|(\d+)\|(\d+)\}\}/.exec(rest);
-    const teile = rest.replace(/\{\{[^}]*\}\}/g, "").split("|").filter(function (x) { return x && x.indexOf("alt=") !== 0; });
+    const ohneLinks = rest.replace(/\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/g, "$1");
+    const teile = ohneLinks.replace(/\{\{[^}]*\}\}/g, "").split("|").filter(function (x) { return x && x.indexOf("alt=") !== 0; });
     bild = { datei: datei.trim(), w: g ? +g[1] : 4, h: g ? +g[2] : 3, titel: teile.length ? teile[teile.length - 1].trim() : "" };
     return "";
   });
-  const j = /\{\{Jahrestag\|(-?\d{1,4})(?:\|[^}]*)?\}\}/.exec(t);
+  // auch "{{Jahrestag| 1851}}" und "{{jahrestag|1986}}" (11.3., 17.4., 1.7., 5.8.)
+  const j = /\{\{\s*[Jj]ahrestag\s*\|\s*(-?\d{1,4})\s*(?:\|[^}]*)?\}\}/.exec(t);
   if (!j) return null;
   t = t.replace(j[0], "");
   t = t.replace(/<small>\s*\(Bild\)\s*<\/small>/g, "")
@@ -3409,13 +3425,18 @@ function jahrestagLesen(zeile) {
     const ziel = m[1].split("#")[0].trim();
     const label = m[2] != null ? m[2] : m[1];
     const ort = /(?:^|\s)(?:in|im|In|Im|nach|aus|bei|heute|auf)\s*$/.test(aus);
-    if (ziel && !ort && !/^\d{1,4}$/.test(ziel) && !/^\d{1,2}\.\s/.test(ziel) && ziel.indexOf(":") === -1) links.push(ziel);
+    // Artikel mit Jahreszahl im Titel („Nationalratswahl in Österreich 1971“)
+    // nicht als Bild – Titel und Bild nennen sonst die Lösung.
+    if (ziel && !ort && !/\d{3,4}/.test(ziel) && !/^\d{1,2}\.\s/.test(ziel) && ziel.indexOf(":") === -1) links.push(ziel);
     aus += label;
     pos = re.lastIndex;
   }
   aus += t.slice(pos);
   const text = decodeHtmlEntities(aus).replace(/\s+/g, " ").replace(/\s([,.;:])/g, "$1").trim();
   if (text.length < 20) return null;
+  // Nennt der Satz das Jahr selbst („… Eurovision Song Contest 2006“), wäre
+  // die Lösung vorweggenommen – dann nicht raten lassen.
+  if (new RegExp("(^|\\D)" + Math.abs(+j[1]) + "(\\D|$)").test(text)) return null;
   return { text: text, year: +j[1], bild: bild, links: links };
 }
 
@@ -3517,7 +3538,10 @@ function renderTriviaBild(block) {
   fig.appendChild(rahmen);
   if (b.titel) {
     const cap = document.createElement("figcaption");
-    cap.textContent = b.titel;
+    // Jahreszahlen bis zur Auflösung verdeckt („Juri Gagarin im April …“)
+    cap.className = "trivia-bild-titel";
+    cap.setAttribute("data-voll", b.titel);
+    cap.textContent = b.titel.replace(/\b\d{3,4}\b/g, "…");
     fig.appendChild(cap);
   }
   block.appendChild(fig);
@@ -3539,6 +3563,8 @@ function triviaDatumText(aufgeloest) {
 function triviaAufloesungZeigen() {
   const el = document.getElementById("triviaDateLabel");
   if (el) el.textContent = triviaDatumText(true);
+  const cap = els.triviaBlock && els.triviaBlock.querySelector(".trivia-bild-titel");
+  if (cap) cap.textContent = cap.getAttribute("data-voll") || cap.textContent;
 }
 
 function renderTriviaShell() {
@@ -3647,7 +3673,8 @@ function updateTrivia() {
     const bremen = (window.BREMER_TAGE || []).filter(function (e) {
       return e.datum === ("0" + (now.getMonth() + 1)).slice(-2) + "-" + ("0" + now.getDate()).slice(-2);
     }).map(function (e) {
-      return { text: e.text, year: e.jahr, bild: null, links: e.bildArtikel ? [e.bildArtikel] : [], bremen: true };
+      // „Bremen (Schiff, 1929)“ als Bildtitel wäre die Lösung
+      return { text: e.text, year: e.jahr, bild: null, links: e.bildArtikel && !/\d{3,4}/.test(e.bildArtikel) ? [e.bildArtikel] : [], bremen: true };
     });
     const alle = bremen.concat(liste);
     if (alle.length < 2) throw new Error("Jahrestage: zu wenige Einträge für " + seite);
@@ -5721,6 +5748,7 @@ function buildSportNewsSlide(item, index) {
   content.appendChild(badge);
   const alter = document.createElement("span");
   alter.className = "news-slide-alter num";
+  alter.setAttribute("data-ms", String(newsZeitMs(item)));
   alter.textContent = newsAlterText(newsZeitMs(item));
   content.appendChild(alter);
 
@@ -5739,7 +5767,9 @@ function buildSportNewsSlide(item, index) {
   if (item.firstSentence) {
     const bodyEl = document.createElement("div");
     bodyEl.className = "news-slide-body";
-    bodyEl.innerHTML = "<p>" + item.firstSentence + "</p>";
+    const p = document.createElement("p");
+    p.textContent = String(item.firstSentence).replace(/<[^>]*>?/g, "");
+    bodyEl.appendChild(p);
     content.appendChild(bodyEl);
   }
 
@@ -5879,7 +5909,15 @@ function fetchFootballNews() {
       const jetzt = Date.now();
       // Frischeste zuerst, nichts älter als 3 Tage, höchstens 2 je Verein
       // (Werder darf 3 – Julians Verein).
-      const alle = [].concat.apply([], pools).filter(function (it) { return jetzt - newsZeitMs(it) <= 3 * 86400000; });
+      // Dieselbe Meldung steht oft in zwei Vereins-Feeds (Werder – BVB)
+      const gesehen = {};
+      const alle = [].concat.apply([], pools).filter(function (it) {
+        if (jetzt - newsZeitMs(it) > 3 * 86400000) return false;
+        const k = it.externalId || it.title;
+        if (gesehen[k]) return false;
+        gesehen[k] = true;
+        return true;
+      });
       alle.sort(function (a, b) { return newsZeitMs(b) - newsZeitMs(a); });
       const jeTeam = {};
       return alle.filter(function (it) {
@@ -5941,6 +5979,8 @@ function showSportSlide(index) {
     if (i === index) slides[i].className += " active";
   }
   applySlideMediaSwap(slides, index, 850);
+  const alter = slides[index] && slides[index].querySelector(".news-slide-alter");
+  if (alter) alter.textContent = newsAlterText(Number(alter.getAttribute("data-ms")));
 
   // Gleiche Fortschritts-Punkte wie bei der News-Diashow (siehe
   // showNewsSlide) — bisher auch hier nicht erkennbar, wie viele Karten
