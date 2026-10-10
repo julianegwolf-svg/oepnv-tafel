@@ -3661,3 +3661,53 @@ html, body {
   font-size: 200px;
   line-height: 0.9;
 }
+
+
+/* ---------- Fußball (IDEEN F2) ----------
+   Wappen 150 px ohne dunkle Kachel, Ergebnis 88 px, Anstoß als Fern-Info. */
+.sport-slide-crest {
+  width: 150px;
+  height: 150px;
+  box-shadow: none;
+}
+
+.sport-slide-team-name {
+  margin-top: 16px;
+  font-size: 22px;
+}
+
+.sport-slide-center {
+  width: 200px;
+  padding-top: 48px;
+}
+
+.sport-slide-score {
+  font-size: 88px;
+  line-height: 1;
+}
+
+.sport-slide-vs {
+  font-size: 26px;
+}
+
+.sport-slide-kickoff {
+  margin-top: 30px;
+  font-size: 48px;
+  font-weight: 800;
+  text-align: center;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.sport-slide-meta {
+  margin-top: 10px;
+  font-size: 18px;
+}
+
+/* Heller Hof hinter dem Wappen: dunkle Wappenteile (z. B. schwarze
+   Schrift) bleiben auf dem dunklen Grund erkennbar. */
+.sport-slide-crest {
+  padding: 10px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.18) 70%, rgba(255, 255, 255, 0));
+}

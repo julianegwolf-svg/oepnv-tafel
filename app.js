@@ -4414,6 +4414,18 @@ function buildCrestImg(team) {
 // Erscheinen sanft rein. Score/Ergebnis groß und farblich nach Sieg/
 // Niederlage/Unentschieden eingefärbt, bei einem anstehenden Spiel steht
 // dort stattdessen "VS" und unten Datum/Uhrzeit.
+function kickoffLabel(d) {
+  const now = new Date();
+  const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const d0 = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((d0 - t0) / 86400000);
+  const hm = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  if (d.getTime() <= now.getTime()) return "Läuft gerade";
+  if (days === 0) return "Heute " + hm;
+  if (days === 1) return "Morgen " + hm;
+  return d.toLocaleDateString("de-DE", { weekday: "short" }) + " " + hm + " · in " + days + " Tagen";
+}
+
 function buildSportSlide(entry, index) {
   const useNext = !!entry.next;
   const match = useNext ? entry.next : entry.last;
@@ -4493,6 +4505,15 @@ function buildSportSlide(entry, index) {
 
   content.appendChild(matchup);
 
+  // Anstoß als Fern-Info (IDEEN F2): "Morgen 15:30" / "Heute 20:30" /
+  // "Sa 15:30 · in 3 Tagen" groß, das genaue Datum klein darunter.
+  if (useNext) {
+    const kick = new Date(match.matchDateTime);
+    const big = document.createElement("div");
+    big.className = "sport-slide-kickoff";
+    big.textContent = kickoffLabel(kick);
+    content.appendChild(big);
+  }
   const meta = document.createElement("div");
   meta.className = "sport-slide-meta";
   meta.textContent = formatMatchDate(match.matchDateTime);
