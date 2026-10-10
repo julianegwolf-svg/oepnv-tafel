@@ -617,8 +617,18 @@
     }).catch(function () {});
   }
 
+  // Höchstens drei Listen abonnieren – aber die, die die Tafel zeigt
+  // (eingestellte Einkaufsliste bzw. "einkauf|shopping"), immer zuerst.
   function syncTodos(c) {
-    const ids = model().global.todos.slice(0, 3);
+    const cfg = typeof CONFIG !== "undefined" && CONFIG.homeAssistant ? CONFIG.homeAssistant.einkaufsliste : "";
+    const alle = model().global.todos;
+    const rang = function (id) {
+      if (cfg && id === cfg) return 0;
+      return /einkauf|shopping/i.test(id + " " + friendlyName(id)) ? 1 : 2;
+    };
+    const ids = alle.slice().sort(function (a, b) {
+      return (rang(a) - rang(b)) || (alle.indexOf(a) - alle.indexOf(b));
+    }).slice(0, 3);
     ids.forEach(function (id) {
       todoSubscribed[id] = false;
       c.request({ type: "todo/item/subscribe", entity_id: id }, REQUEST_TIMEOUT_MS, function (ev) {
