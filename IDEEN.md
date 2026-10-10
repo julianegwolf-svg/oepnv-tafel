@@ -1,5 +1,7 @@
 # IDEEN – SmartTafel, Panel für Panel (Bestandsaufnahme 10.10.2026)
 
+> **Stand 10.10.2026, 02:45:** ✅ = umgesetzt (Commit in Klammern), Vorher/Nachher in MORGEN.html. Geschmacksfragen sind als Varianten gebaut und in FRAGEN.md zur Wahl gestellt. Noch offen: A3 („Zur Arbeit“-Markierung in der Abfahrtszeile), R4 (Fortschrittsbalken unten).
+
 Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768, Touch, iPad-Safari-12-Kennung, `?jetzt=2026-10-10T14:00`, Live-Daten, Termine mit Attrappen-Daten). Alle Maße sind CSS-px, gemessen im DOM. Farbnamen `--c-…`, `--f-…`, `--s-…`, `--r-…` stammen aus `design.css`.
 
 **Maßstab „3–4 m“:** Auf dem iPad Air ist 1 CSS-px ≈ 0,19 mm. Eine Fern-Info braucht auf 3,5 m etwa 7–8 mm Versalhöhe (≈ 2× Sehschärfegrenze). Daraus folgt:
@@ -14,7 +16,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 0. Rahmen (gilt für alle Panels)
 
-**R1 – Farbwelt dunkel statt beige** · L · Prio 1 · → Varianten zeigen
+✅ **R1 – Farbwelt dunkel statt beige** · L · Prio 1 · → Varianten zeigen · umgesetzt (7494901)
 - *Stört:* Grund `#f4f2ee` mit weißen Karten `rgba(255,255,255,.86)`. Abends ist die Tafel die hellste Fläche im Raum. Nebentexte `#767267` haben nur 4,3–4,7:1 (z. B. „Los bis 14:00“ in `01-abfahrten.png`, „mit Auto zu …“ in `02-arbeitsweg.png`). Wetter, Fußball und Nachrichten sind schon dunkel, der Rest hell, deshalb wechselt die Helligkeit im Karussell ständig (`03-wetter.png` ↔ `05-musik.png`).
 - *Ändert sich:*
   - Grund `--c-bg #0d1219`, Karten `--c-surface #18212d` ohne Schatten, mit 1 px `--c-line`.
@@ -24,7 +26,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 - *Warum:* Ein Look für alle Panels, doppelter Kontrast, kein Helligkeitsflackern beim Panelwechsel.
 - *Varianten:* (a) immer dunkel, (b) tagsüber `--c-surface-3`-Grau, ab Sonnenuntergang dunkel.
 
-**R2 – Kopfzeile/Uhr** · S · Prio 1
+✅ **R2 – Kopfzeile/Uhr** · S · Prio 1 · umgesetzt (b846c96)
 - *Stört:* Uhr 30 px (`.clock-time`, Versalhöhe ≈ 4 mm), Datum 14 px `#767267`. Beides sitzt in einer weißen Pille 385×58 px, die über den Panel-Inhalten schwebt und in News/Fußball das Foto überdeckt (`04-nachrichten.png`, `06-fussball.png`). Die Knöpfe ▦/📻 sind 44×44 px (unter Touch-Maß `--touch` 56 px); 📻 ist ein buntes Emoji.
 - *Ändert sich:*
   - Pille entfällt.
@@ -32,7 +34,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
   - Knöpfe 56×56 px mit einfarbigen SVG-Icons (Raster, Radio) in `--c-text-2`.
 - *Warum:* Die Uhr ist der häufigste Blick und wird von 4 auf 7,5 mm Versalhöhe lesbar.
 
-**R3 – Einheitliche Kopfzeile je Panel** · M · Prio 2
+✅ **R3 – Einheitliche Kopfzeile je Panel** · M · Prio 2 · umgesetzt (b846c96)
 - *Stört:* Panel-Titel (`.view-label` 14 px, Großbuchstaben, `#767267`) stehen je Panel woanders: y 88 (Musik), y 32 auf dem Himmel (Wetter), y 26 in einem beigen Streifen über dem Foto (Nachrichten, Fußball). Bei Abfahrten fehlt der Titel ganz. Bei Rätsel und Auf-den-Tag steht er doppelt (Titel + Kicker in der Karte, `10-raetsel.png`).
 - *Ändert sich:*
   - Eine Kopfzeile y 16–72: links Titel 20 px 600 `--c-text-2` mit 8-px-Punkt in Panel-Akzentfarbe, rechts die Uhr (R2).
@@ -45,7 +47,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 - *Ändert sich:* 3 px `--c-accent` mit 50 % Deckkraft, keine Spur, am unteren Rand (y 765). In den letzten 3 s steht rechts unten „Als Nächstes: Wetter“ (14 px `--c-text-3`).
 - *Warum:* Ruhiger. Der Wechsel kommt nicht überraschend.
 
-**R5 – Hinweiszeile statt Müll-Chip** · M · Prio 1
+✅ **R5 – Hinweiszeile statt Müll-Chip** · M · Prio 1 · umgesetzt (3a55786)
 - *Stört:* Der Müll-Chip (13 px, 254×34 px, unten links) überdeckt Inhalte:
   - Wetter-Chips „Gefühlt“ und „Wind“ (`03-wetter.png`, y 698–746),
   - Artikeltext und Punkte-Navigation (`04-nachrichten.png`),
@@ -58,7 +60,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
   - Müll nur am Vortag ab 16 Uhr („Morgen: Restmüll & Bio – heute Abend rausstellen“) und am Abholtag bis 9 Uhr.
 - *Warum:* Nichts wird mehr verdeckt. Ein Ort für alle Hinweise (deckt AUSBAU B9, D16, D17).
 
-**R6 – Panel-Wechsel** · S · Prio 3
+✅ **R6 – Panel-Wechsel** · S · Prio 3 · umgesetzt (3ba5674)
 - *Stört:* 0,7 s Crossfade ohne Bewegung. In den Wetter-, News- und Fußball-Panels blendet ein Vollbild-Hintergrund über einen beigen.
 - *Ändert sich:* Neues Panel `opacity 0→1` + `translateY(8px→0)` in 450 ms `--ease`, altes nur `opacity`. Bei R1 entfällt der Hell/Dunkel-Sprung.
 - *Warum:* AUSBAU 4 „Panel-Wechsel“, überall gleich.
@@ -67,7 +69,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 1. Abfahrten (`01-abfahrten.png`, `16-morgen-abfahrten.png`, `15-nacht-abfahrten.png`)
 
-**A1 – Minuten als Fern-Info, echte Linienfarben** · M · Prio 1
+✅ **A1 – Minuten als Fern-Info, echte Linienfarben** · M · Prio 1 · umgesetzt (fced19c)
 - *Stört:*
   - Minuten „8 min“ sind 30 px (`.time-min`), kleiner gewichtet als das Ziel (26 px 600).
   - Linien-Badges 74×46 px in fast gleichen Pastelltönen (Bus `#eaf2f5→#d2e0e6`, Tram `#f4e9d8→#e6d3ab`). 41, 2, 740 und 10 unterscheiden sich nur durch die Zahl.
@@ -82,7 +84,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
   - Ziel 32 px.
 - *Warum:* Die eine Zahl, die man aus 3 m wissen will, wird doppelt so groß. Linien erkennt man an der Farbe, ohne zu lesen.
 
-**A2 – Dringlichkeit in der Zeile statt Banner + 4-px-Rand** · M · Prio 1 · → Varianten zeigen
+✅ **A2 – Dringlichkeit in der Zeile statt Banner + 4-px-Rand** · M · Prio 1 · → Varianten zeigen · umgesetzt (fced19c)
 - *Stört:* Das Banner „Geh jetzt los!“ (26 px braun auf `rgba(169,121,63,.14)`, 92 px hoch) wiederholt die erste Zeile. Die Dringlichkeit je Zeile ist nur ein 4 px breiter Rand links (rot/orange/grün) und „Los bis 14:00“ 13 px.
 - *Ändert sich:* Banner entfällt (+92 px Platz). Die erreichbare nächste Abfahrt bekommt `--c-surface-2` + 2 px Rand `--c-accent` und eine Pille vor den Minuten (20 px 700):
   - „LOS!“ (`--c-alert`)
@@ -97,13 +99,13 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 - *Ändert sich:* Mo–Fr 6–9 Uhr bekommen Zeilen, deren Linie in der ÖPNV-Route vorkommt, ein Aktentaschen-Icon 24 px + „Arbeit an 07:52“ 18 px `--c-accent-2` unter dem Ziel.
 - *Warum:* Morgens ist das die einzige Frage, die man an die Tafel hat.
 
-**A4 – Abfahrten-Animation** · M · Prio 2 – wie AUSBAU 4: abgefahrene Zeile gleitet nach oben raus (FLIP), Minutenziffer rollt nur bei Änderung.
+✅ **A4 – Abfahrten-Animation** · M · Prio 2 – wie AUSBAU 4: abgefahrene Zeile gleitet nach oben raus (FLIP), Minutenziffer rollt nur bei Änderung. · umgesetzt (fced19c)
 
 ---
 
 ## 2. Arbeitsweg (`02-arbeitsweg.png`)
 
-**AW1 – Lesbare Zeiten, ehrliche Balken** · M · Prio 2
+✅ **AW1 – Lesbare Zeiten, ehrliche Balken** · M · Prio 2 · umgesetzt (7e618d9)
 - *Stört:*
   - Beim ÖPNV-Balken steht „56 min“ in `#767267` auf dem gefüllten Balken `#5b6b78`: **Kontrast 1,15:1, unsichtbar**.
   - Der langsamste Weg hat den vollen, dunkelsten Balken und wirkt optisch am stärksten.
@@ -116,7 +118,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
   - Hero: Fern-Info „Los um 07:02“ 60 px statt Dauer, darunter „6 min mit dem Auto · Ankunft 07:30“ 24 px.
 - *Warum:* Man liest die Handlung („wann los“), nicht eine Rechengröße.
 
-**AW2 – Am Wochenende/Feiertag aus der Rotation** · S · Prio 2
+✅ **AW2 – Am Wochenende/Feiertag aus der Rotation** · S · Prio 2 · umgesetzt (7e618d9)
 - *Stört:* Am Samstag 14:00 zeigt das Panel eine Prognose für Montag 07:30 (12 px Hinweis). Aus 3 m wirkt „6 Min“ wie eine aktuelle Info.
 - *Ändert sich:* `PANEL_AVAILABILITY.commute` ist Sa/So/Feiertag (D19) false, Fr ab 18 Uhr als „Montag früh“-Vorschau nur im Abend-Überblick (D22).
 - *Warum:* Keine irreführende Information.
@@ -125,7 +127,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 3. Wetter (`03-wetter.png`, `17-morgen-wetter.png`)
 
-**W1 – Die leere Mitte mit dem Tagesverlauf füllen** · M–L · Prio 1 · → Varianten zeigen
+✅ **W1 – Die leere Mitte mit dem Tagesverlauf füllen** · M–L · Prio 1 · → Varianten zeigen · umgesetzt (6813a8d)
 - *Stört:*
   - Zwischen y 180 und 480 (300 px, 40 % der Fläche) sind nur Himmel, Regenstriche und Skyline zu sehen.
   - Die 5 Stundenkarten (186×126 px) haben Uhrzeit 14 px, Temperatur 20 px und ein Icon ≈ 24 px, aus 3 m nicht lesbar. Kein Regen-% je Stunde.
@@ -137,12 +139,12 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 - *Varianten:* (a) Kurve, (b) 8 Stundenspalten à 120 px mit Temperatur 28 px + Regen-% 20 px.
 - *Warum:* Gerade der wichtigste Teil („wird es nachher nass?“) ist heute der kleinste.
 
-**W2 – Kopfbereich größer, Tipp nach oben** · S · Prio 1
+✅ **W2 – Kopfbereich größer, Tipp nach oben** · S · Prio 1 · umgesetzt (f0329df)
 - *Stört:* Temperatur 88 px ist gut. Aber „Schauer“ hat 28 px, „H: 14° T: 9°“ 16 px. Der Handlungstipp „Gegen 15:00 Uhr wird's nass — Regenschirm einpacken“ (15 px) steht unten im Sheet.
 - *Ändert sich:* Temperatur 120 px, Beschreibung 40 px, H/T 24 px. Tipp als Zeile 28 px `--c-warn` direkt unter der Beschreibung (y ≈ 190).
 - *Warum:* Der Tipp ist die eigentliche Botschaft.
 
-**W3 – Detail-Chips** · S · Prio 2
+✅ **W3 – Detail-Chips** · S · Prio 2 · umgesetzt (f0329df)
 - *Stört:* 6 Chips, Wert 15 px, Label 11 px `rgba(255,255,255,.7)`. „Gefühlt“ und „Wind“ werden vom Müll-Chip verdeckt. Aufgang **und** Untergang stehen immer da.
 - *Ändert sich:* 4 Chips (Gefühlt, Wind, Regen, dazu je nach Tageszeit *nur* der nächste Sonnen-Wechsel). Wert 24 px, Label 14 px `--c-text-2`. Abstand zur Hinweiszeile 16 px.
 - *Warum:* Weniger, aber lesbar.
@@ -153,7 +155,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 4. Nachrichten (`04-nachrichten.png`)
 
-**N1 – Überschrift + Teaser statt Volltext über dem Foto** · M · Prio 1 · → Varianten zeigen
+✅ **N1 – Überschrift + Teaser statt Volltext über dem Foto** · M · Prio 1 · → Varianten zeigen · umgesetzt (83904c2)
 - *Stört:*
   - Der ganze Artikeltext (17 px weiß, Textblock 958×1932 px) liegt direkt auf dem Foto, läuft unten über den Bildschirmrand hinaus und wird abgeschnitten.
   - Auf hellen Bildstellen (Mitte) ist er trotz Textschatten kaum lesbar.
@@ -172,7 +174,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 5. Musik-Charts (`05-musik.png`)
 
-**M1 – Zwei Spalten, Top 10** · M · Prio 3
+✅ **M1 – Zwei Spalten, Top 10** · M · Prio 3 · umgesetzt (fb42122)
 - *Stört:*
   - In jeder Karte sind rechts 60–65 % leer (Nr. 1: Text endet bei x 334, Karte bei x 1000).
   - Nur 5 Plätze, unten 150 px leer.
@@ -187,12 +189,12 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 6. Fußball (`06-fussball.png`)
 
-**F1 – „Nächstes Spiel“ zeigt ein vergangenes Spiel (Fehler)** · S · Prio 1
+✅ **F1 – „Nächstes Spiel“ zeigt ein vergangenes Spiel (Fehler)** · S · Prio 1 · umgesetzt (4541cbb)
 - *Stört:* Am Sa 10.10. 14:00 steht „NÄCHSTES SPIEL · Dortmund – Bremen · Fr. 09.10., 20:30 Uhr“. Das Spiel ist vorbei, aber OpenLigaDB meldet `matchIsFinished` noch als false. `fetchTeamMatches` nimmt einfach das erste nicht beendete Spiel.
 - *Ändert sich:* Liegt der Anstoß mehr als 2 h 15 min zurück und ist das Spiel nicht beendet, steht dort „Ergebnis folgt“ mit dem Stand aus `matchResults`, falls vorhanden. Sonst kommt das Spiel unter „Letztes Ergebnis“.
 - *Warum:* Falsche Aussage auf der Tafel.
 
-**F2 – Countdown und Größe** · S · Prio 2
+✅ **F2 – Countdown und Größe** · S · Prio 2 · umgesetzt (3a09409)
 - *Stört:* Datum 15 px `rgba(255,255,255,.7)`, Liga 14 px, „VS“ 20 px mit 50 % Deckkraft. Die Wappen stehen in sichtbaren dunklen 96×96-Kacheln (Werder rechts). Die Bildmitte ist leer.
 - *Ändert sich:*
   - Relativ-Angabe als Fern-Info: „Morgen 15:30“ / „in 3 Tagen“ 48 px.
@@ -205,7 +207,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 7. Spruch des Tages (`07-spruch.png`)
 
-**S1 – Deutsch, groß, vollständig** · S (Layout) / M (Inhalt) · Prio 2 · → Varianten zeigen
+✅ **S1 – Deutsch, groß, vollständig** · S (Layout) / M (Inhalt) · Prio 2 · → Varianten zeigen · umgesetzt (8433ce6)
 - *Stört:*
   - Englischer Spruch mit Tippfehler aus der Quelle („Make choices and dont look back.“) auf einer deutschen Tafel.
   - 34 px Text in einer 976×637-px-Karte, etwa 85 % leer.
@@ -222,7 +224,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 8. Auf den Tag genau (`08-auf-den-tag.png`)
 
-**T1 – Mitraten mit sichtbarer Auflösung** · S · Prio 2
+✅ **T1 – Mitraten mit sichtbarer Auflösung** · S · Prio 2 · umgesetzt (1d4d4a0)
 - *Stört:*
   - Die Pille „Antwort antippen zum Mitraten“ steht noch da, obwohl 1970 schon grün aufgedeckt ist.
   - Falsche Jahre haben 40 % Deckkraft (Kontrast ≈ 2,1:1).
@@ -238,7 +240,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 9. Allgemeinwissen (`09-allgemeinwissen.png`)
 
-**Q1 – Themen und Sprache** · S · Prio 2 · → Julian fragen
+✅ **Q1 – Themen und Sprache** · S · Prio 2 · → Julian fragen · umgesetzt (1d4d4a0)
 - *Stört:*
   - Englische Nischenfragen aus der Open Trivia DB („In "JoJo's Bizarre Adventure" …“, Kategorie „Entertainment: Japanese Anime & Manga“).
   - Antwort-Chips 17 px.
@@ -251,7 +253,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 10. Rätsel des Tages (`10-raetsel.png`)
 
-**RÄ1 – Lösung ankündigen** · S · Prio 3
+✅ **RÄ1 – Lösung ankündigen** · S · Prio 3 · umgesetzt (1d4d4a0)
 - *Stört:* Eine Zeile (30 px) in einer Riesenkarte. Der Kicker „RÄTSEL DES TAGES“ wiederholt den Titel. Die Lösung kommt nach der halben Panel-Dauer ohne Hinweis (nach 12 s im Bild noch nicht da).
 - *Ändert sich:* Frage 48 px zentriert. Darunter „Lösung in 10 s“ 20 px mit 48-px-Countdown-Ring, dann Antwort 40 px `--c-accent` (Einblenden 300 ms). Kicker entfällt.
 - *Warum:* Spannung mit Ansage statt leerer Fläche.
@@ -260,7 +262,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 11. Veranstaltungen (`11-veranstaltungen.png`)
 
-**V1 – Nach Tagen gruppieren, Uhrzeit vorn** · S · Prio 2
+✅ **V1 – Nach Tagen gruppieren, Uhrzeit vorn** · S · Prio 2 · umgesetzt (1b8fbde)
 - *Stört:*
   - Die rosa Datumskachel 60×60 px „10 OKT“ steht 3× hintereinander, „11 OKT“ ebenfalls 3×.
   - Uhrzeit und Ort 14 px `#767267`, Titel 19 px.
@@ -274,7 +276,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 12. Termine (`12-termine.png`, nur mit Attrappen-Daten, der Kalender-Worker blockt localhost per CORS)
 
-**K1 – Nächster Termin als Hero** · M · Prio 2
+✅ **K1 – Nächster Termin als Hero** · M · Prio 2 · umgesetzt (1b8fbde)
 - *Stört:* Termine sehen genau wie Veranstaltungen aus (gleiche rosa Kachel, gleiche Liste). Privat und öffentlich sind nicht unterscheidbar. „Zahnarzt heute 18:30“ ist nicht hervorgehoben. „Ganztägig“ ist nur Text.
 - *Ändert sich:*
   - Oben eine Hero-Karte für den nächsten Termin: Titel 36 px, „heute 18:30 · in 4 h 30 min“ 24 px `--c-accent-2`, Ort 18 px.
@@ -287,7 +289,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 13. Panel-Übersicht (`13-panel-uebersicht.png`; iPad: `21-ipad-sim-panel-uebersicht.png`)
 
-**Ü1 – Deckend, schließbar, HA zuerst** · S–M · Prio 2
+✅ **Ü1 – Deckend, schließbar, HA zuerst** · S–M · Prio 2 · umgesetzt (cbca80b)
 - *Stört:*
   - **iPad:** Das Overlay war nur 756×476 px oben links, ohne Vollbild-Abdunklung (`inset`, inzwischen behoben).
   - Die aktuelle Kachel „Abfahrten“ ist halbtransparent (`rgba(169,121,63,.14)`): „Weserwehr“ und „41“ scheinen durch den Kacheltext.
@@ -304,7 +306,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 14. Radio-Menü (`14-radio-menue.png`)
 
-**RA1 – Zustand sichtbar, mit HA-Medien zusammen** · M · Prio 2
+✅ **RA1 – Zustand sichtbar, mit HA-Medien zusammen** · M · Prio 2 · umgesetzt (f6faab5)
 - *Stört:* Ein 240 px breites Menü, das über dem Abfahrts-Banner hängt. Einträge: Name 17 px + grauer 10-px-Punkt. Man sieht nicht, ob und was läuft, und es gibt keine Lautstärke.
 - *Ändert sich:*
   - Einträge 64 px hoch.
@@ -315,7 +317,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 15. Nachtdimmung (`15-nacht-abfahrten.png`; iPad: `22-ipad-sim-nacht.png`)
 
-**NA1 – Nachtthema statt grauer Schleier** · M · Prio 2 · → Varianten zeigen
+✅ **NA1 – Nachtthema statt grauer Schleier** · M · Prio 2 · → Varianten zeigen · umgesetzt (e6f1b24)
 - *Stört:*
   - **iPad:** Das Overlay hatte 0×0 px, nachts blieb die Tafel also voll hell (`inset`, inzwischen behoben).
   - Im Desktop-Bild liegt ein schwarzer Schleier mit 65 % über dem beigen UI. Das ergibt ein schlammiges Grau, die Brauntöne im Banner sind kaum lesbar, und Fotos/Animationen laufen unter dem Schleier weiter.
@@ -329,7 +331,7 @@ Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768
 
 ## 16. Ambient-Modus (`18-ambient.png`; iPad: `23-ipad-sim-ambient.png`)
 
-**AM1 – Ruhebild mit Nutzen, nur bei echter Abwesenheit** · S · Prio 2
+✅ **AM1 – Ruhebild mit Nutzen, nur bei echter Abwesenheit** · S · Prio 2 · umgesetzt (558b624)
 - *Stört:*
   - **iPad:** Der Uhr-Kasten war nur 520×208 px oben links über der Tafel (`inset`, inzwischen behoben).
   - Er springt nach 60 min ohne Berührung an und stoppt das Karussell (FEEDBACK.md, macht der Hauptagent).

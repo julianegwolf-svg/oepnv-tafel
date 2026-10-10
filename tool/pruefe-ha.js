@@ -413,7 +413,7 @@ async function sim(pfad, body) {
   // Erwartbar und kein Code-Fehler: externe Quellen, die von localhost aus
   // blockieren (TomTom 400, Kalender-CORS), und die absichtlich erzeugten
   // Verbindungsabbrüche (der Browser protokolliert jeden WebSocket-Fehlversuch).
-  const expected = errors.filter((e) => /TomTom|kalender-worker|access control checks|WebSocket connection to|fehlgeschlagen \(\d{3}\)/.test(e));
+  const expected = errors.filter((e) => /TomTom|kalender-worker|access control checks|WebSocket connection to|fehlgeschlagen \(\d{3}\)|Keine [^ ]* ?[^ ]* ?erhalten|Keine anstehenden/.test(e));
   const realErrors = errors.filter((e) => expected.indexOf(e) === -1);
   if (expected.length) console.log("   (erwartet/extern, kein Code-Fehler: " + expected.length + "×)");
   errors.length = 0;

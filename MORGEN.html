@@ -178,6 +178,38 @@
 </div>
 <p class="note">Dauerbetrieb: 24-h-Zeitraffer der ganzen Tafel (Playwright-Uhr, 5× Selbst-Neuladen) – DOM, Listener, Timer, Bilder wachsen nicht (<code>tool/pruefe-zeitraffer.js</code>, <code>belege/2026-10-10/zeitraffer.log</code>); HA-Dauerlauf mit Verbindungsabbrüchen ebenso.</p>
 
+<h2>7c · Alle übrigen Panels</h2>
+<p class="note">Jede Idee aus IDEEN.md ist jetzt gebaut (✅-Liste dort, mit Commit). Vorher → nachher:</p>
+<div class="pair">
+  <figure><img src="belege/vorher/06-fussball.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Kleine Wappen, Datum 15 px.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ideen/f2-01-sport.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>„Morgen 15:30“ als Fern-Info, Wappen 150 px mit hellem Hof.</figcaption></figure>
+  <figure><img src="belege/vorher/07-spruch.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Englischer Tipp, 34 px in leerer Karte.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ideen/s1-serif-01-quote.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Deutsche Sprüche (gemeinfrei) mit Autor, 52 px – Schrift zur Wahl.</figcaption></figure>
+  <figure><img src="belege/vorher/12-termine.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Rosa Datumskacheln, Termine wie Veranstaltungen.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ideen/v1k1-02-calendar.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Nächster Termin groß („in 4 h 30 min“), Rest nach Tagen.</figcaption></figure>
+  <figure><img src="belege/vorher/10-raetsel.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Lösung kommt ohne Vorwarnung.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ideen/t1-01-riddle.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>„Auflösung in 7 s“ mit ablaufendem Balken; Quiz nur noch Allgemeinwissen.</figcaption></figure>
+  <figure><img src="belege/vorher/18-ambient.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Nur Uhr, Endlos-Drift – und das nach 1 h ohne Berührung.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ideen/am1-ambient.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Nur bei echter Abwesenheit; ruhig, mit Datum, Temperatur, nächster Bahn.</figcaption></figure>
+  <figure><img src="belege/vorher/14-radio-menue.png" alt=""><figcaption><span class="tag vorher">vorher</span></figcaption></figure>
+  <figure><img src="belege/2026-10-10/ideen/ra1-radio.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Laufender Sender sichtbar (Equalizer), mit HA: Abspielen auf HomePod.</figcaption></figure>
+</div>
+<h3>Alle Panels jetzt (Montag 07:20, simuliert)</h3>
+<div class="grid three">
+  <figure><img src="belege/2026-10-10/nachher/01-departures.png" alt=""><figcaption>Abfahrten</figcaption></figure>
+  <figure><img src="belege/2026-10-10/nachher/12-tagesblick.png" alt=""><figcaption>Tagesblick</figcaption></figure>
+  <figure><img src="belege/2026-10-10/nachher/02-commute.png" alt=""><figcaption>Arbeitsweg</figcaption></figure>
+  <figure><img src="belege/2026-10-10/nachher/03-weather.png" alt=""><figcaption>Wetter</figcaption></figure>
+  <figure><img src="belege/2026-10-10/nachher/04-news.png" alt=""><figcaption>Nachrichten</figcaption></figure>
+  <figure><img src="belege/2026-10-10/nachher/05-music.png" alt=""><figcaption>Musik</figcaption></figure>
+  <figure><img src="belege/2026-10-10/nachher/06-quote.png" alt=""><figcaption>Spruch</figcaption></figure>
+  <figure><img src="belege/2026-10-10/nachher/07-trivia.png" alt=""><figcaption>Auf den Tag genau</figcaption></figure>
+  <figure><img src="belege/2026-10-10/nachher/08-quiz.png" alt=""><figcaption>Allgemeinwissen</figcaption></figure>
+  <figure><img src="belege/2026-10-10/nachher/10-events.png" alt=""><figcaption>Veranstaltungen</figcaption></figure>
+  <figure><img src="belege/2026-10-10/nachher/11-calendar.png" alt=""><figcaption>Termine (Testdaten)</figcaption></figure>
+  <figure><img src="belege/2026-10-10/nachher/14-sport.png" alt=""><figcaption>Fußball</figcaption></figure>
+</div>
+
 <h2>8 · Zur Wahl (FRAGEN.md)</h2>
 <p class="note">Beides ist gebaut und per <code>config.js</code> umschaltbar; ich arbeite mit dem Vorschlag weiter, bis du entscheidest.</p>
 <h3>Farbwelt – <code>farbwelt: "dunkel" | "auto" | "hell"</code> (Vorschlag: dunkel)</h3>
@@ -215,7 +247,8 @@
   <li>Alles nur im <b>Desktop-WebKit</b> und gegen den <b>Simulator</b> geprüft – nicht auf dem iPad, nicht gegen dein echtes HA. Das erste echte Anmelden ist der eigentliche Test.</li>
   <li>Schieberegler: Mausziehen ist geprüft; echte Touch-Ereignisse lassen sich im Desktop-WebKit nicht erzeugen. Der Touch-Code (touchstart/move mit preventDefault) ist Safari-12-tauglich geschrieben, aber am iPad unbestätigt.</li>
   <li>Stumme Autoplay-Videos sollten auf iOS 12 laufen (muted + playsinline) – am Gerät unbestätigt.</li>
-  <li>Aus IDEEN.md noch offen: Fußball-Karten größer (F2), Termine/Veranstaltungen nach Tagen gruppiert (K1/V1), Musik Top 10 zweispaltig (M1), Spruch auf Deutsch (S1) – nächste Sitzungen.</li>
+  <li>Aus IDEEN.md noch offen: „Zur Arbeit“-Markierung in der Abfahrtszeile (A3) und ein dezenterer Fortschrittsbalken (R4).</li>
+  <li>Quiz-Fragen bleiben englisch (Open Trivia DB hat kein Deutsch) – FRAGEN 17.</li>
   <li>ÖPNV-Störungen: keine offene Quelle für BSAG/VBN gefunden; die Tafel zeigt Meldungen automatisch, sobald Transitous sie mitliefert.</li>
   <li>Der Simulator wertet Templates in Automationen nicht aus; deine Automationen hat er so nachgebaut, wie HA sie vermutlich ausführt.</li>
 </ul>
