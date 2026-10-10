@@ -2280,8 +2280,11 @@
     if (dom === "binary_sensor" && newState && newState.state === "on" && (!oldState || oldState.state !== "on")) {
       const dc = HA.attr(newState, "device_class");
       if ((dc === "motion" || dc === "occupancy" || dc === "presence") && REAKTION.bewegungWeckt !== false && isWakeSensor(id)) {
-        if (typeof wakeByPresence === "function") wakeByPresence();
-        maybeMorningGreeting();
+        // Erst den Gruß (liegt dann schon unter dem schwarzen Schleier),
+        // dann aufwecken: der Gruß taucht aus dem Dunkel auf, ohne dass
+        // Panels halbdurchsichtig durchscheinen.
+        const greeted = maybeMorningGreeting();
+        if (typeof wakeByPresence === "function") wakeByPresence(greeted);
       }
     }
     if (dom === "person") {
@@ -2297,8 +2300,12 @@
   // Großer, ruhiger Gruß für ~7 s: Titel + ein bis zwei Sätze, die gerade
   // wirklich zählen. Antippen schließt sofort.
   let greetTimer = null;
+  let greetOnClose = null;
 
-  function showGreeting(eyebrow, title, lines, ms) {
+  // opts.instant: ohne Einblenden öffnen (die Tafel ist noch dunkel, der
+  // Schleier darüber gibt den Gruß frei). opts.onClose: einmal beim
+  // Schließen (Zeitablauf oder Antippen).
+  function showGreeting(eyebrow, title, lines, ms, opts) {
     let el = document.getElementById("haGreeting");
     if (!el) {
       el = mk("div", "ha-greeting ds-dark");
@@ -2310,10 +2317,17 @@
       '<div class="ha-eyebrow">' + esc(eyebrow) + "</div>" +
       '<div class="ha-greeting-title">' + esc(title) + "</div>" +
       (lines || []).filter(Boolean).slice(0, 3).map(function (l, i) {
-        return '<div class="ha-greeting-line" style="transition-delay:' + (180 + i * 120) + 'ms">' + esc(l) + "</div>";
+        return '<div class="ha-greeting-line' + (opts && opts.hauptsatz && i === 0 ? " is-main" : "") +
+          '" style="transition-delay:' + (180 + i * 120) + 'ms">' + esc(l) + "</div>";
       }).join("") + "</div>";
+    if (opts && opts.instant) el.classList.add("is-instant");
     void el.offsetWidth;
     el.classList.add("is-open");
+    if (opts && opts.instant) {
+      void el.offsetWidth;
+      el.classList.remove("is-instant");
+    }
+    greetOnClose = (opts && opts.onClose) || null;
     if (greetTimer) clearTimeout(greetTimer);
     greetTimer = setTimeout(hideGreeting, ms || 7000);
   }
@@ -2321,6 +2335,9 @@
   function hideGreeting() {
     const el = document.getElementById("haGreeting");
     if (greetTimer) { clearTimeout(greetTimer); greetTimer = null; }
+    const cb = greetOnClose;
+    greetOnClose = null;
+    if (cb) { try { cb(); } catch (e) { /* egal */ } }
     if (!el) return;
     el.classList.remove("is-open");
     setTimeout(function () { if (!el.classList.contains("is-open")) el.innerHTML = ""; }, 600);
@@ -2353,6 +2370,11 @@
   // auf und sagt den EINEN Satz, der heute zählt (Wetter, Regen, Bahn).
   const GRUSS_KEY = "tafelMorgengruss";
 
+  // Der EINE Satz des Morgens: Wetter/Regen, dann an Arbeitstagen die
+  // Bahn zur Arbeit – die Linie, mit der der Arbeitsweg beginnt, und zwar
+  // die späteste, die noch pünktlich (5 Min Puffer) ankommt. Ist die noch
+  // nicht in der Abfahrtsliste (zu früh), die Losgehzeit. Am Wochenende
+  // und an Feiertagen statt der Bahn der erste Termin des Tages.
   function morningSentence() {
     const snap = typeof tafelSnapshot === "function" ? tafelSnapshot() : null;
     const parts = [];
@@ -2363,20 +2385,46 @@
       parts.push(snap.weather.desc.toLowerCase());
     }
     let sentence = parts.join(", ");
-    const bahn = snap && snap.departures ? snap.departures.filter(function (d) { return d.leaveByMs && d.leaveByMs >= Date.now() + 2 * 60000; })[0] : null;
-    const day = new Date().getDay();
-    if (bahn && day >= 1 && day <= 5) sentence += (sentence ? " – " : "") + "nimm die " + bahn.line + " um " + bahn.clock;
+    const now = new Date();
+    const extra = (isWorkday(now) ? commuteHint() : "") || firstEventHint(snap, now);
+    if (extra) sentence += (sentence ? " – " : "") + extra;
     return sentence ? sentence + "." : "";
   }
 
+  function isWorkday(d) {
+    if (d.getDay() === 0 || d.getDay() === 6) return false;
+    return !(typeof holidayOn === "function" && holidayOn(d));
+  }
+
+  // Gleiche Rechnung wie der Tagesblick (arbeitsBahnHeute, app.js).
+  function commuteHint() {
+    const ab = typeof arbeitsBahnHeute === "function" ? arbeitsBahnHeute() : null;
+    if (!ab) return "";
+    if (ab.dep) return (ab.spaet ? "knapp: " : "") + "nimm die " + ab.dep.line + " um " + ab.dep.clock;
+    return "zur Arbeit spätestens um " + fmtClock(ab.losMs) + " los";
+  }
+
+  function firstEventHint(snap, now) {
+    const evs = (snap && snap.calendar) || [];
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
+    for (let i = 0; i < evs.length; i++) {
+      const e = evs[i];
+      if (e.start >= end) break;
+      if (e.allDay || e.start < Date.now()) continue;
+      const title = e.title.length > 36 ? e.title.slice(0, 35) + "…" : e.title;
+      return "um " + fmtClock(e.start) + " " + title;
+    }
+    return "";
+  }
+
   function maybeMorningGreeting() {
-    if (REAKTION.morgengruss === false) return;
+    if (REAKTION.morgengruss === false) return false;
     const now = new Date();
-    if (now.getHours() < 5 || now.getHours() >= 11) return;
+    if (now.getHours() < 5 || now.getHours() >= 11) return false;
     const today = now.getFullYear() + "-" + (now.getMonth() + 1) + "-" + now.getDate();
     let last = "";
     try { last = window.localStorage.getItem(GRUSS_KEY) || ""; } catch (e) { last = ""; }
-    if (last === today) return;
+    if (last === today) return false;
     try { window.localStorage.setItem(GRUSS_KEY, today); } catch (e) { /* egal */ }
     const g = HA.model().global;
     const home = HA.personsHome();
@@ -2390,11 +2438,25 @@
     // Amtliche Warnung zuerst, sie ist wichtiger als alles im Haus.
     const warn = window.TafelWarn ? TafelWarn.aktuelle()[0] : null;
     if (warn) second.unshift("Achtung: " + TafelWarn.kurz(warn));
-    const important = hints.filter(function (h) { return h.prio <= 2 && !h.vorschlag; })[0];
+    // Nur, was heute früh zählt (offene Tür, Lüften, …) – Batterien und
+    // nicht erreichbare Geräte haben Zeit bis später.
+    const important = hints.filter(function (h) { return h.prio <= 2 && !h.vorschlag && !/^(batterie|weg)\|/.test(h.key); })[0];
     if (important) second.push(important.text);
-    // Danach der Tagesblick ("Heute"), sonst die Abfahrten.
-    if (typeof jumpToPanel === "function") jumpToPanel(window.TafelTag && TafelTag.available() ? "tagesblick" : "departures");
-    showGreeting("Guten Morgen", "Guten Morgen" + (who ? ", " + who : ""), [morningSentence()].concat(second), 9000);
+    // Ist die Tafel noch dunkel, liegt der Gruß sofort unter dem Schleier
+    // und taucht mit ihm aus dem Schwarz auf.
+    const dark = typeof tafelIstDunkel === "function" && tafelIstDunkel();
+    showGreeting("Guten Morgen", "Guten Morgen" + (who ? ", " + who : ""), [morningSentence()].concat(second), 9000, {
+      instant: dark,
+      hauptsatz: true,
+      // Danach der Tagesblick ("Heute"), sonst die Abfahrten – erst beim
+      // Ausblenden des Grußes, damit man die Karten gestaffelt
+      // erscheinen sieht.
+      onClose: function () {
+        if (typeof jumpToPanel === "function") jumpToPanel(window.TafelTag && TafelTag.available() ? "tagesblick" : "departures");
+        if (typeof tafelWachAuf === "function") tafelWachAuf();
+      },
+    });
+    return true;
   }
 
   // Niemand zu Hause (alle person.* nicht "home", 2 min stabil) → Ambient.

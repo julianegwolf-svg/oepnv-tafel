@@ -2638,6 +2638,18 @@ body.ha-ruhe .ha-dot {
   transform: translateY(0);
 }
 
+/* Der eine Satz des Tages (Morgengruß) größer und hell. */
+.ha-greeting-line.is-main {
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+/* Aus dem Dunkel: sofort da, der Nachtschleier darüber gibt ihn frei. */
+.ha-greeting.is-instant {
+  transition: none;
+}
+
 /* ---------- Gelernte Vorschläge im Hinweisband ---------- */
 .ha-hint.is-vorschlag {
   padding-right: 4px;

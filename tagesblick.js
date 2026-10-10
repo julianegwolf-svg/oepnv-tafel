@@ -22,6 +22,9 @@
   let bodyEl = null;
   let ticker = null;
   const morgen = { deps: null, fuer: "", laedt: false, stand: 0 };
+  // Heute früh: Abfahrten rund um die nötige Bahn zur Arbeit, solange sie
+  // noch nicht in der normalen Abfahrtsliste (nächste Stunde) steht.
+  const frueh = { deps: null, fuer: "", laedt: false, stand: 0 };
 
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -175,15 +178,37 @@
     return '<span class="tb-badge"' + (color ? ' style="background:#' + esc(color) + ";color:#" + esc(text || "ffffff") + '"' : "") + ">" + esc(line) + "</span>";
   }
 
+  function arbeitsKarte(s, ab) {
+    if (!ab.dep) {
+      return '<div class="tb-card tb-bahn">' +
+        '<div class="tb-eyebrow">Arbeitsweg</div>' +
+        '<div class="tb-big num">' + hhmm(ab.losMs) + "</div>" +
+        '<div class="tb-line">Spätestens dann los' + (ab.linie ? " – mit der " + esc(ab.linie) : "") + "</div></div>";
+    }
+    const d = ab.dep;
+    const inMin = Math.max(0, Math.round((d.leaveByMs - Date.now()) / 60000));
+    return '<div class="tb-card tb-bahn">' +
+      '<div class="tb-eyebrow">Bahn zur Arbeit</div>' +
+      '<div class="tb-bahn-main">' + badge(d.line, d.color, d.textColor) + '<span class="tb-big num">' + esc(d.clock) + "</span></div>" +
+      '<div class="tb-bahn-dest">→ ' + esc(d.dest) + "</div>" +
+      (inMin <= 4 ? '<div class="tb-pill' + (inMin <= 1 ? " is-now" : " is-soon") + '">' + (inMin <= 1 ? "jetzt los" : "in " + inMin + " min los") + "</div>" : "") +
+      '<div class="tb-line">Los um ' + hhmm(d.leaveByMs) + " · Arbeit ca. " + hhmm(ab.ankunftMs) + (ab.spaet ? " (zu spät)" : "") + "</div>" +
+      "</div>";
+  }
+
   function bahnKarte(s, m, tag) {
     if (m === "heute") {
       const frei = freierTag(tag);
+      // Arbeitstag vor Arbeitsbeginn: die Bahn zur Arbeit statt irgendeiner
+      // nächsten Bahn – gleiche Rechnung wie der Morgengruß.
+      const ab = !frei && typeof arbeitsBahnHeute === "function" ? arbeitsBahnHeute() : null;
+      if (ab) return arbeitsKarte(s, ab);
       const dep = (s.departures || []).filter(function (d) { return d.leaveByMs && d.leaveByMs >= Date.now() - 60000; })[0];
       if (!dep) return "";
       const inMin = Math.max(0, Math.round((dep.leaveByMs - Date.now()) / 60000));
       let arbeit = "";
       const arbeitsLinie = typeof lastCommuteFirstLine !== "undefined" ? lastCommuteFirstLine : null;
-      if (!frei && s.commutePtMinutes != null && dep.whenMs && (!arbeitsLinie || arbeitsLinie === dep.line)) {
+      if (!frei && s.commutePtMinutes != null && dep.whenMs && (!arbeitsLinie || istArbeitsBahn(dep.line, dep.dest))) {
         arbeit = '<div class="tb-line">Bei der Arbeit ca. ' + hhmm(dep.whenMs + s.commutePtMinutes * 60000) + "</div>";
       }
       return '<div class="tb-card tb-bahn">' +
@@ -206,7 +231,11 @@
     }
     const walk = s.walkMinutes || 0;
     const los = losgehzeit(tag);
-    const dep = morgen.deps.filter(function (d) { return d.whenMs - walk * 60000 >= los.getTime() - 3 * 60000; })[0];
+    const ab = morgen.deps.filter(function (d) { return d.whenMs - walk * 60000 >= los.getTime() - 3 * 60000; });
+    // Bevorzugt die Bahn des Arbeitswegs (Linie + Richtung).
+    const dep = ab.filter(function (d) {
+      return typeof istArbeitsBahn === "function" && typeof lastCommuteFirstLine !== "undefined" && lastCommuteFirstLine && istArbeitsBahn(d.line, d.dest);
+    })[0] || ab[0];
     if (!dep) return "";
     return '<div class="tb-card tb-bahn">' +
       '<div class="tb-eyebrow">Bahn morgen früh</div>' +
@@ -219,13 +248,17 @@
   // Erste Abfahrten morgen ab der gewohnten Losgehzeit (eigener Abruf mit
   // Uhrzeit, höchstens alle 30 Minuten, mit Zeitdeckel).
   function holeBahnMorgen(tag) {
-    const key = String(tag.getTime());
-    if (morgen.laedt || (morgen.fuer === key && Date.now() - morgen.stand < 30 * 60 * 1000)) return;
+    holeAbfahrten(morgen, String(tag.getTime()), losgehzeit(tag).getTime() - 5 * 60000);
+  }
+
+  // Abfahrten ab einem Zeitpunkt (Losgehen; die Gehzeit wird
+  // aufgeschlagen) in einen Speicher (morgen / frueh) holen.
+  function holeAbfahrten(ziel, key, abMs) {
+    if (ziel.laedt || (ziel.fuer === key && Date.now() - ziel.stand < 30 * 60 * 1000)) return;
     if (typeof resolvedStopIds === "undefined" || !resolvedStopIds || !resolvedStopIds.length) return;
-    morgen.laedt = true;
-    const ab = new Date(losgehzeit(tag).getTime() - 5 * 60000);
+    ziel.laedt = true;
     const walk = typeof walkMinutesToStop !== "undefined" && walkMinutesToStop != null ? walkMinutesToStop : 0;
-    const t = new Date(ab.getTime() + walk * 60000).toISOString();
+    const t = new Date(abMs + walk * 60000).toISOString();
     const abrufe = resolvedStopIds.map(function (id) {
       const url = API_BASE + "/v6/stoptimes?stopId=" + encodeURIComponent(id) + "&n=12&time=" + encodeURIComponent(t);
       return Promise.race([
@@ -236,7 +269,7 @@
     Promise.all(abrufe).then(function (res) {
       const alle = [];
       res.forEach(function (r) { (r.stopTimes || []).forEach(function (d) { alle.push(d); }); });
-      morgen.deps = alle.filter(function (d) {
+      ziel.deps = alle.filter(function (d) {
         return !d.cancelled && !d.tripCancelled && (typeof passesDirectionFilter !== "function" || passesDirectionFilter(d.headsign || ""));
       }).map(function (d) {
         const p = d.place || {};
@@ -248,11 +281,19 @@
           textColor: d.routeTextColor || null,
         };
       }).sort(function (a, b) { return a.whenMs - b.whenMs; });
-      morgen.fuer = key;
-      morgen.stand = Date.now();
-      morgen.laedt = false;
+      ziel.fuer = key;
+      ziel.stand = Date.now();
+      ziel.laedt = false;
       render();
     });
+  }
+
+  // Für arbeitsBahnHeute (app.js): Abfahrten heute ab abMs (Losgehen).
+  // Liefert die schon geholten (oder null) und holt bei Bedarf neu.
+  function bahnenAb(abMs) {
+    const key = String(Math.floor(abMs / (15 * 60000)));
+    holeAbfahrten(frueh, key, abMs);
+    return frueh.fuer === key ? frueh.deps : null;
   }
 
   // ---------- Termin ----------
@@ -373,5 +414,6 @@
     available: available,
     onPanelShown: onPanelShown,
     render: render,
+    bahnenAb: bahnenAb,
   };
 })();

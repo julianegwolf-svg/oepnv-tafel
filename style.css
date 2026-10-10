@@ -2735,6 +2735,32 @@ html, body {
    Das neue Panel blendet ein und steigt dabei 8 px auf; das alte blendet
    nur aus (keine Bewegung). Als einmalige Keyframe-Animation beim
    Aktivieren statt Transition, damit das ausblendende Panel stillsteht. */
+/* ---------- Aufwachen (AUSBAU 4) ----------
+   Bewegung oder Gruß weckt die Tafel aus dem Dunkel: Kopfzeile, Panel und
+   Hinweiszeile erscheinen nacheinander (je ~150 ms Versatz) statt alles
+   auf einmal. Nur opacity/transform, einmalig (.is-waking, app.js). */
+@keyframes wakeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes wakeFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.panel.is-waking .topbar {
+  animation: wakeIn 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) 0.1s both;
+}
+
+.panel.is-waking .stage {
+  animation: wakeIn 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) 0.25s both;
+}
+
+.panel.is-waking.has-hintbar .statusbar {
+  animation: wakeFade 0.5s ease 0.45s both;
+}
+
 @keyframes panelRise {
   from { transform: translateY(8px); }
   to { transform: translateY(0); }

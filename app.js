@@ -326,12 +326,42 @@ function tafelGuteNacht() {
   updateNightDim(now.getHours());
 }
 
-function wakeByPresence() {
+// Ist die Tafel gerade dunkel (Tiefschlaf, "Gute Nacht" oder Ambient bei
+// Abwesenheit)? Die bloße Nachtdimmung zählt nicht – da sieht man alles.
+function tafelIstDunkel() {
+  if (ambientActive) return true;
+  if (!els.nightOverlay || !els.nightOverlay.classList.contains("is-active")) return false;
+  return (isInHourRange(new Date().getHours(), CONFIG.nightSleep) || Date.now() < goodNightUntil) &&
+    !recentlyTouched && Date.now() > presenceWakeUntil;
+}
+
+// Aufwachen (AUSBAU 4): Kopfzeile, Panel und Hinweiszeile erscheinen
+// leicht gestaffelt, während der Schleier in 0,6 s verschwindet.
+let wakeAnimTimer = null;
+
+function tafelWachAuf() {
+  const panel = document.querySelector(".panel");
+  if (!panel) return;
+  panel.classList.remove("is-waking");
+  void panel.offsetWidth;
+  panel.classList.add("is-waking");
+  if (wakeAnimTimer) clearTimeout(wakeAnimTimer);
+  wakeAnimTimer = setTimeout(function () {
+    wakeAnimTimer = null;
+    panel.classList.remove("is-waking");
+  }, 1400);
+}
+
+// greeted: der Morgengruß liegt schon über allem – dann erst beim
+// Schließen des Grußes gestaffelt aufbauen (ha-panels.js).
+function wakeByPresence(greeted) {
+  const wasDark = tafelIstDunkel();
   presenceWakeUntil = Date.now() + 5 * 60 * 1000;
   goodNightUntil = 0;
   armAmbientTimer();
   if (ambientActive) exitAmbientMode();
   updateNightDim(new Date().getHours());
+  if (wasDark && !greeted) tafelWachAuf();
 }
 
 function updateNightDim(hour) {
@@ -541,6 +571,23 @@ let walkTimeRequested = false;
 // ich jetzt los?"-Karte zwischengespeichert (siehe workArrivalEstimate).
 let lastCommutePtMinutes = null;
 let lastCommuteFirstLine = null;
+// Richtung der ersten Fahrt (headsign) – an der Föhrenstraße fährt die
+// Arbeitslinie in beide Richtungen, gemeint ist nur eine.
+let lastCommuteFirstHeadsign = null;
+
+function normHeadsign(t) {
+  return String(t || "").toLowerCase().replace(/[^a-zäöüß0-9]/g, "");
+}
+
+// Gehört eine Abfahrt zum Arbeitsweg? Gleiche Linie wie die erste Fahrt
+// der ÖPNV-Route und – wenn bekannt – gleiche Richtung.
+function istArbeitsBahn(line, dest) {
+  if (!lastCommuteFirstLine || line !== lastCommuteFirstLine) return false;
+  if (!lastCommuteFirstHeadsign || !dest) return true;
+  const a = normHeadsign(dest);
+  const b = normHeadsign(lastCommuteFirstHeadsign);
+  return a.indexOf(b) !== -1 || b.indexOf(a) !== -1;
+}
 
 function haversineMeters(a, b) {
   const R = 6371000;
@@ -682,7 +729,7 @@ function renderLeaveNowBanner(soonestDep, now) {
 
   // Ankunft bei der Arbeit nur, wenn mit dieser Linie auch der Arbeitsweg
   // beginnt (wie die Markierung in der Zeile, IDEEN A3).
-  const workEstimate = (!lastCommuteFirstLine || lineName === lastCommuteFirstLine) ? workArrivalEstimate(whenDate) : null;
+  const workEstimate = (!lastCommuteFirstLine || istArbeitsBahn(lineName, dest)) ? workArrivalEstimate(whenDate) : null;
   if (workEstimate) {
     const arrivalStr = workEstimate.arrivalDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
     const arrivalLine = document.createElement("div");
@@ -985,7 +1032,7 @@ function updateDepartureRow(row, dep, now, isNext) {
   const work = row.querySelector(".dep-work");
   let workHtml = "";
   const nowD = new Date(now);
-  if (lastCommuteFirstLine && whenDate && !cancelled && lineName === lastCommuteFirstLine &&
+  if (lastCommuteFirstLine && whenDate && !cancelled && istArbeitsBahn(lineName, dep.headsign) &&
       nowD.getHours() >= 6 && nowD.getHours() < 9 && isCommuteTime(nowD)) {
     const estW = workArrivalEstimate(whenDate);
     if (estW) {
@@ -1068,6 +1115,10 @@ function updateDepartures() {
     consecutiveFailures = 0;
     markFresh("departures");
     renderDepartures(all);
+    // Morgens die Bahn zur Arbeit vorab holen lassen (Tagesblick), damit
+    // der Morgengruß bei der ersten Bewegung schon die echte Bahn kennt.
+    const hNow = new Date().getHours();
+    if (hNow >= 4 && hNow < 10) arbeitsBahnHeute();
     els.status.textContent = "Live · Daten von Transitous";
     els.lastUpdate.textContent = "Aktualisiert " + new Date().toLocaleTimeString("de-DE");
   }).catch(function (err) {
@@ -3606,6 +3657,14 @@ function itineraryLineNames(itinerary) {
 // Live-Abfahrtszeit des ersten Nicht-Fußweg-Legs — damit die Tafel nicht
 // nur "23 min" zeigt, sondern auch WANN die genutzte Bahn/der Bus wirklich
 // fährt (nutzt dieselben Echtzeit-Felder wie oben).
+function itineraryFirstHeadsign(itinerary) {
+  const legs = (itinerary && itinerary.legs) || [];
+  for (let i = 0; i < legs.length; i++) {
+    if (legs[i] && legs[i].mode !== "WALK") return legs[i].headsign || null;
+  }
+  return null;
+}
+
 function itineraryFirstDeparture(itinerary) {
   try {
     const legs = itinerary.legs || [];
@@ -4065,6 +4124,7 @@ function updateCommute() {
             minutes: itineraryDurationMin(it),
             note: itineraryRealtimeNote(it),
             lines: itineraryLineNames(it),
+            headsign: itineraryFirstHeadsign(it),
             departure: itineraryFirstDeparture(it),
           };
         })
@@ -4075,8 +4135,10 @@ function updateCommute() {
       lastCommutePtMinutes = (results.bus && typeof results.bus.minutes === "number") ? results.bus.minutes : null;
       // Erste Linie der ÖPNV-Route = die, die man an der Föhrenstraße nimmt.
       const firstLine = results.bus && results.bus.lines && results.bus.lines.length ? String(results.bus.lines[0]) : null;
-      if (firstLine !== lastCommuteFirstLine) {
+      const firstHeadsign = results.bus && results.bus.headsign ? String(results.bus.headsign) : null;
+      if (firstLine !== lastCommuteFirstLine || firstHeadsign !== lastCommuteFirstHeadsign) {
         lastCommuteFirstLine = firstLine;
+        lastCommuteFirstHeadsign = firstHeadsign;
         updateDepartures(); // Markierung sofort zeigen, nicht erst beim nächsten Abruf
       }
       renderCommuteHero(results);
@@ -4389,6 +4451,52 @@ function tafelSnapshot() {
     calendar: lastCalendarEvents,
     commutePtMinutes: lastCommutePtMinutes,
   };
+}
+
+// Bahn zur Arbeit heute (Morgengruß, Tagesblick – eine Rechnung für
+// beide): an Arbeitstagen die späteste Abfahrt der Linie, mit der der
+// Arbeitsweg beginnt, die mit 5 Min Puffer pünktlich ankommt. Früh am
+// Morgen steht die noch nicht in der Abfahrtsliste (nächste Stunde) –
+// dann holt der Tagesblick die Abfahrten um diese Zeit gezielt; bis dahin
+// nur die Losgehzeit. null = heute kein Arbeitsweg (Wochenende, Feiertag,
+// Arbeitsbeginn vorbei) oder noch keine Fahrzeit bekannt.
+function arbeitsBahnHeute() {
+  const now = new Date();
+  if (now.getDay() === 0 || now.getDay() === 6 || holidayOn(now)) return null;
+  const pt = lastCommutePtMinutes;
+  const t = String(CONFIG.workArrivalTarget || "").split(":");
+  if (pt == null || t.length !== 2) return null;
+  const nowMs = Date.now();
+  const ziel = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(t[0], 10) || 0, parseInt(t[1], 10) || 0).getTime();
+  const spaetestens = ziel - (pt + 5) * 60000; // späteste Abfahrt, die pünktlich ankommt
+  if (spaetestens < nowMs - 20 * 60000) return null;
+  const walkMs = (walkMinutesToStop || 0) * 60000;
+  const linie = lastCommuteFirstLine;
+  const fmt = function (ms) { return new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }); };
+
+  const liste = (lastDepartureSnapshot || []).slice();
+  let bis = 0;
+  liste.forEach(function (d) { if (d.whenMs > bis) bis = d.whenMs; });
+  if (bis <= spaetestens && window.TafelTag && TafelTag.bahnenAb) {
+    const frueh = TafelTag.bahnenAb(spaetestens - walkMs - 25 * 60000);
+    (frueh || []).forEach(function (f) {
+      const doppelt = liste.some(function (d) { return d.line === f.line && Math.abs(d.whenMs - f.whenMs) < 90000; });
+      if (!doppelt) liste.push({ line: f.line, dest: f.dest, whenMs: f.whenMs, clock: fmt(f.whenMs), leaveByMs: f.whenMs - walkMs, color: f.color, textColor: f.textColor });
+      if (f.whenMs > bis) bis = f.whenMs;
+    });
+    liste.sort(function (a, b) { return a.whenMs - b.whenMs; });
+  }
+  const passend = liste.filter(function (d) {
+    return d.whenMs && d.leaveByMs >= nowMs + 60000 && (!linie || istArbeitsBahn(d.line, d.dest));
+  });
+  let pick = null;
+  passend.forEach(function (d) { if (d.whenMs <= spaetestens) pick = d; });
+  if (pick && bis > spaetestens) return { dep: pick, ankunftMs: pick.whenMs + pt * 60000 };
+  if (spaetestens - walkMs < nowMs) {
+    // Pünktlich klappt nicht mehr: die nächste Bahn der Linie, ehrlich "zu spät".
+    return passend.length ? { dep: passend[0], ankunftMs: passend[0].whenMs + pt * 60000, spaet: true } : null;
+  }
+  return { dep: null, losMs: spaetestens - walkMs, linie: linie };
 }
 
 // ---------- Sport-Ticker (Lieblingsvereine, openligadb.de) ----------
