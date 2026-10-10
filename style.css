@@ -4220,3 +4220,10 @@ body.wetter-ruhig .weather-hour-icon {
   font-weight: 600;
   color: var(--ink);
 }
+
+/* Spruch: „ ganz sichtbar statt am unteren Kartenrand angeschnitten. */
+#panel-quote .panel-watermark {
+  right: 44px;
+  bottom: 70px;
+  opacity: 0.18;
+}
