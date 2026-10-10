@@ -31,6 +31,19 @@ const SIM_B = arg("sim-bereich", "");
 const OUT = arg("out", "belege/szenen");
 const TOKEN = process.env.HA_SIM_TOKEN || "tafel-sim-token";
 
+
+// --vorher: ha.js/ha-panels.js/konzepte.js/fussball-live.js aus dem letzten
+// Commit ausliefern (Stand vor den Korrekturen) – zeigt, dass die Probe den
+// Fehler findet.
+const VORHER = process.argv.indexOf("--vorher") !== -1;
+async function vorherRouten(page) {
+  if (!VORHER) return;
+  const { execSync } = require("child_process");
+  for (const f of ["ha.js", "ha-panels.js", "konzepte.js", "fussball-live.js"]) {
+    const alt = execSync("git show HEAD:" + f, { cwd: path.join(__dirname, ".."), maxBuffer: 1 << 24 });
+    await page.route(new RegExp("/" + f.replace(".", "\\.") + "(\\?|$)"), (r) => r.fulfill({ status: 200, contentType: "application/javascript", body: alt }));
+  }
+}
 let fehler = 0;
 function log(ok, text) { if (!ok) fehler++; console.log((ok ? "✓ " : "✗ ") + text); }
 
@@ -180,6 +193,7 @@ function nah(a, b, tol) { return typeof a === "number" && typeof b === "number" 
       userAgent: "Mozilla/5.0 (iPad; CPU OS 12_5_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1",
     }, mitVideo ? { recordVideo: { dir: OUT, size: { width: 1024, height: 768 } } } : {}));
     const page = await context.newPage();
+    await vorherRouten(page);
     page.codeFehler = [];
     page.on("pageerror", (e) => { if (!/access control checks/.test(e.message)) page.codeFehler.push(e.message); });
     page.on("console", (m) => {
@@ -291,6 +305,31 @@ function nah(a, b, tol) { return typeof a === "number" && typeof b === "number" 
     log(aktiv, "Knopf danach als aktiv markiert");
     const schleier = await page.evaluate((id) => { const b = document.querySelector('#haOvSide .ha-scene[data-id="' + id + '"] .ha-scene-sweep'); return b ? b.style.background : ""; }, sid);
     log((schleier.match(/rgb\(/g) || []).length >= 4, "Farbschleier in den vier Szenenfarben: " + schleier.slice(0, 90) + "…");
+    // Schnappschuss aus scene.create (wie in Julians Automation "Kalter Tag")
+    // darf nicht als Raum-Szene erscheinen
+    const lampe = Object.keys(szene.entities)[0];
+    await page.evaluate((l) => TafelHA.callService("scene", "create", { scene_id: "vorher_probe", snapshot_entities: [l] }), lampe);
+    await page.waitForTimeout(1200);
+    const schnappImRaum = await page.evaluate(() => TafelHA.model().rooms.some((r) => r.scenes.indexOf("scene.vorher_probe") !== -1));
+    log(!schnappImRaum, "Schnappschuss (scene.create) erscheint in keinem Raum");
+    // Hue-Szenenwähler steht auf "Read", danach eigene Szene angetippt →
+    // die eigene ist aktiv, nicht "Lesen"
+    const sz = await page.evaluate(() => {
+      const r = TafelHA.model().rooms.filter((x) => x.sceneSelects.length && x.scenes.length)[0];
+      return r ? { raum: r.name, sel: r.sceneSelects[0], opts: TafelHA.attr(TafelHA.state(r.sceneSelects[0]), "options") } : null;
+    });
+    if (sz && sz.opts && sz.opts.indexOf("Read") !== -1) {
+      await page.tap("#haRoomOverlay .ha-ov-back").catch(() => {});
+      await page.waitForTimeout(400);
+      await page.evaluate((x) => TafelHA.callService("select", "select_option", { option: "Read" }, { entity_id: x.sel }), sz);
+      await page.waitForTimeout(1500);
+      await raumAuf(page, sz.raum);
+      const ziel = sceneId[sz.raum + " · Entspannen"];
+      await page.tap('#haOvSide .ha-scene[data-id="' + ziel + '"]');
+      await page.waitForTimeout(1800);
+      const aktiv = await page.evaluate(() => [].filter.call(document.querySelectorAll("#haOvSide .ha-scene.is-active"), () => true).map((b) => b.querySelector(".ha-scene-name").textContent));
+      log(aktiv.length === 1 && aktiv[0] === "Entspannen", sz.raum + ": Hue-Wähler auf „Read“, dann „Entspannen“ angetippt → aktiv: " + aktiv.join(", "));
+    } else log(false, "Raum mit Hue-Szenenwähler und Option „Read“ nicht gefunden");
     log(!page.codeFehler.length, "ohne Bereich: keine Code-Fehler" + (page.codeFehler.length ? " – " + page.codeFehler.join(" | ") : ""));
     const video = page.video();
     await t1.context.close();

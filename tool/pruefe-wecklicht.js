@@ -166,12 +166,14 @@ async function seite(browser, jetzt, video) {
     // C. früher Termin + Ablehnen
     await ha.cmd({ type: "call_service", domain: "input_datetime", service: "set_datetime", service_data: { datetime: "2026-10-01 06:00:00" }, target: { entity_id: "input_datetime.wecklicht" } });
     const termin = await page.evaluate(() => {
-      lastCalendarEvents = [{ title: "Zahnarzt", start: new Date(2026, 9, 12, 7, 30).getTime(), allDay: false }];
+      // Wecklicht liest die ungekappte 48-h-Liste; ein Termin um 1 Uhr nachts zählt nicht
+      lastTermine48 = [{ title: "Nachtzug", start: new Date(2026, 9, 12, 1, 0).getTime(), allDay: false },
+        { title: "Zahnarzt", start: new Date(2026, 9, 12, 7, 30).getTime(), allDay: false }];
       const p = TafelKonzepte.wecklichtPlan();
       return p ? { ende: p.endeMs, grund: p.grund } : null;
     });
-    log(!!termin && termin.ende === new Date(2026, 9, 12, 6, 0).getTime() && /Termin um 07:30/.test(termin.grund), "Termin Mo 7:30 → Licht ganz an 6:00 („" + (termin && termin.grund) + "“)");
-    await page.evaluate(() => { lastCalendarEvents = []; jumpToPanel("departures"); TafelHAUI.refresh(); });
+    log(!!termin && termin.ende === new Date(2026, 9, 12, 6, 0).getTime() && /Termin um 07:30/.test(termin.grund), "Termin Mo 7:30 → Licht ganz an 6:00, Termin um 1 Uhr nachts ignoriert („" + (termin && termin.grund) + "“)");
+    await page.evaluate(() => { lastTermine48 = []; jumpToPanel("departures"); TafelHAUI.refresh(); });
     await page.waitForTimeout(1200);
     const x = await page.$('#haHints .ha-hint[data-key^="konzept|wecklicht|"] .ha-hint-weg');
     if (x) {

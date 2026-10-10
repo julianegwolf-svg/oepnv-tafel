@@ -214,8 +214,12 @@
     }
     if (!unserer) return;
     // Prototyp K3 (konzepte.js): Tor-Licht – prüft selbst, ob es an ist
-    if (window.TafelKonzepte && TafelKonzepte.tor) {
-      try { TafelKonzepte.tor({ team: e.team, stand: stand }); } catch (err) { /* nie das Tor stören */ }
+    // Wer hat getroffen? e.team ist der höchstrangige verfolgte Verein des
+    // Spiels – bei Werder gegen St. Pauli wäre das auch beim Gegentor Werder.
+    const torVerein = (CONFIG.sportTeams || []).filter(function (n) { return isFollowedTeam(team, n); })[0] ||
+      (isFollowedTeam(team, e.team) ? e.team : null);
+    if (window.TafelKonzepte && TafelKonzepte.tor && torVerein) {
+      try { TafelKonzepte.tor({ team: torVerein, stand: stand }); } catch (err) { /* nie das Tor stören */ }
     }
     const dunkel = typeof tafelIstDunkel === "function" && tafelIstDunkel();
     const beschaeftigt = (typeof recentlyTouched !== "undefined" && recentlyTouched) || (typeof panelNavOpen !== "undefined" && panelNavOpen);
@@ -227,7 +231,7 @@
     if (alt) alt.parentNode.removeChild(alt);
     const o = document.createElement("div");
     o.className = "tor-overlay";
-    o.style.setProperty("--team-color", typeof teamColorFor === "function" ? teamColorFor(e.team) : "#2e8b57");
+    o.style.setProperty("--team-color", typeof teamColorFor === "function" ? teamColorFor(torVerein || e.team) : "#2e8b57");
     o.innerHTML = '<span class="tor-wort">Tor!</span><span class="tor-stand num"></span>';
     o.lastChild.textContent = kurzName(e.m.team1) + " " + stand[0] + ":" + stand[1] + " " + kurzName(e.m.team2);
     panel.appendChild(o);

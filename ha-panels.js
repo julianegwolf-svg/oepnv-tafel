@@ -839,8 +839,8 @@
 
   // ---------- Szenen, Schalter, Heizung, Medien ----------
   // Der Farbschleier (0,6 s) soll ganz durchlaufen, auch wenn HA schon nach
-  // ~100 ms den neuen Zustand meldet und die Knöpfe neu gezeichnet werden:
-  // der neue Knopf setzt die Animation an der richtigen Stelle fort.
+  // ~100 ms den neuen Zustand meldet und die Knöpfe neu gezeichnet werden
+  // (das entfernte bisher die Klasse is-pressed und brach ihn ab).
   const SWEEP_MS = 600;
   let sceneSweep = { key: null, t: 0 };
 
@@ -848,10 +848,12 @@
     sceneSweep = { key: key, t: Date.now() };
   }
 
+  // Nur die Klasse: setHtml behält den Knopf (Morphing), die laufende
+  // Animation läuft dann einfach weiter. Eine Inline-Verzögerung würde sie
+  // in neuerem WebKit vorspringen lassen.
   function sweepAttrs(key) {
     const ms = sceneSweep.key === key ? Date.now() - sceneSweep.t : SWEEP_MS;
-    if (ms >= SWEEP_MS - 30) return { cls: "", style: "" };
-    return { cls: " is-sweeping", style: "animation-delay:-" + ms + "ms;" };
+    return { cls: ms < SWEEP_MS - 30 ? " is-sweeping" : "", style: "" };
   }
 
   function activateScene(id, btn) {
@@ -1781,21 +1783,27 @@
   }
 
   function activeSceneId(room) {
-    // Hue-Szenenwähler (select.*_szene) kennt die zuletzt aktive Szene.
-    for (let i = 0; i < room.sceneSelects.length; i++) {
-      const sel = HA.state(room.sceneSelects[i]);
-      if (!sel || HA.isUnavailable(sel) || !sel.state || sel.state === "unknown") continue;
-      const want = canonScene(sel.state);
-      const hit = room.scenes.filter(function (id) { return sceneKey(id, room) === want; })[0];
-      if (hit && roomLightsOn(room) > 0) return hit;
-    }
+    if (roomLightsOn(room) === 0) return null;
+    // Zuletzt aktivierte Szene (Zustand = Zeitpunkt der Aktivierung) …
     let best = null;
     let bestT = 0;
     room.scenes.forEach(function (id) {
       const t = Date.parse(HA.state(id) ? HA.state(id).state : "");
       if (isFinite(t) && t > bestT) { bestT = t; best = id; }
     });
-    if (!best || Date.now() - bestT > 3 * 3600 * 1000 || roomLightsOn(room) === 0) return null;
+    // … außer der Hue-Szenenwähler (select.*_szene) hat sich danach
+    // geändert (Szene aus der Hue-App oder per Dimmer). HA-Szenen ändern
+    // ihn nie – er darf eine neuere eigene Szene also nicht überstimmen.
+    for (let i = 0; i < room.sceneSelects.length; i++) {
+      const sel = HA.state(room.sceneSelects[i]);
+      if (!sel || HA.isUnavailable(sel) || !sel.state || sel.state === "unknown") continue;
+      const selT = Date.parse(sel.last_changed || "");
+      if (best && !(isFinite(selT) && selT > bestT)) continue;
+      const want = canonScene(sel.state);
+      const hit = room.scenes.filter(function (id) { return sceneKey(id, room) === want; })[0];
+      if (hit) return hit;
+    }
+    if (!best || Date.now() - bestT > 3 * 3600 * 1000) return null;
     return best;
   }
 
@@ -3435,6 +3443,7 @@
     // Für die Prototypen in konzepte.js (gleiche Icons, gleiches Escaping)
     icon: icon,
     esc: esc,
+    todoEntity: function () { return HA.everReady() ? todoEntity() : null; },
     morgengruss: function () {
       try { window.localStorage.removeItem(GRUSS_KEY); } catch (e) { /* egal */ }
       maybeMorningGreeting();

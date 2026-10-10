@@ -408,7 +408,7 @@ class Simulation {
   zeitAusloeser() {
     const t = jetzt();
     const h = ortsStunde(t);
-    const minute = Math.floor(h * 60);
+    const minute = Math.floor(h * 60 + 1e-6); // 8 + 25/60 → 504,999… ohne Epsilon
     if (minute === this.letzteZeitMinute) return;
     this.letzteZeitMinute = minute;
     for (const [aid, a] of this.automationen) {
@@ -420,11 +420,11 @@ class Simulation {
             // at: input_datetime.x – mit Datum: genau dieser Tag + Minute
             const s = this.welt.zustand(at);
             const m = s && /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/.exec(s.state);
-            if (m && m[1] === ortsDatum(t) && Math.floor(zeitInStunden(m[2]) * 60) === minute) this.automationAusloesen(aid, null, false, 'time');
+            if (m && m[1] === ortsDatum(t) && Math.floor(zeitInStunden(m[2]) * 60 + 1e-6) === minute) this.automationAusloesen(aid, null, false, 'time');
             continue;
           }
           const z = zeitInStunden(at);
-          if (z !== null && Math.floor(z * 60) === minute) this.automationAusloesen(aid, null, false, 'time');
+          if (z !== null && Math.floor(z * 60 + 1e-6) === minute) this.automationAusloesen(aid, null, false, 'time');
         }
       }
     }

@@ -957,8 +957,8 @@
 
   // Szene ohne Bereich (z. B. frisch aus scenes.yaml, noch keinem Raum
   // zugeordnet): 1. Name beginnt mit einem Raumnamen ("Wohnzimmer · Lesen"),
-  // 2. sonst alle ihre Lampen/Geräte stehen im selben Raum. Von der Tafel
-  // selbst angelegte Szenen (Rückgängig) bleiben draußen.
+  // 2. sonst (nur YAML-/Editor-Szenen) alle ihre Lampen im selben Raum.
+  // Schnappschüsse (scene.create, z. B. Rückgängig) bleiben draußen.
   function sceneAreaGuess(entityId, st) {
     if (entityId.indexOf("scene.tafel_") === 0) return null;
     const name = String(attr(st, "friendly_name") || "").toLowerCase();
@@ -970,6 +970,9 @@
       if (!best || an.length > String(best.name).length) best = a;
     }
     if (best) return best.area_id;
+    // Lampen-Raum nur bei echten Szenen (YAML/Editor, mit id) – nicht bei
+    // Schnappschüssen aus scene.create (z. B. in einer Automation).
+    if (attr(st, "id") == null) return null;
     const members = attr(st, "entity_id");
     if (!Array.isArray(members) || !members.length) return null;
     let area = null;

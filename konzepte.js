@@ -39,7 +39,7 @@
     const ids = Object.keys(states).filter(function (id) { return id.indexOf("tag.") === 0; });
     for (let i = 0; i < ids.length; i++) {
       const n = (HA().name(ids[i]) + " " + ids[i]).toLowerCase();
-      if (/(^|[^a-zäöü])(t(ü|ue|u)r|haust|wohnungst|door|eingang)/.test(n)) return ids[i];
+      if (/(^|[^a-zäöü])(t(ü|ue|u)r|haust(ü|ue|u)r|wohnungst(ü|ue|u)r|door|eingang)(?![a-zäöü])/.test(n)) return ids[i];
     }
     return null;
   }
@@ -103,8 +103,9 @@
   }
 
   function einkaufListe() {
-    const g = HA().model().global;
-    const id = g.todos[0];
+    // Dieselbe Liste wie das Zuhause-Panel (config einkaufsliste, sonst
+    // "Einkauf…"/"shopping", sonst die erste)
+    const id = UI() && UI().todoEntity ? UI().todoEntity() : HA().model().global.todos[0];
     if (!id) return null;
     const items = (HA().todoItems(id) || []).filter(function (it) { return it && it.status !== "completed" && it.summary; });
     return items.length ? { id: id, items: items } : null;
@@ -268,12 +269,15 @@
     let ende = losMs - (KC.wecklichtVorlaufMin || 45) * 60000;
     let grund = bahn.dep ? "Bahn " + bahn.dep.line + " um " + bahn.dep.clock : "los um " + fmt(losMs);
     // Früher Termin an dem Tag? Dann 90 min davor wach.
+    // Ungekappte Liste (termine48), das Termine-Panel hat nur sechs.
+    // Termine vor 5 Uhr zählen nicht (falsche Zeitzone, Nachtveranstaltung).
     const snap = typeof tafelSnapshot === "function" ? tafelSnapshot() : null;
-    const evs = (snap && snap.calendar) || [];
+    const evs = ((snap && (snap.termine48 || snap.calendar)) || []).slice().sort(function (a, b) { return a.start - b.start; });
     const tagEnde = tag.getTime() + 86400000;
+    const ab5 = tag.getTime() + 5 * 3600000;
     for (let i = 0; i < evs.length; i++) {
       const e = evs[i];
-      if (e.allDay || e.start < tag.getTime() || e.start >= tagEnde) continue;
+      if (e.allDay || e.start < ab5 || e.start >= tagEnde) continue;
       if (e.start - 90 * 60000 < ende) {
         ende = e.start - 90 * 60000;
         grund = "Termin um " + fmt(e.start);
@@ -282,6 +286,7 @@
     }
     ende = Math.floor(ende / 300000) * 300000;
     const dauer = (KC.wecklichtDauerMin || 20) * 60000;
+    if (ende - dauer < now.getTime() + 30 * 60000) return null; // zu knapp / unsinnig
     const heute = tag.getDate() === now.getDate();
     return {
       tag: tag, key: tagSchluessel(tag), startMs: ende - dauer, endeMs: ende, grund: grund,
@@ -289,9 +294,11 @@
     };
   }
 
+  // Steht der Helfer schon auf einem Zeitpunkt für diesen Morgen (bis 4 h
+  // um den Vorschlag herum – auch, wenn Julian ihn in HA verschoben hat)?
   function weckGesetzt(id, plan) {
-    const st = HA().state(id);
-    return !!(st && String(st.state).indexOf(plan.key + " ") === 0);
+    const ts = HA().attr(HA().state(id), "timestamp");
+    return typeof ts === "number" && Math.abs(ts * 1000 - plan.startMs) < 4 * 3600000;
   }
 
   function weckAbgelehnt(plan) {
@@ -359,6 +366,16 @@
     });
   }
 
+  let torNachholen = false; // Wiederherstellen scheiterte (Verbindung weg)
+
+  function torWiederherstellen() {
+    return HA().callService("scene", "turn_on", null, { entity_id: "scene." + TOR_SZENE }).then(function () {
+      torNachholen = false;
+    }, function () {
+      torNachholen = true; // beim nächsten "sync" (wieder verbunden) erneut
+    });
+  }
+
   function torLicht(info) {
     if (!KC.torLicht || torLaeuft || !HA() || !HA().isConnected()) return false;
     const hauptverein = KC.torLichtVerein || ((typeof CONFIG !== "undefined" && CONFIG.sportTeams) || [])[0];
@@ -370,24 +387,24 @@
     const gruen = hexZuRgb(typeof teamColorFor === "function" ? teamColorFor(info.team) : "#1d9053");
     const schritte = [];
     for (let i = 0; i < 3; i++) {
-      schritte.push({ rgb_color: gruen, brightness: 255 });
-      schritte.push({ rgb_color: [255, 255, 255], brightness: 255 });
+      schritte.push({ rgb_color: gruen, ms: 750 });
+      schritte.push({ rgb_color: [255, 255, 255], ms: 550 });
     }
-    const call = function (d, s, data, t) { return HA().callService(d, s, data, t); };
-    call("scene", "create", { scene_id: TOR_SZENE, snapshot_entities: lampen }).then(function () {
-      let i = 0;
-      const weiter = function () {
-        if (i >= schritte.length) {
-          call("scene", "turn_on", null, { entity_id: "scene." + TOR_SZENE }).catch(function () {}).then(function () { torLaeuft = false; });
-          return;
-        }
-        const d = schritte[i];
-        i++;
-        call("light", "turn_on", { rgb_color: d.rgb_color, brightness: d.brightness, transition: 0 }, { entity_id: lampen }).catch(function () {});
-        setTimeout(weiter, i % 2 ? 750 : 550);
-      };
-      weiter();
-    }).catch(function () { torLaeuft = false; });
+    // Schritte nacheinander: erst nach der Antwort von HA warten, damit kein
+    // später "Weiß"-Befehl nach dem Wiederherstellen ankommt.
+    let i = 0;
+    const weiter = function () {
+      if (i >= schritte.length || !HA().isConnected()) {
+        torWiederherstellen().then(function () { torLaeuft = false; });
+        return;
+      }
+      const d = schritte[i++];
+      HA().callService("light", "turn_on", { rgb_color: d.rgb_color, brightness: 255, transition: 0 }, { entity_id: lampen })
+        .catch(function () {})
+        .then(function () { setTimeout(weiter, d.ms); });
+    };
+    HA().callService("scene", "create", { scene_id: TOR_SZENE, snapshot_entities: lampen })
+      .then(weiter, function () { torLaeuft = false; });
     return true;
   }
 
@@ -414,6 +431,7 @@
   function init() {
     if (!HA()) return;
     HA().on(function (type, a, b, c) {
+      if (type === "sync" && torNachholen && !torLaeuft) torWiederherstellen();
       if (type === "state") onState(a, b, c);
       else if (type === "todo" && tuerOffen) tuerRender();
     });

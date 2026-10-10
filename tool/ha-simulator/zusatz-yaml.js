@@ -54,10 +54,14 @@ function datetimeAttribute(text, alt) {
   // Ortszeit → UTC: Versatz für genau diesen Zeitpunkt bestimmen
   const probe = Date.UTC(j, mo - 1, t, h, mi, s);
   const fmt = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const teile = {};
-  fmt.formatToParts(new Date(probe)).forEach(p => { teile[p.type] = p.value; });
-  const alsOrt = Date.UTC(+teile.year, +teile.month - 1, +teile.day, +teile.hour % 24, +teile.minute, +teile.second);
-  const utc = probe - (alsOrt - probe);
+  const versatz = ms => {
+    const teile = {};
+    fmt.formatToParts(new Date(ms)).forEach(p => { teile[p.type] = p.value; });
+    return Date.UTC(+teile.year, +teile.month - 1, +teile.day, +teile.hour % 24, +teile.minute, +teile.second) - ms;
+  };
+  // Versatz zweimal bestimmen: am Probe-Zeitpunkt und am Ergebnis (Umstellungstage)
+  let utc = probe - versatz(probe);
+  utc = probe - versatz(utc);
   const zwei = n => String(n).padStart(2, '0');
   return {
     state: j + '-' + zwei(mo) + '-' + zwei(t) + ' ' + zwei(h) + ':' + zwei(mi) + ':' + zwei(s),

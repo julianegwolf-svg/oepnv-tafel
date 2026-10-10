@@ -22,13 +22,26 @@ function arg(name, fallback) {
 const SIM = arg("sim", "http://localhost:8142");
 const OUT = arg("out", "belege/torlicht");
 const ANSTOSS = new Date(2026, 9, 17, 15, 30).getTime();
+
+// --vorher: ha.js/ha-panels.js/konzepte.js/fussball-live.js aus dem letzten
+// Commit ausliefern (Stand vor den Korrekturen) – zeigt, dass die Probe den
+// Fehler findet.
+const VORHER = process.argv.indexOf("--vorher") !== -1;
+async function vorherRouten(page) {
+  if (!VORHER) return;
+  const { execSync } = require("child_process");
+  for (const f of ["ha.js", "ha-panels.js", "konzepte.js", "fussball-live.js"]) {
+    const alt = execSync("git show HEAD:" + f, { cwd: path.join(__dirname, ".."), maxBuffer: 1 << 24 });
+    await page.route(new RegExp("/" + f.replace(".", "\\.") + "(\\?|$)"), (r) => r.fulfill({ status: 200, contentType: "application/javascript", body: alt }));
+  }
+}
 let fehler = 0;
 function log(ok, text) { if (!ok) fehler++; console.log((ok ? "✓ " : "✗ ") + text); }
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------- Attrappe OpenLigaDB ----------
 const team1 = { teamId: 134, teamName: "SV Werder Bremen", shortName: "Bremen", teamIconUrl: "", teamGroupName: null };
-const team2 = { teamId: 31, teamName: "SC Paderborn 07", shortName: "Paderborn", teamIconUrl: "", teamGroupName: null };
+let team2 = { teamId: 31, teamName: "SC Paderborn 07", shortName: "Paderborn", teamIconUrl: "", teamGroupName: null };
 let tore = [];
 function spiel() {
   const s = tore.length ? tore[tore.length - 1] : { s1: 0, s2: 0 };
@@ -86,6 +99,7 @@ function istWeiss(rgb) { return rgb && rgb[0] > 200 && rgb[1] > 200 && rgb[2] > 
     recordVideo: { dir: OUT, size: { width: 1024, height: 768 } },
   });
   const page = await context.newPage();
+  await vorherRouten(page);
   const codeFehler = [];
   page.on("pageerror", (e) => { if (!/access control checks/.test(e.message)) codeFehler.push(e.message); });
   const json = (body) => ({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify(body) });
@@ -161,11 +175,17 @@ function istWeiss(rgb) { return rgb && rgb[0] > 200 && rgb[1] > 200 && rgb[2] > 
   // 3a. Gegentor
   ev = await tor(2, 1, "Muslija", 31);
   log(!ev.some((e) => istGruen(farbe(e.a))), "Gegentor (Paderborn): kein Licht");
+  // Gegner ist selbst ein verfolgter Verein (St. Pauli steht in sportTeams):
+  // vorher kam hier "Werder Bremen" als Torschütze an → Licht beim Gegentor
+  team2 = { teamId: 98, teamName: "FC St. Pauli", shortName: "St. Pauli", teamIconUrl: "", teamGroupName: null };
+  ev = await tor(2, 2, "Irvine", 98);
+  log(!ev.some((e) => istGruen(farbe(e.a))), "Gegentor eines ebenfalls verfolgten Vereins (St. Pauli): kein Licht");
+  team2 = { teamId: 31, teamName: "SC Paderborn 07", shortName: "Paderborn", teamIconUrl: "", teamGroupName: null };
   // 3b. niemand zu Hause
   const person = await page.evaluate(() => TafelHA.model().global.persons[0]);
   await fetch(SIM + "/sim/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entity_id: person, state: "not_home" }) });
   await pause(800);
-  ev = await tor(3, 1, "Stage", 134);
+  ev = await tor(3, 2, "Stage", 134);
   log(!ev.some((e) => istGruen(farbe(e.a))), "Niemand zu Hause: Werder-Tor ohne Licht");
   await fetch(SIM + "/sim/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entity_id: person, state: "home" }) });
 

@@ -1227,6 +1227,7 @@ let rainStartMinutes = null;
 let lastWeatherSnapshot = null;
 let lastDepartureSnapshot = [];
 let lastCalendarEvents = [];
+let lastTermine48 = [];
 
 // ---------- Wetter-Icons als eigene SVGs statt Emoji ----------
 // Emoji-Wettericons (☀️🌧️🌙 …) rendern je nach Gerät/Systemschriftart
@@ -2988,12 +2989,17 @@ function updateCalendar() {
     // Nur, was noch kommt oder gerade läuft: ganztägige bis Tagesende,
     // Termine mit Uhrzeit bis zu ihrem Ende (ohne Ende: 30 min nach Beginn).
     // Ein laufender mehrtägiger Termin steht unter "Heute" mit "bis …".
-    const upcoming = window.kalenderTermine(text, heuteMs, heuteMs + 62 * 86400000)
+    const kommende = window.kalenderTermine(text, heuteMs, heuteMs + 62 * 86400000)
       .filter(function (t) {
         if (!t.titel) return false;
         if (t.ganztags) return t.ende > heuteMs;
         return t.ende > t.start ? t.ende > jetztMs : t.start > jetztMs - 30 * 60000;
-      })
+      });
+    // Für das Wecklicht (konzepte.js): Termine mit Uhrzeit der nächsten 48 h,
+    // nicht auf die sechs Einträge des Panels gekappt.
+    lastTermine48 = kommende.filter(function (t) { return !t.ganztags && t.start > jetztMs && t.start < jetztMs + 48 * 3600000; })
+      .slice(0, 40).map(function (t) { return { title: t.titel, start: t.start, allDay: false }; });
+    const upcoming = kommende
       .slice(0, CONFIG.calendarCount || 6)
       .map(function (t) {
         const laeuft = t.start < heuteMs;
@@ -5333,6 +5339,7 @@ function tafelSnapshot() {
     walkMinutes: walkMinutesToStop,
     waste: waste ? { date: waste.date, text: formatWasteEntry(waste), type: waste.type, label: waste.label, shiftedBecause: waste.shiftedBecause } : null,
     calendar: lastCalendarEvents,
+    termine48: lastTermine48,
     commutePtMinutes: lastCommutePtMinutes,
   };
 }
