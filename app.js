@@ -860,6 +860,8 @@ function renderDepartures(departures) {
       whenMs: whenMs,
       clock: whenMs ? new Date(whenMs).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "",
       leaveByMs: whenMs && walkMinutesToStop != null ? whenMs - walkMinutesToStop * 60000 : whenMs,
+      color: dep.routeColor || null,
+      textColor: dep.routeTextColor || null,
     };
   });
 

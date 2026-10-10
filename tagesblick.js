@@ -167,7 +167,7 @@
         '<div class="tb-wetter-main"><span class="tb-wetter-icon">' + iconHtml(w.code, w.isDay !== false) + "</span>" +
         '<span class="tb-big num">' + esc(w.temp) + "°</span>" +
         '<span class="tb-wetter-text"><b>' + esc(w.desc) + "</b>" +
-        (w.hi != null ? "<span>bis " + esc(w.hi) + "° · nachts " + esc(w.lo) + "°</span>" : "") + "</span></div>" +
+        (w.hi != null ? '<span class="tb-hilo"><span>bis ' + esc(w.hi) + '°</span><span class="tb-sep"> · </span><span>nachts ' + esc(w.lo) + "°</span></span>" : "") + "</span></div>" +
         (regen ? '<div class="tb-line' + (regen.nass ? " is-nass" : "") + '">' + (regen.nass ? "☔ " : "") + esc(regen.text) + "</div>" : "") +
         stundenLeiste(w, [1, 2, 3, 4, 6, 8, 10, 12].map(function (n) { return Date.now() + n * 3600000; })) +
         "</div>";
@@ -254,6 +254,16 @@
       "</div>";
   }
 
+  function freiBahnKarte(deps) {
+    return '<div class="tb-card tb-bahn"><div class="tb-eyebrow">Nächste Bahnen</div><div class="tb-abf">' +
+      deps.map(function (d) {
+        const inMin = Math.max(0, Math.round((d.whenMs - Date.now()) / 60000));
+        return '<div class="tb-abf-row">' + badge(d.line, d.color, d.textColor) +
+          '<span class="tb-abf-dest">' + esc(d.dest) + "</span>" +
+          '<span class="tb-abf-in num">' + (inMin < 1 ? "jetzt" : inMin + " min") + "</span></div>";
+      }).join("") + "</div></div>";
+  }
+
   function bahnKarte(s, m, tag) {
     if (m === "heute") {
       const frei = freierTag(tag);
@@ -261,7 +271,11 @@
       // nächsten Bahn – gleiche Rechnung wie der Morgengruß.
       const ab = !frei && typeof arbeitsBahnHeute === "function" ? arbeitsBahnHeute() : null;
       if (ab) return arbeitsKarte(s, ab);
-      const dep = (s.departures || []).filter(function (d) { return d.leaveByMs && d.leaveByMs >= Date.now() - 60000; })[0];
+      const naechste = (s.departures || []).filter(function (d) { return d.leaveByMs && d.leaveByMs >= Date.now() - 60000; });
+      // Freier Tag: keine Dringlichkeit ("jetzt los" in Rot um 06:40 am
+      // Samstag ist nur Unruhe) – die nächsten Bahnen als ruhige Liste.
+      if (frei) return naechste.length ? freiBahnKarte(naechste.slice(0, 4)) : "";
+      const dep = naechste[0];
       if (!dep) return "";
       const inMin = Math.max(0, Math.round((dep.leaveByMs - Date.now()) / 60000));
       let arbeit = "";
@@ -271,7 +285,7 @@
       }
       return '<div class="tb-card tb-bahn">' +
         '<div class="tb-eyebrow">Nächste Bahn</div>' +
-        '<div class="tb-bahn-main">' + badge(dep.line) + '<span class="tb-big num">' + esc(dep.clock) + "</span></div>" +
+        '<div class="tb-bahn-main">' + badge(dep.line, dep.color, dep.textColor) + '<span class="tb-big num">' + esc(dep.clock) + "</span></div>" +
         '<div class="tb-bahn-dest">→ ' + esc(dep.dest) + "</div>" +
         '<div class="tb-pill' + (inMin <= 1 ? " is-now" : (inMin <= 4 ? " is-soon" : "")) + '">' + (inMin <= 1 ? "jetzt los" : "in " + inMin + " min los") + "</div>" +
         arbeit + "</div>";
@@ -483,7 +497,7 @@
         // markierten Fahrplanzeile – lieber sie opfern als die nächste Bahn.
         const sum = karte.querySelector(".tb-plan-row.is-pick") && karte.querySelector(".tb-plan-row.is-nach-1") ? karte.querySelector(".tb-bahn-sum") : null;
         const weg = karte.querySelector(".tb-plan-row.is-vor") || letztes(karte, ".tb-plan-row.is-nach-3, .tb-plan-row.is-nach-2") ||
-          letztes(karte, ".tb-hour") || sum || letztes(karte, ".tb-plan-row:not(.is-pick)") || letztes(karte, ".tb-raum") || karte.querySelector(".tb-plan");
+          letztes(karte, ".tb-hour") || sum || letztes(karte, ".tb-plan-row:not(.is-pick)") || letztes(karte, ".tb-raum") || letztes(karte, ".tb-abf-row") || karte.querySelector(".tb-plan");
         if (!weg) break;
         weg.parentNode.removeChild(weg);
       }

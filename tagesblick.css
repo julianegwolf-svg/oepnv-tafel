@@ -575,3 +575,79 @@
 .tb-grid.n-4 .tb-plan-row {
   height: 42px;
 }
+
+/* Freier Tag: die nächsten Bahnen als ruhige Liste, ohne "jetzt los". */
+.tb-abf {
+  margin-top: 8px;
+}
+
+.tb-abf-row {
+  display: flex;
+  align-items: center;
+  height: 54px;
+  border-top: 1px solid rgba(239, 233, 223, 0.08);
+}
+
+.tb-abf-row:first-child {
+  border-top: 0;
+}
+
+.tb-abf-row .tb-badge {
+  min-width: 54px;
+  height: 36px;
+  margin-right: 14px;
+  font-size: 20px;
+}
+
+.tb-abf-dest {
+  flex: 1;
+  min-width: 0;
+  font-size: 19px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tb-abf-in {
+  margin-left: 12px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+/* Schmale Wetterspalte: "bis 14°" und "nachts 9°" untereinander statt
+   abgeschnitten. */
+.tb-grid.n-4 .tb-hilo .tb-sep,
+.tb-grid.n-5 .tb-hilo .tb-sep {
+  display: none;
+}
+
+.tb-grid.n-4 .tb-hilo > span,
+.tb-grid.n-5 .tb-hilo > span {
+  display: block;
+}
+
+.tb-grid.n-4 .tb-wetter-text span.tb-hilo,
+.tb-grid.n-5 .tb-wetter-text span.tb-hilo {
+  white-space: normal;
+}
+
+.tb-grid.n-5 .tb-abf-row .tb-badge,
+.tb-grid.n-4 .tb-abf-row .tb-badge {
+  min-width: 44px;
+  height: 32px;
+  margin-right: 10px;
+  padding: 0 6px;
+  font-size: 17px;
+}
+
+.tb-grid.n-5 .tb-abf-dest,
+.tb-grid.n-4 .tb-abf-dest {
+  font-size: 17px;
+}
+
+.tb-grid.n-5 .tb-abf-in,
+.tb-grid.n-4 .tb-abf-in {
+  margin-left: 8px;
+  font-size: 20px;
+}
