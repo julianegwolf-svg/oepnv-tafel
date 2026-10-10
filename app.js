@@ -2006,6 +2006,12 @@ function buildNewsSlide(entry, index) {
     (badgeLabel === "Bremen" ? " badge-bremen" : badgeLabel === "Welt" ? " badge-welt" : " badge-de");
   badge.textContent = badgeLabel;
   content.appendChild(badge);
+  // Wie alt ist die Meldung? (wird beim Zeigen aktualisiert)
+  const alter = document.createElement("span");
+  alter.className = "news-slide-alter num";
+  alter.setAttribute("data-ms", String(newsZeitMs(item)));
+  alter.textContent = newsAlterText(newsZeitMs(item));
+  content.appendChild(alter);
 
   // Kicker nur, wenn er etwas anderes sagt als das Badge (sonst stand
   // "BREMEN" doppelt untereinander).
@@ -2068,6 +2074,8 @@ function showNewsSlide(index) {
     if (i === index) slides[i].className += " active";
   }
   applySlideMediaSwap(slides, index, 950);
+  const alter = slides[index] && slides[index].querySelector(".news-slide-alter");
+  if (alter) alter.textContent = newsAlterText(Number(alter.getAttribute("data-ms")));
 
   // Fortschritts-Punkte — bisher war völlig unsichtbar, wie viele
   // Meldungen insgesamt kommen bzw. wie weit man schon durch ist.
@@ -2106,6 +2114,119 @@ function stopNewsSlideshow() {
 // Ein einzelner Feed-Abruf, der bei Fehlern nicht die anderen Feeds mit
 // runterreißt — kommt ein Pool nicht durch, gibt es halt weniger Slides
 // aus diesem Bereich statt eines komplett leeren News-Panels.
+// ---------- Nachrichten: frisch statt still veraltet (Sitzung 6) ----------
+// FEEDBACK 10.10. „Nachrichten sollen aktuell sein“. Gegenprobe am 10.10.
+// 11 Uhr: Der „allgemeine“ Feed news/?pageSize=2 lieferte gar nicht die
+// Top-Meldungen, sondern die neuesten Meldungen irgendeiner Region („Lyrik
+// in Neustrelitz und Erzählabend in Ueckermünde“; pageSize ignoriert die
+// API ohnehin, es kamen 83 Meldungen); die zweite Bremen-Meldung war 52 h
+// alt. Jetzt: Top-Meldungen = redaktionelle Auswahl der tagesschau-
+// Startseite (homepage), höchstens 12 h alt; Bremen höchstens 24 h; an
+// jeder Meldung steht, wie alt sie ist; Eilmeldungen (breakingNews) als
+// roter Chip auf allen Panels.
+const NEWS_MAX_ALTER_MS = 12 * 3600000;
+const NEWS_BREMEN_MAX_ALTER_MS = 24 * 3600000;
+const EIL_MAX_ALTER_MS = 3 * 3600000;
+let eilmeldung = null; // { titel, ms, key } oder null
+let eilGezeigt = "";
+
+function newsZeitMs(item) {
+  const t = item && item.date ? new Date(item.date).getTime() : NaN;
+  return isNaN(t) ? 0 : t;
+}
+
+// "gerade eben" / "vor 12 Min" / "vor 3 Std" / "gestern 22:10" / "Mo. 09:15"
+function newsAlterText(ms, jetzt) {
+  if (!ms) return "";
+  const min = Math.floor(((jetzt || Date.now()) - ms) / 60000);
+  if (min < 2) return "gerade eben";
+  if (min < 60) return "vor " + min + " Min";
+  if (min < 12 * 60) return "vor " + Math.floor(min / 60) + " Std";
+  const d = new Date(ms);
+  const hm = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const heute = new Date(jetzt || Date.now());
+  heute.setHours(0, 0, 0, 0);
+  if (ms >= heute.getTime()) return "heute " + hm;
+  if (ms >= heute.getTime() - 86400000) return "gestern " + hm;
+  return d.toLocaleDateString("de-DE", { weekday: "short" }) + " " + hm;
+}
+
+function newsRessortLabel(item) {
+  const r = String(item.ressort || "").toLowerCase();
+  if (r === "ausland") return "Welt";
+  if (r === "wirtschaft") return "Wirtschaft";
+  if (r === "sport" || /sportschau\.de|\/sport\//.test(item.shareURL || "")) return "Sport";
+  if (r === "wissen" || r === "investigativ") return "Wissen";
+  return "Deutschland";
+}
+
+// Nur echte Meldungen (keine Wetter-/Sendungs-Kacheln), nicht zu alt.
+// Kommen weniger als drei durch, die drei frischesten trotzdem – dann mit
+// ehrlicher Altersangabe statt eines leeren Panels.
+function newsAuswahl(items, maxAlter, jetzt, mindestens) {
+  const echt = (items || []).filter(function (it) {
+    // Wetter hat die Tafel selbst; die Startseite führt den Wetterbericht als Meldung
+    return it && it.title && it.type === "story" && newsZeitMs(it) > 0 && !/\/wetter\//.test(it.shareURL || "");
+  });
+  const frisch = echt.filter(function (it) { return jetzt - newsZeitMs(it) <= maxAlter; });
+  if (frisch.length >= mindestens) return frisch;
+  return echt.slice().sort(function (a, b) { return newsZeitMs(b) - newsZeitMs(a); }).slice(0, mindestens);
+}
+
+function eilmeldungSetzen(alle, jetzt) {
+  let neu = null;
+  (alle || []).forEach(function (it) {
+    if (!it || it.breakingNews !== true || !it.title) return;
+    const ms = newsZeitMs(it);
+    if (!ms || jetzt - ms > EIL_MAX_ALTER_MS) return;
+    if (!neu || ms > neu.ms) neu = { titel: it.title, ms: ms, key: it.sophoraId || it.externalId || it.title };
+  });
+  eilmeldung = neu;
+  eilChipZeichnen();
+}
+
+function eilChipZeichnen() {
+  const bar = document.querySelector(".statusbar");
+  if (!bar) return;
+  let box = document.getElementById("eilHints");
+  if (!box) {
+    box = document.createElement("div");
+    box.className = "warn-hints eil-hints";
+    box.id = "eilHints";
+    // Ganz vorn: noch vor den amtlichen Warnungen
+    bar.insertBefore(box, document.getElementById("warnHints") || document.getElementById("haHints") || null);
+    box.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      if (!eilmeldung) return;
+      const key = eilmeldung.key;
+      jumpToPanel("news");
+      for (let i = 0; i < newsItems.length; i++) {
+        const it = newsItems[i].item;
+        if ((it.sophoraId || it.externalId || it.title) === key) { showNewsSlide(i); break; }
+      }
+    });
+  }
+  const e = eilmeldung && Date.now() - eilmeldung.ms <= EIL_MAX_ALTER_MS ? eilmeldung : null;
+  const html = e ? '<button type="button" class="ha-hint is-p1 eil-hint" data-key="eil">' +
+    '<span class="eil-wort">Eilmeldung</span><span class="eil-zeit num">' +
+    new Date(e.ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + "</span><span></span></button>" : "";
+  if (box._html !== html) {
+    box._html = html;
+    box.innerHTML = html;
+    if (e) {
+      box.querySelector("span:last-child").textContent = e.titel;
+      // Einmal kurz pulsieren, wenn sie neu ist (AUSBAU 4: Hinweis erscheint)
+      if (eilGezeigt !== e.key) {
+        eilGezeigt = e.key;
+        const chip = box.firstChild;
+        chip.classList.add("is-flash");
+        setTimeout(function () { chip.classList.remove("is-flash"); }, 2000);
+      }
+    }
+  }
+  if (typeof updateHintBar === "function") updateHintBar();
+}
+
 function fetchNewsPool(url, label, count) {
   // Cache-Buster + no-store — gleicher Bug/Fix wie beim Wetter-Abruf: ohne
   // das kann Safaris HTTP-Cache (oder ein CDN vor Tagesschau) über die
@@ -2129,18 +2250,24 @@ function fetchNewsPool(url, label, count) {
 function updateNews() {
   if (!els.newsList) return;
 
-  const regionalUrl = "https://www.tagesschau.de/api2u/news/?regions=" + CONFIG.newsRegion +
-    "&pageSize=" + CONFIG.newsRegionCount;
-  const generalUrl = "https://www.tagesschau.de/api2u/news/?pageSize=" + CONFIG.newsGeneralCount;
-  const worldUrl = "https://www.tagesschau.de/api2u/news/?ressort=ausland" +
-    "&pageSize=" + CONFIG.newsWorldCount;
+  const regionalUrl = "https://www.tagesschau.de/api2u/news/?regions=" + CONFIG.newsRegion;
+  const startseiteUrl = "https://www.tagesschau.de/api2u/homepage/";
 
   Promise.all([
-    fetchNewsPool(regionalUrl, "Bremen", CONFIG.newsRegionCount),
-    fetchNewsPool(generalUrl, null, CONFIG.newsGeneralCount),
-    fetchNewsPool(worldUrl, "Welt", CONFIG.newsWorldCount),
+    fetchNewsPool(regionalUrl, "Bremen", 40),
+    fetchNewsPool(startseiteUrl, null, 40),
   ]).then(function (pools) {
-    let combined = pools[0].concat(pools[1], pools[2]);
+    const jetzt = Date.now();
+    eilmeldungSetzen(pools[1].concat(pools[0]), jetzt);
+    const bremen = newsAuswahl(pools[0], NEWS_BREMEN_MAX_ALTER_MS, jetzt, 0).slice(0, CONFIG.newsRegionCount || 2);
+    const top = newsAuswahl(pools[1], NEWS_MAX_ALTER_MS, jetzt, 3).slice(0, (CONFIG.newsGeneralCount || 2) + (CONFIG.newsWorldCount || 3));
+    top.forEach(function (it) { it._poolLabel = newsRessortLabel(it); });
+    // Wichtigste Meldung zuerst (Reihenfolge der Redaktion), Bremen dazwischen
+    let combined = [];
+    for (let i = 0; i < Math.max(top.length, bremen.length * 2); i++) {
+      if (top[i]) combined.push(top[i]);
+      if (i % 2 === 0 && bremen[i / 2]) combined.push(bremen[i / 2]);
+    }
 
     // Dedupe — der allgemeine Feed und der Ausland-Feed können sich
     // überschneiden, wenn eine Welt-Meldung gerade Top-Thema ist.
@@ -2155,7 +2282,9 @@ function updateNews() {
     if (!combined.length) throw new Error("Keine News erhalten");
 
     return Promise.all(combined.map(function (item, i) {
-      const wantsFullText = i < CONFIG.newsFullCount;
+      // Volltext nur, wo er auch gezeigt wird ("klassisch") oder der Teaser fehlt
+      const wantsFullText = i < CONFIG.newsFullCount &&
+        ((CONFIG.nachrichtenLayout || "rechts") === "klassisch" || !item.firstSentence);
       const bodyPromise = wantsFullText ? fetchArticleBody(item) : Promise.resolve(null);
       return bodyPromise.then(function (body) {
         return { item: item, body: body };
@@ -5159,7 +5288,8 @@ function updateHintBar() {
   // Zeigt das Panel die DWD-Warnung selbst (Tagesblick), zählen nur die
   // übrigen Einträge – sonst bliebe ein leeres Band stehen.
   const warnZahl = !warn ? 0 : (shell.classList.contains("warn-im-panel") ? warn.querySelectorAll('.ha-hint:not([data-warn="0"])').length : warn.children.length);
-  const has = !!((els.wasteLine && els.wasteLine.textContent) || (hints && hints.children.length) || warnZahl);
+  const eil = document.getElementById("eilHints");
+  const has = !!((els.wasteLine && els.wasteLine.textContent) || (hints && hints.children.length) || warnZahl || (eil && eil.children.length));
   if (shell.classList.contains("has-hintbar") !== has) shell.classList.toggle("has-hintbar", has);
 }
 
@@ -6558,6 +6688,7 @@ function init() {
 
   updateNews();
   setInterval(updateNews, CONFIG.refreshNewsMs);
+  setInterval(eilChipZeichnen, 60 * 1000); // abgelaufene Eilmeldung verschwindet
 
   updateCommute();
   setInterval(updateCommute, CONFIG.refreshCommuteMs);

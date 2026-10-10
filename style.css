@@ -1529,6 +1529,36 @@ html, body {
   color: #ffffff;
 }
 
+/* Alter der Meldung neben dem Badge (Sitzung 6) */
+.news-slide-alter {
+  display: inline-block;
+  margin-left: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-dim);
+  vertical-align: 2px;
+}
+
+/* Eilmeldung: roter Chip ganz vorn in der Hinweiszeile, auf allen Panels */
+.ha-hint.eil-hint {
+  max-width: 640px;
+}
+
+.eil-hint .eil-wort {
+  flex-shrink: 0;
+  margin-right: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.eil-hint .eil-zeit {
+  flex-shrink: 0;
+  margin-right: 8px;
+  opacity: 0.85;
+}
+
 .badge-bremen { background: var(--brass); }
 .badge-welt { background: var(--steel); }
 .badge-de { background: #8a8578; }

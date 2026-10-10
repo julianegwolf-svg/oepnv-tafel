@@ -225,7 +225,7 @@ const CONFIG = {
   // wird der volle Artikeltext geladen (zum Scrollen), der Rest bleibt
   // kurze Headline.
   newsFullCount: 3,
-  refreshNewsMs: 15 * 60 * 1000,
+  refreshNewsMs: 10 * 60 * 1000, // Sitzung 6: 10 statt 15 min (Eilmeldungen), dafür ohne Volltexte
   // Wie lange jeder Artikel in der News-Diashow einzeln zu sehen ist,
   // bevor automatisch zum nächsten gewechselt wird.
   newsSlideIntervalMs: 6 * 1000,
