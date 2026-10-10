@@ -1,6 +1,7 @@
 # IDEEN – SmartTafel, Panel für Panel (Bestandsaufnahme 10.10.2026)
 
 > **Stand 10.10.2026, 03:00:** ✅ = umgesetzt (Commit in Klammern), Vorher/Nachher in MORGEN.html. Geschmacksfragen sind als Varianten gebaut und in FRAGEN.md zur Wahl gestellt. Alle Ideen sind umgesetzt.
+> **Nachtrag 07:00 (Sitzung 3):** zweiter kritischer Durchgang mit echten Samstags- und simulierten Montagsdaten → Abschnitt „17. Zweiter Durchgang“ am Ende, ebenfalls alles umgesetzt.
 
 Grundlage sind die Screenshots in `belege/vorher/` (Playwright-WebKit, 1024×768, Touch, iPad-Safari-12-Kennung, `?jetzt=2026-10-10T14:00`, Live-Daten, Termine mit Attrappen-Daten). Alle Maße sind CSS-px, gemessen im DOM. Farbnamen `--c-…`, `--f-…`, `--s-…`, `--r-…` stammen aus `design.css`.
 
@@ -392,3 +393,42 @@ Geprüft mit `tool/pruefe-safari12.sh` und `tool/screenshot.js --safari12-sim` (
 8. **NA1 Nachtthema** statt grauem Schleier (jetzt, wo die Nacht auf dem iPad überhaupt greift).
 9. **Ü1 Panel-Übersicht** deckend, Schließen-Knopf, HA-Panels in der ersten Reihe.
 10. **AW1 + AW2 Arbeitsweg:** lesbare Zeiten (heute 1,15:1), „Los um …“ als Fern-Info, am Wochenende aus.
+
+---
+
+## 17. Zweiter Durchgang (Sitzung 3, 10.10. ab 06:05)
+
+Grundlage: `belege/2026-10-10/s3/` (alle Panels, Mo 07:20 simuliert; Sa 06:40 echt; mit/ohne HA-Simulator).
+
+✅ **TB2 – Tagesblick: Fahrplan statt Leerfläche** · M · Prio 1 · umgesetzt (51922b1)
+- Stört: Bahnkarte zu 60 % leer (eine Zeile Info über 450 px Nichts), „Zuhause“ nur „7 Lichter an“, Wetter mit einer Spalte leerer 0-%-Balken; mit Hinweiszeile unten wurde die zweite Fahrplan-/achte Wetterzeile abgeschnitten; ohne Wetterdaten blieb unten rechts eine leere Zelle.
+- Änderung: unter der empfohlenen Bahn die Bahn davor + zwei danach, je Zeile Abfahrt (26–30 px), „los HH:MM“, „an HH:MM“, Ampel „pünktlich / knapp / N min zu spät“ gegen `workArrivalTarget`; Zuhause listet Räume mit Lampenzahl; 8 Wetterstunden, an trockenen Tagen Kurzwort („Bedeckt“, „Wolkig“) statt Balken; nach dem Zeichnen wird jede Karte eingepasst (erst die Bahn davor, dann von hinten); ohne Wetter rückt die erste Karte auf dessen Platz.
+- Warum: beantwortet die zweite Frage des Morgens („und wenn ich die nicht schaffe?“) und nutzt die Fläche, ohne dass etwas abgeschnitten wird.
+
+✅ **TB3 – Freier Tag ohne „jetzt los“** · S · Prio 2 · umgesetzt (2312b52)
+- Stört: Samstag 06:40 „Nächste Bahn 41 – jetzt los“ in Rot; Linienschilder im Tagesblick ohne Farbe.
+- Änderung: am freien Tag vier Abfahrten mit Linienfarbe und Minuten, ohne Dringlichkeit; Höchst-/Tiefstwert in schmalen Karten untereinander.
+
+✅ **W4 – Fünf Tage statt fünf Stunden** · S · Prio 2 · umgesetzt (54869fc)
+- Stört: Die Stundenkacheln (07–11 Uhr) wiederholten die 12-h-Kurve darüber; kein Blick über heute hinaus.
+- Änderung: Heute/Morgen/Mo–Mi, waagerecht (Symbol 44 px links; Tag 15 px, Höchstwert 24 px, Tiefstwert 18 px gedimmt, Regen ab 30 % blau, sonst „trocken“), flacher als vorher. `wetterUnten: "stunden"` = alt.
+
+✅ **W5 – Wetter-Effekte ruhig** · S · Prio 2 · → Varianten zeigen · umgesetzt (54869fc)
+- Stört: Deko-Wolken trieben endlos über Wettersymbol und Kurven-Legende; Symbole schwebten endlos (AUSBAU 4: nichts Endloses).
+- Änderung: `wetterEffekte: "ruhig"` blendet die Effekt-Ebenen aus und stoppt das Schweben; „animiert“ = wie bisher (FRAGEN 22).
+
+✅ **Q2 – Rätsel/Quiz: Knöpfe, die wie Knöpfe aussehen** · S · Prio 2 · umgesetzt (6934bfe)
+- Stört: „Antwort antippen zum Mitraten“ als 13-px-Pille Grau auf Grau oben rechts (wirkte deaktiviert, stand schon da, während die Frage getippt wurde); dünne Antwort-Umrisse; angeschnittenes „ unten rechts.
+- Änderung: Antworten gefüllt, 28 px (Text-Antworten 21 px), min. 68 px hoch; Hinweis als 17-px-Zeile unter den Antworten, erst wenn sie erscheinen; Frage 36 px; „?“ als Wasserzeichen, ganz sichtbar.
+
+✅ **A5 – LOS-Balken mit Spur, Linienschilder mit Rand** · S · Prio 3 · umgesetzt (7e80997)
+- Stört: Kurz vor Ablauf war vom LOS-Balken nur ein weißer Fleck übrig; Linie 23 (keine Farbe bei Transitous) verschwand fast auf der dunklen Karte.
+- Änderung: Spur (28 % Deckkraft) hinter dem Balken; Schilder ohne bzw. mit sehr dunkler Farbe bekommen einen 2-px-Rand.
+
+✅ **HA6 – Schnellaktion prüft ihre Wirkung** · M · Prio 1 · umgesetzt (ec1684a)
+- Stört: HA meldet Fehler in Automationen nicht zurück – „Gute Nacht“ zeigte „erledigt“ und dunkelte ab, obwohl die Automation abbrach.
+- Änderung: bis 5 s auf eine Zustandsänderung mit dem Kontext der Automation warten; sonst „hat nichts geschaltet“, Hinweis im Band, kein Abdunkeln.
+
+✅ **E25 – Datenquellen in den Einstellungen** · S · Prio 1 · umgesetzt (809e1a4)
+- Stört: Aus HA geöffnet, lehnt der Kalender-Worker ab – Termine verschwänden still.
+- Änderung: je Quelle „zuletzt geladen“, bei fehlendem Kalender die Adresse, die der Worker erlauben muss; HOME_ASSISTANT.md Schritt 5.
