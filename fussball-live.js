@@ -213,6 +213,10 @@
       setTimeout(function () { chip.classList.remove("is-flash"); }, 2000);
     }
     if (!unserer) return;
+    // Prototyp K3 (konzepte.js): Tor-Licht – prüft selbst, ob es an ist
+    if (window.TafelKonzepte && TafelKonzepte.tor) {
+      try { TafelKonzepte.tor({ team: e.team, stand: stand }); } catch (err) { /* nie das Tor stören */ }
+    }
     const dunkel = typeof tafelIstDunkel === "function" && tafelIstDunkel();
     const beschaeftigt = (typeof recentlyTouched !== "undefined" && recentlyTouched) || (typeof panelNavOpen !== "undefined" && panelNavOpen);
     if (dunkel || beschaeftigt || CFG.springen === false) return;

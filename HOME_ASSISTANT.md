@@ -141,7 +141,7 @@ Drei Ideen aus **KONZEPTE.md** sind als Prototypen gebaut und gegen den Simulato
        mode: single
      ```
   4. Wichtig: Der Benutzer „tafel“ darf den Helfer setzen, Nicht-Admins dürfen Dienste aufrufen. Den 20-Minuten-Übergang der IKEA-Lampe einmal echt ausprobieren. HA erlaubt bis 6553 s, ob die Lampe gleichmäßig dimmt, ist aber nicht dokumentiert.
-- **Werder-Tor-Licht** (`torLicht: true`): siehe KONZEPTE.md K3.
+- **Werder-Tor-Licht** (`torLicht: true`): Bei einem Werder-Tor blinken die Farblampen im Wohnzimmer, die gerade an sind, dreimal Grün/Weiß (etwa 4 s), danach ist alles wie vorher. Das passiert nur, wenn du zu Hause bist, und in HA ist nichts zu tun. Achtung: Der Stand kommt 30–90 s nach dem Fernsehbild.
 
 Gut zu wissen: Die Home-Bildschirm-App unter der neuen Adresse hat eigenen Speicher. Was die Tafel bisher über deine Bedienung gelernt hat (Vorschläge), fängt dort neu an. Der HA-Verlauf liefert die Grundlage aber sofort wieder.
 

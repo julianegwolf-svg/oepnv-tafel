@@ -332,6 +332,66 @@
   }
 
   // ======================================================================
+  // K3 · Werder-Tor-Licht
+  // Tor des Hauptvereins (fussball-live.js) → die Farblampen im Wohnzimmer,
+  // die gerade an sind, blinken 3× Vereinsgrün/Weiß (~4 s), danach genau
+  // der vorige Zustand (scene.create-Schnappschuss wie bei "Rückgängig").
+  // Nur, wenn jemand zu Hause ist. OpenLigaDB ist 30–90 s langsamer als
+  // das Fernsehen – deshalb standardmäßig aus.
+  // ======================================================================
+  const TOR_SZENE = "tafel_torlicht";
+  let torLaeuft = false;
+
+  function hexZuRgb(hex) {
+    const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex || ""));
+    return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : [29, 144, 83];
+  }
+
+  function torLampen() {
+    const raumName = String(KC.torLichtRaum || "Wohnzimmer").toLowerCase();
+    const raum = HA().model().rooms.filter(function (r) { return r.name.toLowerCase() === raumName || r.id === raumName; })[0];
+    if (!raum) return [];
+    return raum.lights.filter(function (id) {
+      const st = HA().state(id);
+      const modi = HA().attr(st, "supported_color_modes") || [];
+      const farbig = modi.some(function (m) { return ["xy", "hs", "rgb", "rgbw", "rgbww"].indexOf(m) !== -1; });
+      return st && st.state === "on" && farbig;
+    });
+  }
+
+  function torLicht(info) {
+    if (!KC.torLicht || torLaeuft || !HA() || !HA().isConnected()) return false;
+    const hauptverein = KC.torLichtVerein || ((typeof CONFIG !== "undefined" && CONFIG.sportTeams) || [])[0];
+    if (hauptverein && info.team !== hauptverein) return false;
+    if (!HA().personsHome().length) return false;
+    const lampen = torLampen();
+    if (!lampen.length) return false;
+    torLaeuft = true;
+    const gruen = hexZuRgb(typeof teamColorFor === "function" ? teamColorFor(info.team) : "#1d9053");
+    const schritte = [];
+    for (let i = 0; i < 3; i++) {
+      schritte.push({ rgb_color: gruen, brightness: 255 });
+      schritte.push({ rgb_color: [255, 255, 255], brightness: 255 });
+    }
+    const call = function (d, s, data, t) { return HA().callService(d, s, data, t); };
+    call("scene", "create", { scene_id: TOR_SZENE, snapshot_entities: lampen }).then(function () {
+      let i = 0;
+      const weiter = function () {
+        if (i >= schritte.length) {
+          call("scene", "turn_on", null, { entity_id: "scene." + TOR_SZENE }).catch(function () {}).then(function () { torLaeuft = false; });
+          return;
+        }
+        const d = schritte[i];
+        i++;
+        call("light", "turn_on", { rgb_color: d.rgb_color, brightness: d.brightness, transition: 0 }, { entity_id: lampen }).catch(function () {});
+        setTimeout(weiter, i % 2 ? 750 : 550);
+      };
+      weiter();
+    }).catch(function () { torLaeuft = false; });
+    return true;
+  }
+
+  // ======================================================================
   // Verdrahtung
   // ======================================================================
   let tuerTagCache = null;
@@ -376,9 +436,10 @@
     hinweise: hinweise,
     ablehnen: ablehnen,
     wecklichtPlan: weckPlan,
+    tor: torLicht,
     tuerCheck: zeigeTuerCheck,
     tuerSchliessen: schliesseTuerCheck,
-    debug: function () { return { tuerOffen: tuerOffen, tuerTakt: !!tuerTakt }; },
+    debug: function () { return { tuerOffen: tuerOffen, tuerTakt: !!tuerTakt, torLaeuft: torLaeuft }; },
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

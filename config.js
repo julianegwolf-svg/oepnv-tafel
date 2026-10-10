@@ -535,6 +535,13 @@ const CONFIG = {
     wecklichtVorlaufMin: 45, // Licht ganz an … bis zum Losgehen
     wecklichtDauerMin: 20, // Länge des Sonnenaufgangs
     wecklichtVorschlagAb: 19, // Uhr
+    // K3 Tor-Licht: Tor des Hauptvereins (erster in sportTeams) → die
+    // Farblampen im Raum, die an sind, blinken 3× Vereinsgrün/Weiß, dann
+    // wie vorher. Nur, wenn jemand zu Hause ist. Kommt 30–90 s nach dem
+    // Fernsehbild (OpenLigaDB) – bei Streams spoilert es nicht, es hinkt.
+    torLicht: false,
+    torLichtRaum: "Wohnzimmer",
+    torLichtVerein: "", // leer = erster Verein in sportTeams
   },
 
   homeAssistant: {
