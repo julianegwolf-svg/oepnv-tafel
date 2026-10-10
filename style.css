@@ -3711,3 +3711,47 @@ html, body {
   border-radius: 50%;
   background: radial-gradient(closest-side, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.18) 70%, rgba(255, 255, 255, 0));
 }
+
+
+/* ---------- Wetter-Kopf (IDEEN W2/W3) ---------- */
+#panel-weather .weather-big-temp {
+  font-size: 120px;
+  line-height: 1;
+}
+
+#panel-weather .weather-big-desc {
+  font-size: 40px;
+  font-weight: 600;
+}
+
+#panel-weather .weather-big-minmax {
+  font-size: 22px;
+}
+
+#panel-weather .weather-big-text .weather-tip {
+  margin: 10px 0 0;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffc56e;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+#panel-weather .weather-curve {
+  top: 262px;
+  height: 180px;
+}
+
+#panel-weather .weather-detail-value {
+  font-size: 22px;
+}
+
+#panel-weather .weather-detail-label {
+  font-size: 13px;
+}
+
+#panel-weather .weather-detail-chip {
+  flex: 1;
+}

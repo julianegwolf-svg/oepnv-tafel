@@ -1483,26 +1483,21 @@ function renderWeatherDetails(data) {
   if (c.wind_speed_10m != null) {
     chips.push({ iconKey: "wind", value: Math.round(c.wind_speed_10m) + " km/h", label: "Wind" });
   }
-  if (c.relative_humidity_2m != null) {
+  // Weniger, aber lesbar (IDEEN W3): Luftfeuchte nur noch im alten Look.
+  if (c.relative_humidity_2m != null && CONFIG.farbwelt === "hell") {
     chips.push({ iconKey: "humidity", value: Math.round(c.relative_humidity_2m) + "%", label: "Luftfeuchte" });
   }
   if (d.precipitation_probability_max && d.precipitation_probability_max[0] != null) {
     chips.push({ iconKey: "rain", value: Math.round(d.precipitation_probability_max[0]) + "%", label: "Regen" });
   }
-  if (d.sunrise && d.sunrise[0]) {
-    chips.push({
-      iconKey: "sunrise",
-      value: parseOpenMeteoLocal(d.sunrise[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
-      label: "Aufgang",
-    });
-  }
-  if (d.sunset && d.sunset[0]) {
-    chips.push({
-      iconKey: "sunset",
-      value: parseOpenMeteoLocal(d.sunset[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
-      label: "Untergang",
-    });
-  }
+  // Nur der nächste Sonnen-Wechsel statt immer Auf- UND Untergang.
+  const sunrise = d.sunrise && d.sunrise[0] ? parseOpenMeteoLocal(d.sunrise[0]) : null;
+  const sunset = d.sunset && d.sunset[0] ? parseOpenMeteoLocal(d.sunset[0]) : null;
+  const nowSun = Date.now();
+  const hmSun = function (t) { return t.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }); };
+  if (sunrise && nowSun < sunrise.getTime()) chips.push({ iconKey: "sunrise", value: hmSun(sunrise), label: "Aufgang" });
+  else if (sunset && nowSun < sunset.getTime()) chips.push({ iconKey: "sunset", value: hmSun(sunset), label: "Untergang" });
+  else if (sunrise) chips.push({ iconKey: "sunrise", value: hmSun(new Date(sunrise.getTime() + 86400000)), label: "Aufgang morgen" });
 
   els.weatherDetails.innerHTML = "";
   chips.forEach(function (c2) {
@@ -5382,6 +5377,9 @@ function initStageSwipe() {
 // ---------- Start ----------
 function init() {
   updateTopbarTitle("departures");
+  // Regentipp gehört zur Hauptaussage (IDEEN W2): unter die Beschreibung.
+  const tipHome = document.querySelector("#weatherBig .weather-big-text");
+  if (tipHome && els.weatherTip) tipHome.appendChild(els.weatherTip);
   // Sofort beim Start alle Panels außer dem sichtbaren ersten unmounten
   // (siehe unmountInactivePanels-Kommentar) — sonst stünden bis zum ersten
   // Karussell-Wechsel alle 11 Panels unnötig lange voll im Speicher.
