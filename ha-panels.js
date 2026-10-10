@@ -223,6 +223,10 @@
     gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>',
     work: '<rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M8.5 7.5V5.5c0-.6.4-1 1-1h5c.6 0 1 .4 1 1v2"/><path d="M3 12.5h18"/>',
     cart: '<path d="M3.5 4.5h2.2l2.1 10.2c.1.5.5.8 1 .8h8.3c.5 0 .9-.3 1-.8L19.8 8H6.4"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="16.5" cy="19" r="1.4"/>',
+    umbrella: '<path d="M3 12a9 9 0 0 1 18 0z"/><path d="M12 12v6.5a2 2 0 0 1-4 0"/><path d="M12 3v.5"/>',
+    phone: '<rect x="7" y="2.8" width="10" height="18.4" rx="2.2"/><path d="M11 18h2"/>',
+    sunrise: '<path d="M5 17a7 7 0 0 1 14 0"/><path d="M3 20.5h18M12 3.5v4M4.9 8.9l1.8 1.8M19.1 8.9l-1.8 1.8M9.5 6l2.5-2.5L14.5 6"/>',
+    ball: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5l3.8 2.8-1.4 4.4H9.6l-1.4-4.4z"/><path d="M12 3.5v4M15.8 10.3l4.4-1.2M14.4 14.7l2.7 3.8M9.6 14.7l-2.7 3.8M8.2 10.3l-4.4-1.2"/>',
     radio: '<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l9-4.5"/><circle cx="15.5" cy="14" r="2.8"/><path d="M6.5 12.5h3M6.5 15.5h3"/>',
   };
 
@@ -3416,6 +3420,9 @@
     // Raumansicht/Einrichtung offen: Karussell bleibt stehen, auch wenn
     // darin getippt wird (siehe deferCarouselAdvance in app.js).
     showGreeting: showGreeting,
+    // Für die Prototypen in konzepte.js (gleiche Icons, gleiches Escaping)
+    icon: icon,
+    esc: esc,
     morgengruss: function () {
       try { window.localStorage.removeItem(GRUSS_KEY); } catch (e) { /* egal */ }
       maybeMorningGreeting();

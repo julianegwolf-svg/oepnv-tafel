@@ -518,6 +518,16 @@ const CONFIG = {
   // im Browser gespeichert. Ohne Token ist alles Home-Assistant-Bezogene
   // unsichtbar und die Tafel läuft wie bisher.
   // ---------------------------------------------------------------
+  // Prototypen aus KONZEPTE.md (Sitzung 7) – zum Ausprobieren, alle
+  // standardmäßig aus, wirken nur mit Home Assistant.
+  konzepte: {
+    // K2 Tür-Check: Scannst du den NFC-Tag an der Tür (löst "Rausgehen"
+    // aus), zeigt die Tafel 90 s lang Bahn, Schirm, Licht, Einkaufsliste.
+    tuerCheck: false,
+    tuerTag: "", // leer = Tag, dessen Name nach Tür/Haustür/door klingt
+    tuerNotify: "", // leer = erste notify-Entität (HA-App am iPhone)
+  },
+
   homeAssistant: {
     // Leer lassen, wenn die Tafel direkt aus Home Assistant geladen wird
     // (http://homeassistant.local:8123/local/tafel/index.html) — dann ist

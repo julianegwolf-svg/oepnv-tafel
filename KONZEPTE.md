@@ -15,7 +15,7 @@ Nutzen 1–5 (wie oft und wie spürbar im Alltag) gegen Aufwand. Hardware nur, w
 
 | Rang | Konzept | Nutzen | Aufwand | Hardware | Status |
 |---|---|---|---|---|---|
-| 1 | **K2 Tür-Check: „Tschüss“-Karte beim Scan des Tür-Tags** | 5 | S | – (Tag hängt schon) | **Prototyp folgt (Sitzung 7)** |
+| 1 | **K2 Tür-Check: „Tschüss“-Karte beim Scan des Tür-Tags** | 5 | S | – (Tag hängt schon) | **Prototyp gebaut** (`konzepte.tuerCheck`) |
 | 2 | **K1 Wecklicht passend zur ersten Bahn** | 5 | M | – | **Prototyp folgt (Sitzung 7)** |
 | 3 | **K3 Werder-Spieltag: Tor-Licht im Wohnzimmer** | 4 | M | – | **Prototyp folgt (Sitzung 7)** |
 | 4 | K5 Wege zu Terminen („Los um 8:32 zum Zahnarzt“) | 4 | M | – | Konzept |
