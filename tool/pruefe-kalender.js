@@ -153,6 +153,12 @@ const faelle = [
   ["Alle 2 Wochen Fr, Ende per Datum", cal([ev(["UID:b1", "SUMMARY:Papiertonne", "DTSTART;VALUE=DATE:20260102", "RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=FR;UNTIL=20261231"])])],
   ["Täglich alle 2 Tage seit 2019", cal([ev(["UID:d2", "SUMMARY:Pflanzen gießen", "DTSTART;TZID=Europe/Berlin:20190101T190000", "DTEND;TZID=Europe/Berlin:20190101T191000", "RRULE:FREQ=DAILY;INTERVAL=2"])], TZ_BERLIN)],
   ["Jährlich am 2. Sonntag im Mai (Muttertag)", cal([ev(["UID:y2", "SUMMARY:Muttertag", "DTSTART;VALUE=DATE:20200510", "RRULE:FREQ=YEARLY;BYMONTH=5;BYDAY=2SU"])])],
+  ["Monatlich am 31. (Monate ohne 31. fallen aus)", cal([ev(["UID:x1", "SUMMARY:Abrechnung", "DTSTART;VALUE=DATE:20260131", "RRULE:FREQ=MONTHLY;BYMONTHDAY=31"])])],
+  ["Jährlich im Januar und Juli", cal([ev(["UID:x2", "SUMMARY:Zählerstand", "DTSTART;TZID=Europe/Berlin:20250115T100000", "RRULE:FREQ=YEARLY;BYMONTH=1,7"])], TZ_BERLIN)],
+  ["Letzter Werktag im Monat (BYSETPOS=-1)", cal([ev(["UID:x3", "SUMMARY:Monatsabschluss", "DTSTART;TZID=Europe/Berlin:20260130T090000", "RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"])], TZ_BERLIN)],
+  ["Alle 3 Wochen So+Mo, Wochenbeginn Sonntag", cal([ev(["UID:x4", "SUMMARY:Familie", "DTSTART;TZID=Europe/Berlin:20260104T080000", "RRULE:FREQ=WEEKLY;INTERVAL=3;WKST=SU;BYDAY=SU,MO"])], TZ_BERLIN)],
+  ["Täglich, aber nur im Dezember", cal([ev(["UID:x5", "SUMMARY:Adventskalender", "DTSTART;TZID=Europe/Berlin:20201201T070000", "RRULE:FREQ=DAILY;BYMONTH=12"])], TZ_BERLIN)],
+  ["Jährlich am 100. und letzten Tag des Jahres", cal([ev(["UID:x6", "SUMMARY:Jahrestage", "DTSTART;TZID=Europe/Berlin:20260101T070000", "RRULE:FREQ=YEARLY;BYYEARDAY=100,-1"])], TZ_BERLIN)],
 ];
 
 let alleOk = true;

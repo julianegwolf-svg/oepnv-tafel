@@ -196,9 +196,11 @@
       } else if (k === "BYMONTHDAY") r.bymonthday = v.split(",").map(function (x) { return parseInt(x, 10); }).filter(function (x) { return x && Math.abs(x) <= 31; });
       else if (k === "BYMONTH") r.bymonth = v.split(",").map(function (x) { return parseInt(x, 10); }).filter(function (x) { return x >= 1 && x <= 12; });
       else if (k === "BYSETPOS") r.bysetpos = v.split(",").map(function (x) { return parseInt(x, 10); }).filter(Boolean);
-      else if (k === "BYYEARDAY" || k === "BYWEEKNO" || k === "BYHOUR" || k === "BYMINUTE" || k === "BYSECOND" || k === "RSCALE") r.unbekannt = true;
+      else if (k === "BYYEARDAY") r.byyearday = v.split(",").map(function (x) { return parseInt(x, 10); }).filter(function (x) { return x && Math.abs(x) <= 366; });
+      else if (k === "BYWEEKNO" || k === "BYHOUR" || k === "BYMINUTE" || k === "BYSECOND" || k === "RSCALE") r.unbekannt = true;
     });
     if (["DAILY", "WEEKLY", "MONTHLY", "YEARLY"].indexOf(r.freq) === -1) r.unbekannt = true;
+    if (r.byyearday && r.freq !== "YEARLY") r.unbekannt = true; // nur jährlich unterstützt
     return r;
   }
 
@@ -275,6 +277,13 @@
     }
     // YEARLY
     const j = c.j + k * r.interval;
+    if (r.byyearday) {
+      const ende = Date.UTC(j + 1, 0, 1);
+      return r.byyearday.map(function (n) { return new Date(n > 0 ? Date.UTC(j, 0, n) : ende + n * TAG_MS); })
+        .filter(function (d) { return d.getUTCFullYear() === j && (!r.bymonth || r.bymonth.indexOf(d.getUTCMonth() + 1) !== -1); })
+        .sort(function (a, b) { return a - b; })
+        .map(function (d) { return { j: j, mo: d.getUTCMonth(), t: d.getUTCDate() }; });
+    }
     const monate = r.bymonth && r.bymonth.length ? r.bymonth.map(function (x) { return x - 1; }) : [c.mo];
     const liste = [];
     monate.sort(function (a, b) { return a - b; }).forEach(function (mo) {
