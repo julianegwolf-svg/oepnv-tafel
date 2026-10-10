@@ -25,6 +25,9 @@ const OUT = arg("out", "belege/ha-dauerlauf");
 const MINUTEN = parseFloat(arg("minuten", "10"));
 const USER = arg("user", "tafel");
 const PASS = arg("pass", "tafel-passwort");
+// --konzepte: Prototypen (konzepte.js) an, jede Minute Tür-Tag scannen und
+// ein Tor-Licht auslösen – Karte/Timer/Schnappschüsse dürfen nicht wachsen.
+const KONZEPTE = process.argv.indexOf("--konzepte") !== -1;
 
 // Zählt aktive Timer und Listener, ohne das Verhalten zu ändern.
 const ZAEHLER = `
@@ -84,6 +87,19 @@ const ZAEHLER = `
   await page.waitForFunction(() => window.TafelHA && TafelHA.isConnected(), null, { timeout: 15000 });
   await page.waitForTimeout(3000);
 
+  let tuerTag = null;
+  if (KONZEPTE) {
+    tuerTag = await page.evaluate(() => {
+      CONFIG.konzepte.tuerCheck = true;
+      CONFIG.konzepte.wecklicht = true;
+      CONFIG.konzepte.torLicht = true;
+      return Object.keys(TafelHA.states()).filter((id) => id.indexOf("tag.") === 0 && /t(ü|ue|u)r|door/i.test(id + TafelHA.name(id)))[0] || null;
+    });
+    console.log("Konzepte an, Tür-Tag: " + tuerTag);
+  }
+  let tuerKarten = 0;
+  let torLichter = 0;
+
   const proben = [];
   const panels = ["home", "klima", "medien", "departures", "weather", "home"];
   const start = Date.now();
@@ -94,6 +110,19 @@ const ZAEHLER = `
   while (Date.now() - start < MINUTEN * 60 * 1000) {
     // Eine Minute lang: Panels durchschalten, Raum öffnen/schließen, Licht schalten.
     const minuteEnde = Date.now() + 60 * 1000;
+    if (KONZEPTE && tuerTag) {
+      await fetch(SIM + "/sim/szenario/tag-scannen?entity_id=" + encodeURIComponent(tuerTag), { method: "POST" }).catch(() => {});
+      await page.waitForTimeout(1500);
+      if (await page.evaluate(() => !!document.querySelector("#kTuer.is-open"))) tuerKarten++;
+      await page.evaluate(() => {
+        const r = TafelHA.model().rooms.filter((x) => x.name === "Wohnzimmer")[0];
+        if (r && TafelHA.isConnected()) TafelHA.callService("light", "turn_on", { brightness: 120 }, { entity_id: r.lights }).catch(() => {});
+      });
+      await page.waitForTimeout(800);
+      if (await page.evaluate(() => TafelKonzepte.tor({ team: (CONFIG.sportTeams || [])[0] }))) torLichter++;
+      await page.waitForTimeout(5000);
+      await page.evaluate(() => TafelKonzepte.tuerSchliessen());
+    }
     while (Date.now() < minuteEnde) {
       const p = panels[runde % panels.length];
       runde++;
@@ -165,6 +194,12 @@ const ZAEHLER = `
     ["Verlaufspunkte begrenzt", ende.verlaufspunkte <= 24 * 12 * 20],
     ["Keine Seitenfehler", errors.length === 0],
   ];
+  if (KONZEPTE) {
+    // Chaos trennt die Verbindung zeitweise – dann darf nichts erscheinen;
+    // mindestens die Hälfte der Minuten muss aber geklappt haben.
+    checks.push(["Tür-Check-Karte erschien (" + tuerKarten + "× in " + proben.length + " Minuten)", tuerKarten >= Math.ceil(proben.length / 2)]);
+    checks.push(["Tor-Licht lief (" + torLichter + "×)", torLichter >= Math.ceil(proben.length / 2)]);
+  }
   let ok = true;
   checks.forEach((c) => { console.log((c[1] ? "✓ " : "✗ ") + c[0]); if (!c[1]) ok = false; });
   console.log("Wiederverbindungen: " + reconnects + (simStatus ? ", Simulator: " + JSON.stringify({ verbindungen: simStatus.verbindungen || simStatus.connections, abos: simStatus.subscriptions || simStatus.abos }) : ""));
