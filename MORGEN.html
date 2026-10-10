@@ -189,6 +189,13 @@
   <figure><img src="belege/2026-10-10/raum/nachher-buero.png" alt=""><figcaption>Büro mit HomePod in der Raumansicht.</figcaption></figure>
 </div>
 
+<h3>Neue Geräte erscheinen sofort</h3>
+<p class="note">Stellst du in HA eine Lampe in einen anderen Raum, benennst sie um oder blendest sie aus, zieht die Tafel nach 3 s nach – ohne Neuverbinden. Vorher erst nach dem Neuladen (bis zu 3 h). Probe gegen den Simulator: alte Fassung 2 ✗, neue alles ✓ (<code>belege/2026-10-10/registry/</code>).</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/registry/01-vorher.png" alt=""><figcaption>Vorher: Wohnzimmer 4 Lampen.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/registry/02-verschoben.png" alt=""><figcaption>3 s nach dem Raumwechsel in HA: eine Lampe ist ins Schlafzimmer gewandert.</figcaption></figure>
+</div>
+
 <h3>Datenquellen – wichtig für den Umzug nach HA</h3>
 <p class="note">Beim Prüfen aller Quellen mit der Herkunft <code>http://homeassistant.local:8123</code> fiel auf: <b>Nur dein Kalender-Worker</b> lässt sie nicht zu (er erlaubt nur github.io). Ohne Änderung im Worker fehlen nach dem Umzug die Termine – still. Die Einstellungsseite (lange auf die Uhr drücken) zeigt jetzt je Quelle, wann sie zuletzt geladen hat, und bei fehlendem Kalender die Adresse, die freigegeben werden muss.</p>
 <div class="pair">
@@ -364,7 +371,7 @@
   <li>Der Simulator wertet Templates in Automationen nicht aus; deine Automationen hat er so nachgebaut, wie HA sie vermutlich ausführt.</li>
   <li>Morgengruß: Der Melder hängt im Schlafzimmer, nicht an der Tafel. Der Gruß kommt bei der <i>ersten</i> Bewegung ab 5 Uhr (einmal pro Tag) – stehst du um 5:10 kurz auf, ist er verbraucht. Der Tagesblick danach zeigt dieselbe Bahn aber weiter bis 11 Uhr. Siehe FRAGEN 18.</li>
   <li>„Richtung“ der Arbeitslinie kommt aus der Transitous-Route (Zielangabe der ersten Fahrt). Passt die Schreibweise mal nicht, fällt die Tafel auf „nur Linie“ zurück – wie bisher.</li>
-  <li><b>Code-Review der HA-Teile</b> (heute früh): Behoben sind ein leeres Panel nach zwei schnellen Wechseln, die Regler, die beim Scrollen die Lampe verstellten, „fehlgeschlagen“ bei langsamen Automationen, eine zu großzügige Erkennung der Schnellaktionen und die Einkaufsliste bei mehr als drei Listen. Offen, weil es deinen Haushalt nicht betrifft: neue Räume/Geräte erscheinen erst nach dem nächsten Neuladen (spätestens 3 h), Lichtgruppen mit versteckten Mitgliedern, mehrere Thermostate je Raum.</li>
+  <li><b>Code-Review der HA-Teile</b> (heute früh): Behoben sind ein leeres Panel nach zwei schnellen Wechseln, die Regler, die beim Scrollen die Lampe verstellten, „fehlgeschlagen“ bei langsamen Automationen, eine zu großzügige Erkennung der Schnellaktionen und die Einkaufsliste bei mehr als drei Listen. Offen, weil es deinen Haushalt nicht betrifft: Lichtgruppen mit versteckten Mitgliedern, mehrere Thermostate je Raum. <i>Behoben seit 7:30:</i> Neue, verschobene oder umbenannte Geräte erscheinen jetzt sofort (vorher erst nach dem Neuladen, bis 3 h) – <code>tool/pruefe-registry.js</code>.</li>
   <li><b>Wichtig:</b> Deine Automationen <i>Bett Fertig</i> und <i>Arbeitsmodus</i> brechen in echtem HA vermutlich bei der ersten Licht-Aktion ab (FRAGEN 4 und 19). Die Tafel erkennt das jetzt und meldet „hat nichts geschaltet“ (2c) – reparieren musst du sie in HA.</li>
   <li>Die Wirkungsprüfung warnt auch, wenn „Gute Nacht“/„Arbeiten“ nichts zu tun hat, weil schon alles so ist, wie die Automation es will. Das ist selten; falls es stört: FRAGEN 21.</li>
   <li>Kalender nach dem Umzug nach HA: nur mit der Änderung im Worker (FRAGEN 20). Geprüft per <code>curl</code> mit der HA-Herkunft, nicht am iPad.</li>
