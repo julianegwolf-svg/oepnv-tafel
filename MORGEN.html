@@ -48,25 +48,53 @@
 <body>
 <div class="wrap">
 
-<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 11:30</div>
+<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 12:45</div>
 <h1>Deine Tafel ist jetzt eine Smart-Home-Zentrale.</h1>
 <p class="lead">Kurz und ehrlich, was diese Nacht entstanden ist – alles gegen einen Home-Assistant-<b>Simulator</b> mit deinem echten Haushalt getestet, nie gegen dein echtes HA. Die Bilder zeigen Desktop-WebKit bei 1024×768 (wie das iPad), nicht das iPad selbst.</p>
 
 <div class="summary">
 <ol>
   <li><b>Dein dringender Fehler ist weg und doppelt abgesichert:</b> Keine Riesen-Uhr mehr nach 1 Stunde, das Karussell läuft weiter (geprüft nach 2, 6 und 24 h), ein Wächter wirft es notfalls wieder an. Ein älterer Fehler kann die Live-Tafel am <b>19.10.</b> einfrieren. Auf <code>ausbau</code> ist er behoben, siehe Kasten unten.</li>
-  <li><b>Home Assistant komplett:</b> Login mit deinem HA-Konto, Räume in echter Lichtfarbe, Licht/Szenen/Helligkeit mit einem Tipp, deine Automationen als Schnellaktionen, Einkaufsliste zum Abhaken, Bad-Klima mit Lüftungsrat, HomePod mit Radio.</li>
-  <li><b>Neu seit 10 Uhr: Was die Tafel sagt, stimmt jetzt – gegen eine zweite Quelle geprüft</b> (2f):<br>
-    <i>Termine</i> mit Wiederholungen und richtigen Uhrzeiten (vorher auf dem iPad 0 von 5 richtig).<br>
-    <i>Musik-Charts</i> von Apple Music (9 von 10 wie die Offiziellen Charts, Deezer nur 2).<br>
-    <i>Auf den Tag genau</i> aus den Jahrestagen der Wikipedia-Hauptseite, dazu 68 Bremen- und Werder-Tage.<br>
-    <i>Veranstaltungen</i>: geprüfte Bremer Termine statt Umland mit falschen Daten.<br>
-    <i>Rätsel</i> auf Deutsch, die auch aufgehen.<br>
-    <i>Autozeit</i> nie mehr still „6 Minuten“.</li>
-  <li><b>Neu: live und frisch.</b> Fußball mit Live-Stand auf allen Panels, und bei einem Werder-Tor springt die Tafel aufs Spiel („Tor!“). Nachrichten kommen aus der Top-Auswahl der tagesschau, jede zeigt ihr Alter, Eilmeldungen erscheinen rot auf allen Panels. Fußball-News kommen vom kicker statt Fremdem und Altem.</li>
-  <li><b>Die Tafel denkt mit und sieht neu aus:</b> Morgengruß mit der einen pünktlichen Bahn, Tagesblick, DWD-Warnungen, echter TomTom-Verkehr mit Karte, dunkle Farbwelt, Abfahrten wie eine echte Anzeigetafel. Auf dem echten iPad kaputte Safari-12-Teile sind behoben.</li>
+  <li><b>Neu seit 11:30: 20 Konzepte für Erweiterungen, drei davon als Prototyp zum Ausprobieren</b> (<a href="#k">gleich hier unten</a>): die <i>Tschüss-Karte</i> beim Scan deines Tür-Tags, ein <i>Wecklicht</i> passend zur ersten Bahn und das <i>Werder-Tor-Licht</i>. Alle sind standardmäßig aus.</li>
+  <li><b>Home Assistant komplett, jetzt mit 35 Szenen wie in der Hue-App</b> (<a href="#s2g">2g</a>): Hell, Konzentrieren, Lesen, Entspannen … und Farbszenen in Wohnzimmer, Schlafzimmer und Büro, auch für die IKEA-Lampen. Dazu Login mit deinem HA-Konto, Licht mit einem Tipp, deine Automationen als Schnellaktionen, Einkaufsliste, Bad-Klima und HomePod.</li>
+  <li><b>Was die Tafel sagt, stimmt, gegen eine zweite Quelle geprüft</b> (2f): Termine mit Wiederholungen, echte deutsche Charts (jetzt auch auf GitHub Pages), kuratierte Jahrestage, geprüfte Bremer Veranstaltungen, deutsche Rätsel, keine stille „6 Minuten“-Autozeit mehr.</li>
+  <li><b>Live und frisch:</b> Fußball-Live-Stand auf allen Panels mit „Tor!“ bei Werder, Nachrichten mit Alter und Eilmeldung, Morgengruß mit der einen pünktlichen Bahn, Tagesblick, DWD-Warnungen, TomTom-Verkehr, Abfahrten wie eine echte Anzeigetafel.</li>
 </ol>
 </div>
+
+<h2 id="k" style="margin-top:40px">Konzepte für Erweiterungen</h2>
+<p class="lead">Du wolltest neue Ideen, nicht nur bessere Panels. In <a href="KONZEPTE.md">KONZEPTE.md</a> stehen <b>20 Erweiterungen</b>, jede mit Alltagsszene, Beispieltext, Datenquelle bzw. HA-Entität, nötiger Hardware samt Preis, Aufwand und Risiken. Die Datenquellen habe ich per CORS-Abfrage geprüft, die HA-Fakten gegen Doku und Quellcode. Die drei besten sind als <b>Prototyp gebaut</b>, gegen den Simulator geprüft und in <code>config.js</code> → <code>konzepte</code> standardmäßig aus.</p>
+<table>
+  <tr><th>Rang</th><th>Konzept</th><th>Nutzen</th><th>Aufwand</th><th>Stand</th></tr>
+  <tr><td>1</td><td><b>Tür-Check:</b> Tschüss-Karte beim Scan des Tür-Tags</td><td>5</td><td>S</td><td class="ok">Prototyp</td></tr>
+  <tr><td>2</td><td><b>Wecklicht</b> passend zur ersten Bahn</td><td>5</td><td>M</td><td class="ok">Prototyp</td></tr>
+  <tr><td>3</td><td><b>Werder-Tor-Licht</b> im Wohnzimmer</td><td>4</td><td>M</td><td class="ok">Prototyp</td></tr>
+  <tr><td>4</td><td>Wege zu Terminen („Los um 8:32 zum Zahnarzt“)</td><td>4</td><td>M</td><td>Konzept</td></tr>
+  <tr><td>5</td><td>„Wo ist mein iPhone?“ – klingeln lassen, auch lautlos</td><td>4</td><td>S</td><td>Konzept</td></tr>
+  <tr><td>6–20</td><td>Gute-Nacht-Check, HomePod-Morgengruß, Rad oder Bahn (mit Rückweg), Schlaf-Fokus, Einkaufsliste per Siri, „Licht folgt dem Tag“, Haushalts-Erinnerungen, Geburtstage, Fenster-/Türkontakte (IKEA MYGGBETT 7,99 €), Gäste-WLAN-QR, FRITZ!Box, Grünstrom-Ampel, Wochenrückblick, Fotorahmen, Paket-Ankündigung</td><td>2–4</td><td>S–L</td><td>Konzept</td></tr>
+</table>
+
+<h3>Prototyp 1 · Tür-Check: „Tschüss, Julian!“</h3>
+<p class="note">Du scannst den Tür-Tag, „Rausgehen“ läuft wie bisher, und die Tafel zeigt im selben Moment 90 s lang groß, was beim Gehen zählt: die Bahn mit „noch 4 Min bis los“ (an Arbeitstagen die Bahn zur Arbeit, dieselbe Rechnung wie der Morgengruß), Schirm ja/nein mit Uhrzeit, amtliche Warnung, ob noch Licht an ist, und die Einkaufsliste mit <b>Aufs iPhone</b>. Die Licht-Zeile folgt live, während „Rausgehen“ ausschaltet. Ein Tipp schließt die Karte. Technisch: Der Benutzer „tafel“ darf <code>tag_scanned</code> nicht abonnieren, die Tafel liest deshalb den Zustand der Tag-Entität. Probe: <code>tool/pruefe-tuer-check.js</code>, 14 ✓, auch „anderer Tag → keine Karte“ und „aus → keine Karte“. Einschalten: <code>konzepte.tuerCheck: true</code>, in HA ist nichts zu tun.</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s7/tuer/3-karte-gesendet.png" alt=""><figcaption>Kurz nach dem Scan: „Rausgehen“ hat schon ausgeschaltet → „Licht: alles aus ✓“, Einkaufsliste aufs iPhone geschickt. Der Regen ab 17 Uhr ist eine Attrappe für die Probe.</figcaption></figure>
+  <figure><video src="belege/2026-10-10/s7/tuer/tuer-check.webm" controls muted playsinline></video><figcaption><b>Video:</b> Scan → Karte → Lichter gehen aus → „Aufs iPhone“ → geschickt → Antippen schließt.</figcaption></figure>
+</div>
+
+<h3>Prototyp 2 · Wecklicht passend zur ersten Bahn</h3>
+<p class="note">Ab 19 Uhr schlägt die Tafel für den nächsten Arbeitstag vor: <i>„Wecklicht morgen 06:40? Bahn 23 um 07:35“</i>. Gerechnet wird: Losgehen 07:27 minus 45 min, auf 5 min abgerundet. Ein früher Termin zählt mit (Termin 7:30 → 6:00). Am Wochenende und an Feiertagen kommt kein Vorschlag, × lehnt für diesen Morgen ab. Ein Tipp setzt in HA den Helfer <code>input_datetime.wecklicht</code> auf den Beginn (06:20). Den 20-Minuten-Sonnenaufgang macht dann eine HA-Automation über die neuen Szenen „Schlafzimmer · Nachtlicht → Aufwachen“, auch wenn die Tafel aus ist. Im Simulator ist die Automation zur Minute ausgelöst worden, die Lampen standen danach auf „Aufwachen“ (<code>tool/pruefe-wecklicht.js</code>, 15 ✓). Einbau: HOME_ASSISTANT.md, Schritt 8 (ein Helfer, eine Automation).</p>
+<div class="grid three">
+  <figure><img src="belege/2026-10-10/s7/wecklicht/1-vorschlag.png" alt=""><figcaption>So 21:40: Vorschlag unten im Band.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s7/wecklicht/2-bestaetigung.png" alt=""><figcaption>Nach dem Tipp: „Mo 06:20–06:40“.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s7/wecklicht/3-zuhause-info.png" alt=""><figcaption>Zuhause zeigt unten: steht.</figcaption></figure>
+</div>
+
+<h3>Prototyp 3 · Werder-Tor-Licht</h3>
+<p class="note">Bei einem Werder-Tor blinken die Farblampen im Wohnzimmer, die gerade an sind, dreimal Vereinsgrün/Weiß (3,9 s). Danach sind sie <b>exakt</b> wie vorher, über einen Schnappschuss wie bei „Rückgängig“. Die reine Weißlampe bleibt unberührt. Bei einem Gegentor oder wenn niemand zu Hause ist, passiert nichts. Geprüft mit nachgestelltem Spiel und Mitschnitt jeder Lampenänderung (<code>tool/pruefe-torlicht.js</code>, 10 ✓). Ehrlich: OpenLigaDB hinkt dem Fernsehbild 30–90 s hinterher, das Licht kommt also nach dem Jubel. Deshalb ist es aus, bis du es willst (<code>konzepte.torLicht</code>).</p>
+<div class="strip"><img src="belege/2026-10-10/s7/torlicht/lichtverlauf.png" alt=""><p class="note">Mitschnitt aus dem Simulator: drei Farblampen, 0–4 s nach dem Tor, danach wieder warmweiß 2700 K.</p></div>
+<div class="strip"><img src="belege/2026-10-10/s7/torlicht/raum-streifen.png" alt=""><p class="note">Dasselbe auf der Tafel (Wohnzimmer-Ansicht): vorher → grün → weiß → wie vorher. Die Lampe ohne Farbe bleibt, wie sie ist.</p></div>
+<p class="note"><b>Deine Wahl (FRAGEN 31):</b> Welche der drei soll ich fest einschalten und weiter ausbauen? Mein Vorschlag: Tür-Check und Wecklicht ja, Tor-Licht erst nach einem echten Spiel (Sa 17.10.).</p>
+
 
 <div class="todo">
 <div class="eyebrow">Was du tun musst, damit es am iPad läuft (≈ 10 Minuten)</div>
@@ -76,14 +104,15 @@
   <li>Im Repo: <code>./tool/nach-ha-kopieren.sh /Volumes/config/www/tafel</code> (beim allerersten Mal danach HA einmal neu starten).</li>
   <li>In HA einen Benutzer <b>tafel</b> anlegen (kein Admin, nur lokal).</li>
   <li>Am iPad Guided Access beenden, in Safari <code>http://homeassistant.local:8123/local/tafel/index.html</code> → <b>Zum Home-Bildschirm</b> → neue App öffnen → als <b>tafel</b> anmelden → Guided Access wieder starten.</li>
-  <li><b>Neu:</b> In deinem Cloudflare-Kalender-Worker die Adresse <code>http://homeassistant.local:8123</code> erlauben – sonst fehlen nach dem Umzug die Termine (Code-Schnipsel in HOME_ASSISTANT.md, Schritt 5; Kontrolle am iPad: lange auf die Uhr → Datenquellen).</li>
-  <li><b>Neu (für die Musik-Charts):</b> In HA den Sensor <code>sensor.musik_charts</code> anlegen. Das sind 15 Zeilen YAML in HOME_ASSISTANT.md, Schritt 6. Ohne ihn zeigt die Tafel kein Musik-Panel statt falscher Charts.</li>
+  <li><s>Kalender-Worker für die HA-Adresse freigeben</s> und <s>Musik-Charts</s>: erledigt, danke. Gegenprobe mit curl für beide Adressen ✓, die Charts laufen jetzt auch auf GitHub Pages (2g).</li>
+  <li><b>Optional, neu:</b> 35 Szenen einbauen. Die Datei <code>ha-vorschlag/scenes.yaml</code> liegt nur auf deinem Mac und ist nicht eingecheckt. Inhalt nach <code>/config/scenes.yaml</code>, dann Entwicklerwerkzeuge → YAML → „Szenen neu laden“ (HOME_ASSISTANT.md, Schritt 7).</li>
+  <li><b>Optional, neu:</b> Prototypen ausprobieren, in <code>config.js</code> → <code>konzepte</code>. Fürs Wecklicht in HA einen Helfer und eine Automation anlegen (Schritt 8).</li>
   <li><s>Bett Fertig / Arbeitsmodus reparieren</s> – erledigt, danke.</li>
 </ol>
 <p class="note">Alles Schritt für Schritt (und warum GitHub Pages dafür nicht reicht): <a href="HOME_ASSISTANT.md">HOME_ASSISTANT.md</a>. Fragen an dich: <a href="FRAGEN.md">FRAGEN.md</a> – darin auch zwei Fehler, die beim Nachbauen deiner echten Automationen aufgefallen sind.</p>
 </div>
 
-<p class="note" style="margin-top:22px">Inhalt: <a href="#s1">1 Riesen-Uhr</a> · <a href="#s2">2 Home Assistant</a> · <a href="#s2b">2b Morgengruß</a> · <a href="#s2c">2c Neu seit 6 Uhr</a> · <a href="#s2d">2d Neu seit 8 Uhr</a> · <a href="#s2e">2e Neu seit 9 Uhr</a> · <a href="#s2f"><b>2f Inhalte, die stimmen · live</b></a> · <a href="#s3">3 Animationen</a> · <a href="#s4">4 Lernen</a> · <a href="#s5">5 Clips</a> · <a href="#s6">6 iPad-Fehler</a> · <a href="#s7">7 Ideen</a> · <a href="#s8">8 Zur Wahl</a> · <a href="#s9">9 Lücken</a></p>
+<p class="note" style="margin-top:22px">Inhalt: <a href="#s1">1 Riesen-Uhr</a> · <a href="#s2">2 Home Assistant</a> · <a href="#s2b">2b Morgengruß</a> · <a href="#s2c">2c Neu seit 6 Uhr</a> · <a href="#s2d">2d Neu seit 8 Uhr</a> · <a href="#s2e">2e Neu seit 9 Uhr</a> · <a href="#k"><b>Konzepte</b></a> · <a href="#s2f">2f Inhalte, die stimmen · live</a> · <a href="#s2g"><b>2g Szenen</b></a> · <a href="#s3">3 Animationen</a> · <a href="#s4">4 Lernen</a> · <a href="#s5">5 Clips</a> · <a href="#s6">6 iPad-Fehler</a> · <a href="#s7">7 Ideen</a> · <a href="#s8">8 Zur Wahl</a> · <a href="#s9">9 Lücken</a></p>
 
 <h2 id="s1">1 · Der dringende Fehler: Riesen-Uhr nach einer Stunde</h2>
 <p class="note">Playwright spult die Zeit ohne jede Berührung vor. Vorher: Ambient-Modus nach 1 h, Karussell steht. Nachher: Ambient nur noch, wenn laut HA niemand zu Hause ist.</p>
@@ -371,6 +400,28 @@
 
 <h3>Code-Review dieser Sitzung</h3>
 <p class="note">Ein unabhängiges Review fand 12 Fehler. Alle sind nachgeprüft und behoben (<code>belege/2026-10-10/s6/review.log</code>). Der wichtigste: Bei „Auf den Tag genau“ stand die Lösung teils schon in der Bildunterschrift, heute bei der 1971er-Frage („Nationalratswahl in Österreich 1971“). Bildunterschriften verdecken Jahreszahlen jetzt bis zur Auflösung, Artikel mit Jahreszahl im Titel liefern kein Bild mehr, und Sätze, die ihr Jahr selbst nennen, werden übersprungen. Außerdem ließ sich Fußball-live über <code>config.js</code> gar nicht abschalten, das geht jetzt. Ein täglicher Kalendertermin seit 1965 wäre verschwunden. Und bei Ereignissen aus den letzten Jahren war die jüngste Antwort fast immer die richtige. HA-Probe, Kalender-, Live-, Musik- und Tag-genau-Probe danach erneut ✓. 24-h-Zeitraffer: nichts wächst (<code>belege/2026-10-10/s6/zeitraffer.log</code>).</p>
+
+<h2 id="s2g">2g · Neu seit 11:30 (Sitzung 7): Szenen wie in der Hue-App, Charts auch auf GitHub Pages</h2>
+
+<h3>35 Szenen für Wohnzimmer, Schlafzimmer und Büro</h3>
+<p class="note">Je Raum gibt es die Hue-Klassiker <b>Hell, Konzentrieren, Lesen, Entspannen, Gedimmt, Nachtlicht, Energie tanken</b>, mit den Werten der Hue-Bridge, z. B. Entspannen 2237 K / 56 %, Konzentrieren 4292 K / 100 %, Nachtlicht Amber 10 %. Quellen sind zwei echte Bridge-Exporte und eine Messung aus der Community. Dazu kommen die Farbszenen <b>Sonnenuntergang, Tropische Dämmerung, Polarlicht, Frühling</b> mit den gemessenen Hue-Farben je Lampe sowie <b>Filmabend</b> und <b>Aufwachen</b>. Jede Lampe bekommt nur, was sie kann: die Weißlampe im Büro nur Helligkeit, die IKEA-Lampe ohne Farbe nur 2202–4000 K. Je Lampe gibt es genau eine Farbangabe, also nicht den Fehler aus den alten Automationen. Die Datei liegt in <code>ha-vorschlag/scenes.yaml</code>, nur lokal, weil sie deine entity_ids enthält.</p>
+<p class="note">Auf der Tafel landen die Szenen im richtigen Raum, auch bevor du sie in HA einem Bereich zuordnest. Das geht über den Namensanfang „Wohnzimmer · …“. Sie tragen kurze Namen und Farbstreifen. Gibt es eine gleichnamige Hue-Szene („Read“), zeigt die Tafel nur die eigene, denn die schaltet die IKEA-Lampe mit. Der Farbschleier beim Antippen lief bisher nur ~150 ms, weil HA schneller antwortete und die Knöpfe neu zeichnete. Jetzt läuft er ganz durch. Probe <code>tool/pruefe-szenen.js</code>: Alle 35 Szenen im Simulator ausgelöst, <b>116 von 116</b> Lampenwerten genau wie vorgesehen, fremde Lampen unberührt, mit und ohne Bereich ✓.</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s7/ha-ende/06-raum.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Simulator: nur die Szenenauswahl der Hue-Bridge (in deinem echten HA hat das Wohnzimmer gar keine Szene).</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s7/szenen/tipp-9-nachher.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>12 Szenen, „Sonnenuntergang“ angetippt: alle Lampen in den Szenenfarben, Knopf aktiv.</figcaption></figure>
+</div>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s7/szenen/ohne-bereich-raum-schlafzimmer.png" alt=""><figcaption>Schlafzimmer: 16 Szenen, eigene vor den Hue-Szenen, keine Doppelten.</figcaption></figure>
+  <figure><video src="belege/2026-10-10/s7/szenen/szene-antippen.webm" controls muted playsinline></video><figcaption><b>Video:</b> Räume durchblättern, „Sonnenuntergang“ antippen.</figcaption></figure>
+</div>
+<div class="strip" style="max-width:420px"><img src="belege/2026-10-10/s7/szenen/streifen-farbschleier.png" alt=""><p class="note">Farbschleier in den vier Szenenfarben: vorher → 80 ms → 200 ms (läuft weiter, obwohl HA schon geantwortet hat) → danach aktiv.</p></div>
+
+<h3>Musik-Charts auch auf GitHub Pages</h3>
+<p class="note">Dein Kalender-Worker liefert die Apple-Music-Charts jetzt mit, deshalb steht <code>musikProxy</code> in <code>config.js</code>. Geprüft unter der echten GitHub-Pages-Adresse, die Seite wurde aus dem Repo unter <code>julianegwolf-svg.github.io</code> ausgeliefert und der Worker echt gefragt: Charts und Termine ✓. In HA nimmt die Tafel zuerst <code>sensor.musik_charts</code>.</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s7/musik/pages-01-music.png" alt=""><figcaption>GitHub-Pages-Fassung: Apple Music · meistgespielt · Stand heute 11:32.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s7/szenen/ohne-bereich-raum-buro.png" alt=""><figcaption>Büro: 11 Szenen. Die Weißlampe bekommt bei Farbszenen nur die Helligkeit.</figcaption></figure>
+</div>
 
 <h2 id="s3">3 · Animationen, die etwas bedeuten</h2>
 <p class="note">Nur über transform/opacity (Safari 12, A7-Chip). Videos aus Playwright-WebKit; darunter je ein Bildstreifen.</p>
