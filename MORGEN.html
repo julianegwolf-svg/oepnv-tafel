@@ -48,22 +48,23 @@
 <body>
 <div class="wrap">
 
-<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 08:50</div>
+<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 09:35</div>
 <h1>Deine Tafel ist jetzt eine Smart-Home-Zentrale.</h1>
 <p class="lead">Kurz und ehrlich, was diese Nacht entstanden ist – alles gegen einen Home-Assistant-<b>Simulator</b> mit deinem echten Haushalt getestet, nie gegen dein echtes HA. Die Bilder zeigen Desktop-WebKit bei 1024×768 (wie das iPad), nicht das iPad selbst.</p>
 
 <div class="summary">
 <ol>
-  <li><b>Dein dringender Fehler ist weg und doppelt abgesichert:</b> Keine Riesen-Uhr mehr nach 1 Stunde. Das Karussell läuft weiter (geprüft nach 2, 6 und 24 h ohne Berührung). Selbst ein Fehler beim Panelwechsel kann es nicht mehr anhalten, ein Wächter wirft es nach spätestens 3 Minuten wieder an.</li>
+  <li><b>Dein dringender Fehler ist weg und doppelt abgesichert:</b> Keine Riesen-Uhr mehr nach 1 Stunde. Das Karussell läuft weiter (geprüft nach 2, 6 und 24 h ohne Berührung). Selbst ein Fehler beim Panelwechsel kann es nicht mehr anhalten, ein Wächter wirft es nach spätestens 3 Minuten wieder an. <b>Neu gefunden (9 Uhr):</b> Ein älterer Fehler kann die Live-Tafel an einzelnen Tagen ganz einfrieren, zuerst wieder am 19.10. Auf <code>ausbau</code> ist er behoben, siehe Kasten unten.</li>
   <li><b>Home Assistant komplett:</b> Login mit deinem HA-Konto, Räume in echter Lichtfarbe, Licht/Szenen/Helligkeit mit einem Tipp, deine Automationen als Schnellaktionen mit Countdown, Rückgängig und Wirkungsprüfung, Einkaufsliste zum Abhaken, Bad-Klima mit Lüftungsrat, HomePod mit Radio.</li>
   <li><b>Die Tafel denkt mit:</b> Sie lernt deinen Rhythmus aus dem HA-Verlauf. Morgens taucht aus dem Dunkel der eine Satz auf, der zählt („nimm die 23 um 07:35“). Morgengruß, Tagesblick, Arbeitsweg und Lern-Vorschlag nennen <i>dieselbe</i> pünktliche Bahn, seit heute früh auch abends und am Wochenende (2d).</li>
-  <li><b>Mehr Alltag:</b> „Tagesblick“ morgens und abends („Morgen früh“), amtliche DWD-Warnungen (im Tagesblick jetzt mit Zeitraum und Rat: „heute 12–19 Uhr · lose Gegenstände sichern“), Müll am Vorabend, Regenradar, tagesschau in 100 s. Das Quiz ist jetzt <b>deutsch</b>, mit eigenen Bremen-Fragen.</li>
+  <li><b>Mehr Alltag:</b> „Tagesblick“ morgens und abends („Morgen früh“), amtliche DWD-Warnungen (im Tagesblick jetzt mit Zeitraum und Rat: „heute 12–19 Uhr · lose Gegenstände sichern“), Müll am Vorabend, Regenradar, tagesschau in 100 s. Das Quiz ist jetzt <b>deutsch</b>, mit eigenen Bremen-Fragen. <b>Neu seit 9 Uhr:</b> Der Arbeitsweg rechnet endlich mit echten TomTom-Verkehrsdaten (seit Juli scheiterte jede Anfrage, das Auto stand mit 6 statt 11 Minuten da) und zeigt die Route auf einer dunklen Karte (2e).</li>
   <li><b>Die ganze Tafel sieht neu aus:</b> dunkle Farbwelt, Abfahrten wie eine echte Anzeigetafel, keine abgeschnittenen Titel und keine verdeckten Inhalte mehr, Sprüche nach dem Originalwortlaut. Auf dem echten iPad waren Nachtdimmung/Ambient/Übersicht kaputt (Safari-12-CSS) – behoben.</li>
 </ol>
 </div>
 
 <div class="todo">
 <div class="eyebrow">Was du tun musst, damit es am iPad läuft (≈ 10 Minuten)</div>
+<p style="margin:10px 0 4px"><b style="color:var(--alert)">Vor Montag, 19.10.:</b> Die Live-Tafel auf <code>main</code> kann an manchen Tagen komplett einfrieren („Auf den Tag genau“ mit Ereignissen vor Christus, am 19.10. die Schlacht bei Zama). Entweder <code>ausbau</code> übernehmen oder die eine Zeile aus <a href="FRAGEN.md">FRAGEN 26</a> auf <code>main</code> ändern (2e).</p>
 <ol>
   <li>In HA das Add-on <b>Samba share</b> starten, am Mac <code>smb://homeassistant.local</code> → Freigabe <b>config</b> verbinden.</li>
   <li>Im Repo: <code>./tool/nach-ha-kopieren.sh /Volumes/config/www/tafel</code> (beim allerersten Mal danach HA einmal neu starten).</li>
@@ -75,7 +76,7 @@
 <p class="note">Alles Schritt für Schritt (und warum GitHub Pages dafür nicht reicht): <a href="HOME_ASSISTANT.md">HOME_ASSISTANT.md</a>. Fragen an dich: <a href="FRAGEN.md">FRAGEN.md</a> – darin auch zwei Fehler, die beim Nachbauen deiner echten Automationen aufgefallen sind.</p>
 </div>
 
-<p class="note" style="margin-top:22px">Inhalt: <a href="#s1">1 Riesen-Uhr</a> · <a href="#s2">2 Home Assistant</a> · <a href="#s2b">2b Morgengruß</a> · <a href="#s2c">2c Neu seit 6 Uhr</a> · <a href="#s2d"><b>2d Neu seit 8 Uhr</b></a> · <a href="#s3">3 Animationen</a> · <a href="#s4">4 Lernen</a> · <a href="#s5">5 Clips</a> · <a href="#s6">6 iPad-Fehler</a> · <a href="#s7">7 Ideen</a> · <a href="#s8">8 Zur Wahl</a> · <a href="#s9">9 Lücken</a></p>
+<p class="note" style="margin-top:22px">Inhalt: <a href="#s1">1 Riesen-Uhr</a> · <a href="#s2">2 Home Assistant</a> · <a href="#s2b">2b Morgengruß</a> · <a href="#s2c">2c Neu seit 6 Uhr</a> · <a href="#s2d">2d Neu seit 8 Uhr</a> · <a href="#s2e"><b>2e Neu seit 9 Uhr</b></a> · <a href="#s3">3 Animationen</a> · <a href="#s4">4 Lernen</a> · <a href="#s5">5 Clips</a> · <a href="#s6">6 iPad-Fehler</a> · <a href="#s7">7 Ideen</a> · <a href="#s8">8 Zur Wahl</a> · <a href="#s9">9 Lücken</a></p>
 
 <h2 id="s1">1 · Der dringende Fehler: Riesen-Uhr nach einer Stunde</h2>
 <p class="note">Playwright spult die Zeit ohne jede Berührung vor. Vorher: Ambient-Modus nach 1 h, Karussell steht. Nachher: Ambient nur noch, wenn laut HA niemand zu Hause ist.</p>
@@ -263,6 +264,47 @@
 <h3>Bewusst nicht gebaut</h3>
 <p class="note">„Beste Zeit zum Lüften“ für die leere Mitte der Draußen-Karte im Raumklima: Mit der echten Vorhersage für Bremen trocknet Lüften im Oktober den ganzen Tag fast gleich gut (2,4–3,0 g/m³ Unterschied). Ein Zeitfenster wäre Deko gewesen. Im Sommer wäre es sinnvoll, das kann später kommen.</p>
 
+<h2 id="s2e">2e · Neu seit 9 Uhr (Sitzung 5)</h2>
+<p class="note">Wieder ein frischer Rundgang über alle Panels (Samstag 08:47, mit HA-Simulator). Dabei fiel ein Fehler auf, der schon seit Juli auf <code>main</code> steckt.</p>
+
+<h3>Arbeitsweg: echte Verkehrszeiten statt Schätzung – und die Route auf der Karte</h3>
+<p class="note">TomTom hat seit Juli <b>jede</b> Routenanfrage der Tafel mit HTTP 400 abgelehnt („parameter [_] not supported“). Die Tafel hängt an alle Abrufe einen Cache-Brecher <code>&amp;_=…</code>, und den akzeptiert die TomTom-Routing-API nicht. Deshalb rechnete sie Auto und Rad immer mit der Ersatzroute, das Auto mit <b>6 statt 11 Minuten</b>. Der Parameter ist jetzt weg (TomTom schickt selbst <code>Cache-Control: no-cache</code>).<br>Damit erschien zum ersten Mal die Kartenansicht, die im Juli gebaut worden war: hell mitten im dunklen Design, und sie verdrängte die Liste mit der „Bahn zur Arbeit“. Jetzt steht die Karte links im dunklen TomTom-Nachtstil mit kräftiger Routenlinie, rechts die drei Verkehrsmittel mit der Bahnzeile. „Live-Verkehr“ steht nur, wenn die Fahrt in den nächsten 90 Minuten ansteht. Tage vorher heißt es „Verkehrsprognose“. Lädt das Kartenbild nicht, kommen wie bisher die Balken.</p>
+<div class="strip"><img src="belege/2026-10-10/s5/tomtom/vergleich.png" alt=""></div>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s5/tomtom/mo-0710-01-commute.png" alt=""><figcaption>Montag 07:10 (simuliert): „Los um 07:44 · Live-Verkehr“, darunter die Bahn 23 um 07:35.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s5/tomtom/fehlerfall-karte-01-commute.png" alt=""><figcaption>Kartenbild nicht erreichbar: die Balken über die volle Breite, mit den echten TomTom-Zeiten.</figcaption></figure>
+</div>
+
+<h3>„Auf den Tag genau“: ein kurzes Ereignis mit Bild, jede Runde ein anderes</h3>
+<p class="note">Bisher kam ein zufälliges Ereignis des Tages, oft 300–400 Zeichen lang („Zehn Tage nach der Vorpremiere in Boston erlebt George Gershwins Oper …“). Nach 22 Sekunden wurde es noch getippt, und es blieb eine Stunde lang dasselbe. Jetzt kommen nur Ereignisse mit 40–170 Zeichen, die man aus 3 m in einem Zug liest, bevorzugt mit dem Bild des Wikipedia-Artikels. Jede Runde bringt ein anderes. Bilder von Seiten mit einer Jahreszahl im Titel lässt die Tafel weg, sonst stünde die Lösung im Bild (z. B. das Logo der „Rugby-WM 2003“). Probe über 5 Runden: 5 verschiedene Ereignisse, Text immer vollständig, Bild geladen, DOM konstant (<code>tool/ablauf-tag-genau.js</code>).</p>
+<div class="strip"><img src="belege/2026-10-10/s5/tag/vergleich.png" alt=""></div>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/s5/tag/nachher-runde-3.png" alt=""><figcaption>1793: zeitgenössische Karikatur zur Terrorherrschaft.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/s5/tag/nachher-runde-4.png" alt=""><figcaption>1914: Hat ein Artikel kein eigenes Bild, nimmt die Tafel das nächste passende, hier die Flagge Antwerpens.</figcaption></figure>
+</div>
+
+<h3>Allgemeinwissen: große Antwortfelder statt vier kleiner Knöpfe</h3>
+<p class="note">Frage und vier 68-px-Knöpfe standen oben links, der Rest der Karte war leer. Jetzt gibt es vier 84 px hohe Felder mit A–D über die ganze Breite, 26 px Schrift. Nach der Auflösung steht ✓ bzw. ✗ im Kreis. Auch die längste Frage mit den längsten Antworten passt (<code>belege/2026-10-10/s5/quiz/laengste-01-quiz.png</code>). Quiz-Probe komplett grün (Antippen, Auflösung, Neuladen).</p>
+<div class="strip"><img src="belege/2026-10-10/s5/quiz/vergleich.png" alt=""></div>
+
+<h3>Raumklima: Die Draußen-Karte sagt, ob Lüften das Bad trocknet</h3>
+<p class="note">In der Draußen-Karte standen zwei Zahlen über einer leeren Mitte, die Empfehlung stand klein in der Bad-Karte. Jetzt vergleichen Balken „Wasser in der Luft“ für Bad und draußen, darunter steht das Ergebnis mit einer konkreten Zahl: „Durchgelüftet etwa 43 % statt 62 %“ (Außenluft auf Badtemperatur erwärmt, also das Bestmögliche). Die Bad-Kurve wird dafür höher.<br>Nebenbei: Die Kurve wurde nach jedem n-ten Messpunkt ausgedünnt. Meldet der Sensor in kurzer Zeit sehr oft (beim Duschen), ballte sich das zu einem dicken senkrechten Strich, und die Feuchtespitze konnte verschwinden. Jetzt nimmt die Tafel je 12 Minuten Minimum und Maximum.</p>
+<div class="strip"><img src="belege/2026-10-10/s5/klima/vergleich.png" alt=""></div>
+
+<h3>HA-Panels: lange Titel laufen nicht mehr unter die Knöpfe</h3>
+<p class="note">„Badezimmer: Fenster offen, Heizung an“ lief unter den Übersicht-Knopf (nur mit Fenster/Heizung, also nicht in deinem jetzigen Haushalt). Jetzt endet der Titel vor den Knöpfen, lange Titel stehen in 22 px.</p>
+<div class="strip"><img src="belege/2026-10-10/s5/titel/vergleich.png" alt=""></div>
+
+<h3>Medien: ein HomePod, großes Cover</h3>
+<p class="note">Mit nur einem Lautsprecher (dein HomePod) gibt es keine Geräteliste darunter, oben und unten standen je ~150 px leer. Jetzt ist das Cover 400 statt 300 px groß, der Titel 48 px. Mit mehreren Lautsprechern bleibt alles wie bisher.</p>
+<div class="strip"><img src="belege/2026-10-10/s5/medien/vergleich.png" alt=""></div>
+
+<h3>Code-Review dieser Sitzung: ein Fehler, der auch die Live-Tafel einfrieren kann</h3>
+<p class="note">Ein unabhängiges Review fand vier Fehler im neuen „Auf den Tag genau“. Alle sind nachgeprüft und behoben (<code>tool/ablauf-review-s5.js</code>, alles ✓). Der wichtigste ist älter als diese Nacht: Zu jedem Ereignis baut die Tafel zwei falsche Jahreszahlen. Für Ereignisse vor Christus liefert Wikipedia negative Jahre, und ab −80 findet die Schleife nie zwei gültige Jahre. Sie läuft <b>endlos</b>, die Seite friert ein, auch Wächter und 3-h-Neuladen stehen. Auf <code>main</code> wird stündlich ein zufälliges Ereignis gezogen. Betroffen sind z. B. 21.4. (Rom −753), 2.8. (Cannae), 12.9. (Marathon) und als <b>nächster Tag der 19.10.</b> (Zama −202). Auf <code>ausbau</code> zählen nur noch Jahre nach Christus, und die Schleife ist begrenzt. Für <code>main</code> reicht notfalls eine Zeile (FRAGEN 26).<br>Außerdem behoben: Nach Mitternacht stand über dem Ereignis vom Vortag das neue Datum. Das erste Ereignis wurde samt Bild aufgebaut und gleich übersprungen. Ein veralteter Bildfehler konnte den neuen Block zurücksetzen. Die Arbeitsweg-Karte holt ihr Bild nur noch einmal beim Zeigen, in der richtigen Größe, statt vorab geschätzt und dann ein zweites Mal.</p>
+
+<h3>Geprüft</h3>
+<p class="note">HA-Probe mit deinem Haushalt und mit Extras komplett grün (<code>belege/2026-10-10/s5/ha/</code>, <code>ha-extras/</code>), Safari-12-Prüfung OK, keine Code-Fehler in der Konsole. 24-h-Zeitraffer: DOM, Listener, Intervalle und Bilder wachsen in keinem Abschnitt, 5× Neuladen, keine Seitenfehler. Zwei Abschnitte zeigt die Probe mit ✗, weil sie offene Timeouts mit dem ersten Abschnitt vergleicht. Dort standen konstant 22 statt höchstens 12, zur selben simulierten Uhrzeit wie schon im Lauf von Sitzung 4, also vor diesen Änderungen, und ohne Wachstum (<code>belege/2026-10-10/s5/zeitraffer.log</code>).</p>
+
 <h2 id="s3">3 · Animationen, die etwas bedeuten</h2>
 <p class="note">Nur über transform/opacity (Safari 12, A7-Chip). Videos aus Playwright-WebKit; darunter je ein Bildstreifen.</p>
 <div class="grid">
@@ -419,7 +461,6 @@
   <li>Schieberegler: Mausziehen ist geprüft; echte Touch-Ereignisse lassen sich im Desktop-WebKit nicht erzeugen. Der Touch-Code (touchstart/move mit preventDefault) ist Safari-12-tauglich geschrieben, aber am iPad unbestätigt.</li>
   <li>Stumme Autoplay-Videos sollten auf iOS 12 laufen (muted + playsinline) – am Gerät unbestätigt.</li>
   <li>Alle Ideen aus IDEEN.md sind gebaut. Einige sind bewusst als Varianten umschaltbar, bis du entschieden hast (FRAGEN.md).</li>
-  <li>Quiz-Fragen bleiben englisch (Open Trivia DB hat kein Deutsch) – FRAGEN 17.</li>
   <li>ÖPNV-Störungen: keine offene Quelle für BSAG/VBN gefunden; die Tafel zeigt Meldungen automatisch, sobald Transitous sie mitliefert.</li>
   <li>Der Simulator wertet Templates in Automationen nicht aus; deine Automationen hat er so nachgebaut, wie HA sie vermutlich ausführt.</li>
   <li>Morgengruß: Der Melder hängt im Schlafzimmer, nicht an der Tafel. Der Gruß kommt bei der <i>ersten</i> Bewegung ab 5 Uhr (einmal pro Tag) – stehst du um 5:10 kurz auf, ist er verbraucht. Der Tagesblick danach zeigt dieselbe Bahn aber weiter bis 11 Uhr. Siehe FRAGEN 18.</li>
