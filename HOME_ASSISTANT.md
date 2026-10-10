@@ -57,7 +57,8 @@ Fertig. Oben rechts in der Uhr-Pille erscheint ein **Haus-Knopf** mit kleinem St
 | **Panel „Medien“** | Erscheint nur, wenn etwas läuft: Cover, Titel, Fortschritt, Play/Pause/Weiter, Lautstärke, **Radio direkt auf dem HomePod**. |
 | **Radio-Knopf** (oben) | Neu: „Abspielen auf: iPad / HomePod“ – mit HomePod spielt Home Assistant den Sender dort ab. |
 | **Hinweise unten links** | Ruhige Chips, Wichtiges zuerst: Batterie fast leer, Gerät nicht erreichbar (erst nach 2 min), hohe Luftfeuchte, offene Fenster/Türen, Waschmaschine fertig und Ähnliches, sobald es solche Sensoren gibt. Antippen springt zur passenden Ansicht. |
-| **Reaktionen** | Jeder Bewegungs-/Belegungsmelder weckt die Tafel aus Tiefschlaf/Ambient. **Ambient-Modus nur noch, wenn niemand zu Hause ist** (person.*), nicht mehr nach einer Stunde ohne Berührung. |
+| **Reaktionen** | Jeder Bewegungs-/Belegungsmelder weckt die Tafel aus Tiefschlaf/Ambient (Inhalte erscheinen gestaffelt). **Ambient-Modus nur noch, wenn niemand zu Hause ist** (person.*), nicht mehr nach einer Stunde ohne Berührung. |
+| **Morgengruß** | Erste Bewegung des Tages ab 5 Uhr (bis 11 Uhr, einmal pro Tag): „Guten Morgen, Julian – 12 °C, es regnet – nimm die 23 um 07:35.“ Die Bahn ist die späteste deiner Arbeitslinie in deiner Richtung, die mit 5 Min Puffer pünktlich ankommt; am Wochenende stattdessen der erste Termin. Danach der Tagesblick mit derselben Bahn. Startzeit: `homeAssistant.reaktionen.morgengrussAb`, aus: `morgengruss: false`. |
 
 Gibt es Geräte nicht (Heizung, Fensterkontakte, Waschmaschine, Saugroboter, Steckdosen …), zeigt die Tafel dafür **nichts** an. Kommen sie später in HA dazu, erscheinen sie automatisch.
 
