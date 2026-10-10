@@ -2924,12 +2924,38 @@
       '<button type="button" class="ha-pill-btn is-on" data-setup="speichern">Token speichern</button>' +
       "</div></div>" +
       '<div class="ha-setup-result" id="haSetupResult"></div>' +
+      quellenHtml() +
       (window.TafelLernen
         ? '<div class="ha-setup-learned"><span class="ha-setup-label">Was die Tafel gelernt hat</span><ul>' +
           TafelLernen.beschreibung().map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>" +
           '<button type="button" class="ha-pill-btn" data-setup="vergessen">Vergessen</button></div>'
         : "") +
       "</div>";
+  }
+
+  // Datenquellen: letzter erfolgreicher Abruf je Quelle (app.js), damit
+  // man nach dem Umzug der Tafel (GitHub Pages → Home Assistant) am iPad
+  // sieht, ob alles lädt. Der Kalender-Worker gibt nur freigeschaltete
+  // Adressen frei – lädt er nicht, steht die nötige Adresse direkt da.
+  function quellenHtml() {
+    if (typeof tafelQuellen !== "function") return "";
+    const liste = tafelQuellen();
+    if (!liste.length) return "";
+    const zeit = function (ms) { return new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }); };
+    let kalenderFehlt = false;
+    const zeilen = liste.map(function (q) {
+      let zustand, text;
+      if (!q.stand) { zustand = "fehlt"; text = "lädt nicht"; if (q.id === "calendar") kalenderFehlt = true; }
+      else if (q.alt) { zustand = "alt"; text = "Stand " + zeit(q.stand); }
+      else { zustand = "ok"; text = zeit(q.stand); }
+      return '<li class="is-' + zustand + '"><span class="ha-quelle-dot"></span><span class="ha-quelle-name">' + esc(q.name) +
+        '</span><span class="ha-quelle-stand num">' + esc(text) + "</span></li>";
+    }).join("");
+    const herkunft = location.protocol + "//" + location.host;
+    const hinweis = kalenderFehlt && location.protocol === "http:"
+      ? '<p class="ha-setup-note">Termine laden nicht: Dein Kalender-Worker muss diese Adresse erlauben – <b>' + esc(herkunft) + "</b> (HOME_ASSISTANT.md, Schritt 5).</p>"
+      : "";
+    return '<div class="ha-setup-quellen"><span class="ha-setup-label">Datenquellen · zuletzt geladen</span><ul>' + zeilen + "</ul>" + hinweis + "</div>";
   }
 
   function defaultSetupUrl() {

@@ -2587,6 +2587,8 @@ function updateCalendar() {
     lastCalendarEvents = upcoming.map(function (ev) {
       return { title: ev.summary, start: ev.start.date.getTime(), allDay: !!ev.start.allDay, location: ev.location || "" };
     });
+    // Abruf hat geklappt – auch wenn gerade nichts ansteht (Einstellungen → Datenquellen).
+    dataStand.calendar = Date.now();
     if (!upcoming.length) throw new Error("Keine anstehenden Termine gefunden");
 
     if ((CONFIG.terminListe || "tage") === "tage") {
@@ -5145,6 +5147,26 @@ const STALE_MS = {
 function markFresh(src) {
   dataStand[src] = Date.now();
   updateStaleBadge();
+}
+
+// Für die Einstellungsseite (ha-panels.js): letzter erfolgreicher Abruf je
+// Quelle. So sieht man am iPad ohne Entwicklerwerkzeuge, ob z. B. der
+// Kalender nach dem Umzug nach Home Assistant noch lädt (der Worker lässt
+// nur freigegebene Adressen zu, siehe HOME_ASSISTANT.md).
+const QUELLEN_NAMEN = {
+  departures: "Abfahrten", weather: "Wetter", commute: "Arbeitsweg", calendar: "Termine",
+  news: "Nachrichten", events: "Veranstaltungen", sport: "Fußball", music: "Musik-Charts",
+};
+
+function tafelQuellen() {
+  const seq = CONFIG.panelSequence || PANEL_IDS;
+  const aus = { calendar: !CONFIG.calendarWorkerUrl, sport: !(CONFIG.sportTeams || []).length };
+  return Object.keys(QUELLEN_NAMEN).filter(function (id) {
+    return seq.indexOf(id) !== -1 && !aus[id];
+  }).map(function (id) {
+    const at = dataStand[id] || 0;
+    return { id: id, name: QUELLEN_NAMEN[id], stand: at, alt: !!(at && Date.now() - at > STALE_MS[id]) };
+  });
 }
 
 function updateStaleBadge() {

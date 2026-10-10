@@ -44,6 +44,26 @@ Wichtig: Eine Home-Bildschirm-App hat auf iOS **eigenen Speicher** – die Anmel
 
 Fertig. Oben rechts in der Uhr-Pille erscheint ein **Haus-Knopf** mit kleinem Statuspunkt (grün = verbunden).
 
+### 5. Kalender-Worker: die neue Adresse erlauben (sonst fehlen die Termine)
+Alle anderen Datenquellen der Tafel (Abfahrten, Wetter, Nachrichten, Radar …) erlauben jede Adresse. **Nur dein Kalender-Worker** (`kalender-worker….workers.dev`) antwortet ausschließlich `https://julianegwolf-svg.github.io` – geprüft am 10.10. mit `curl -H "Origin: http://homeassistant.local:8123"`. Aus Home Assistant geöffnet, verschwinden deshalb still das Termine-Panel, der Termin im Tagesblick und im Morgengruß.
+
+Im Cloudflare-Dashboard → Workers → dein Kalender-Worker → **Code bearbeiten**: dort, wo `Access-Control-Allow-Origin` gesetzt wird, statt der festen Adresse eine kleine Liste verwenden:
+```js
+const ERLAUBT = [
+  "https://julianegwolf-svg.github.io",
+  "http://homeassistant.local:8123",
+  // "http://192.168.178.40:8123",  // falls du die Tafel über die IP öffnest
+];
+const origin = request.headers.get("Origin") || "";
+const allowOrigin = ERLAUBT.indexOf(origin) !== -1 ? origin : ERLAUBT[0];
+// … in den Antwort-Headern:
+//   "Access-Control-Allow-Origin": allowOrigin,
+//   "Vary": "Origin",
+```
+**Prüfen am iPad:** lange auf die Uhr drücken → Einstellungen → **Datenquellen**. Jede Quelle zeigt, wann sie zuletzt geladen hat; „Termine – lädt nicht“ samt der Adresse, die der Worker erlauben muss, heißt: dieser Schritt fehlt noch.
+
+Gut zu wissen: Die Home-Bildschirm-App unter der neuen Adresse hat eigenen Speicher. Was die Tafel bisher über deine Bedienung gelernt hat (Vorschläge), fängt dort neu an. Der HA-Verlauf liefert die Grundlage aber sofort wieder.
+
 ---
 
 ## Was die Tafel jetzt kann
@@ -94,6 +114,7 @@ Die Tafel erkennt alles selbst aus deinen HA-Bereichen. Feinsteuerung (optional)
 | Roter Punkt, „Anmeldung nötig“ | Anmeldung wurde widerrufen/ist abgelaufen → aufs Haus tippen, neu anmelden |
 | Gelber, atmender Punkt | Verbindung kurz weg (WLAN, HA-Neustart) – die Tafel verbindet sich selbst neu; Bedienung ist so lange gesperrt |
 | Raum fehlt | Raum hat in HA keine Geräte, die die Tafel anzeigen kann (z. B. Küche ohne Licht/Sensor) – absichtlich |
+| Keine Termine mehr (seit dem Umzug nach HA) | Kalender-Worker erlaubt die neue Adresse nicht → Schritt 5; Einstellungen → Datenquellen zeigt „Termine – lädt nicht“ |
 
 ---
 
