@@ -3338,3 +3338,78 @@ html, body {
 .night-view.is-grau .nv-hint {
   color: #9a7b6e;
 }
+
+
+/* ---------- Panel-Übersicht (IDEEN Ü1) ---------- */
+.panel-nav-box {
+  width: 100%;
+  max-width: 940px;
+}
+
+.panel-nav-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  color: var(--ink);
+}
+
+.panel-nav-title {
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.panel-nav-sub {
+  margin-top: 4px;
+  font-size: 16px;
+  color: var(--ink-dim);
+}
+
+.panel-nav-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--panel-edge);
+  background: var(--glass-bg);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.panel-nav-close svg {
+  width: 26px;
+  height: 26px;
+}
+
+.panel-nav-grid {
+  max-width: none;
+}
+
+.panel-nav-tile {
+  min-height: 120px;
+  background: var(--panel);
+}
+
+.panel-nav-tile.is-current {
+  background: var(--panel);
+  border-color: var(--brass);
+  border-width: 2px;
+}
+
+.panel-nav-tile-icon svg {
+  display: block;
+  width: 40px;
+  height: 40px;
+  color: var(--ink-dim);
+}
+
+.panel-nav-tile.is-current .panel-nav-tile-icon svg {
+  color: var(--brass);
+}
+
+.panel-nav-tile-label {
+  font-size: 16px;
+}

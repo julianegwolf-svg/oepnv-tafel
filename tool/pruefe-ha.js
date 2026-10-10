@@ -87,6 +87,11 @@ async function sim(pfad, body) {
     return false;
   }
 
+  // Simulator in den Ausgangszustand (Lichter, Einkaufsliste, Szenen),
+  // damit wiederholte Läufe dieselben Bedingungen haben.
+  await sim("/sim/szenario/reset");
+  await sim("/sim/state", { entity_id: "todo.einkaufsliste" });
+
   // ---------- 1. Login ----------
   await page.goto(URL);
   // Belegfotos bei Tageshelligkeit: Nachtdimmung/Tiefschlaf aus, ohne die
@@ -295,6 +300,10 @@ async function sim(pfad, body) {
   // ---------- 5. Einkaufsliste ----------
   await evalSafe(() => jumpToPanel("home"));
   await page.waitForTimeout(1000);
+  if (!(await page.$("#panel-home .ha-todo-item:not(.is-done)"))) {
+    await evalSafe(() => TafelHA.callService("todo", "add_item", { item: "Milch" }, { entity_id: "todo.einkaufsliste" }));
+    await page.waitForTimeout(1500);
+  }
   const todo = await page.$("#panel-home .ha-todo-item:not(.is-done)");
   if (todo) {
     const uid = await todo.getAttribute("data-uid");

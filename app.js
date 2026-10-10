@@ -4990,11 +4990,35 @@ function markUserActivity() {
   if (ambientActive) exitAmbientMode();
 }
 
+// Einfarbige Linien-Symbole für die Übersicht (IDEEN Ü1) statt bunter
+// Emoji — ruhiger, auf iOS 12 identisch, in der Akzentfarbe färbbar.
+const PANEL_NAV_ICONS = {
+  departures: '<rect x="5" y="3.5" width="14" height="14" rx="3"/><path d="M5 11h14M8.5 21l1.5-3.5M15.5 21L14 17.5"/><circle cx="8.5" cy="14.3" r="0.8" fill="currentColor"/><circle cx="15.5" cy="14.3" r="0.8" fill="currentColor"/>',
+  commute: '<circle cx="12" cy="12" r="8.5"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+  weather: '<path d="M7.5 18h9a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.6 1.5A3.3 3.3 0 0 0 7.5 18z"/>',
+  news: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M7 9h10M7 12.5h10M7 16h6"/>',
+  music: '<path d="M9 17.5V5.5l10.5-2v12"/><circle cx="6.6" cy="17.5" r="2.4"/><circle cx="17.1" cy="15.5" r="2.4"/>',
+  sport: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5l3.5 2.5-1.3 4h-4.4l-1.3-4z"/>',
+  quote: '<path d="M5 17.5c1.7-1 2.5-3 2.5-5.5H5V6.5h5.5V12c0 3.5-1.7 5.7-5 6.5zM13.5 17.5c1.7-1 2.5-3 2.5-5.5h-2.5V6.5H19V12c0 3.5-1.7 5.7-5 6.5z"/>',
+  trivia: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/>',
+  quiz: '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1.1.9-1.1 1.7v.5"/><circle cx="12" cy="16.8" r="0.6" fill="currentColor"/>',
+  riddle: '<path d="M9 4h4v2.5a1.5 1.5 0 1 0 3 0V4h4v6h-2.5a1.5 1.5 0 1 0 0 3H20v7H4V4h5z"/>',
+  events: '<path d="M4 20l5-14 9 9z"/><path d="M14 4.5l1 2M18 7l2-1M19 10.5l2 .5"/>',
+  calendar: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4M8 13h3v3H8z"/>',
+  home: '<path d="M3.5 11L12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5.5h4V20"/>',
+  klima: '<path d="M10 14.3V5a2 2 0 0 1 4 0v9.3a4 4 0 1 1-4 0z"/><path d="M12 9.5V17"/>',
+  medien: '<rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="14" r="3.2"/><circle cx="12" cy="7.3" r="1"/>',
+  tagesschau: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8.5 20.5h7M12 17v3.5M10.5 8.5v5l4-2.5z"/>',
+  tagesblick: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
+};
+
 function buildPanelNavGrid() {
   if (!els.panelNavGrid) return;
   els.panelNavGrid.innerHTML = "";
-  const seq = CONFIG.panelSequence || [];
   const currentName = activeSequence[panelIndex];
+  // Smart-Home zuerst, dann der Rest in Karussell-Reihenfolge.
+  const first = ["home", "klima", "medien", "tagesblick", "departures"];
+  const seq = first.concat((CONFIG.panelSequence || []).filter(function (n) { return first.indexOf(n) === -1; }));
 
   seq.forEach(function (name) {
     const check = PANEL_AVAILABILITY[name];
@@ -5008,7 +5032,11 @@ function buildPanelNavGrid() {
 
     const icon = document.createElement("span");
     icon.className = "panel-nav-tile-icon";
-    icon.textContent = meta.icon;
+    if (PANEL_NAV_ICONS[name]) {
+      icon.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + PANEL_NAV_ICONS[name] + "</svg>";
+    } else {
+      icon.textContent = meta.icon;
+    }
     tile.appendChild(icon);
 
     const label = document.createElement("span");
@@ -5059,7 +5087,7 @@ function initPanelNav() {
 
   if (els.panelNavOverlay) {
     els.panelNavOverlay.addEventListener("click", function (ev) {
-      if (ev.target === els.panelNavOverlay) setPanelNavOpen(false);
+      if (ev.target === els.panelNavOverlay || (ev.target.closest && ev.target.closest(".panel-nav-close"))) setPanelNavOpen(false);
     });
   }
 

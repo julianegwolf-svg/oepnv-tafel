@@ -13,12 +13,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="design.css?v=104">
-<link rel="stylesheet" href="style.css?v=104">
-<link rel="stylesheet" href="farbwelt.css?v=104">
-<link rel="stylesheet" href="ha.css?v=104">
-<link rel="stylesheet" href="clips.css?v=104">
-<link rel="stylesheet" href="tagesblick.css?v=104">
+<link rel="stylesheet" href="design.css?v=105">
+<link rel="stylesheet" href="style.css?v=105">
+<link rel="stylesheet" href="farbwelt.css?v=105">
+<link rel="stylesheet" href="ha.css?v=105">
+<link rel="stylesheet" href="clips.css?v=105">
+<link rel="stylesheet" href="tagesblick.css?v=105">
 </head>
 <body>
   <div class="panel">
@@ -215,7 +215,13 @@
     <div class="night-overlay" id="nightOverlay"></div>
 
     <div class="panel-nav-overlay" id="panelNavOverlay">
-      <div class="panel-nav-grid" id="panelNavGrid"></div>
+      <div class="panel-nav-box">
+        <div class="panel-nav-head">
+          <div><div class="panel-nav-title">Übersicht</div><div class="panel-nav-sub">Karussell pausiert · läuft 10 s nach dem Schließen weiter</div></div>
+          <button type="button" class="panel-nav-close" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <div class="panel-nav-grid" id="panelNavGrid"></div>
+      </div>
     </div>
 
     <div class="ambient-overlay" id="ambientOverlay">
@@ -223,14 +229,14 @@
     </div>
   </div>
 
-  <script src="debug-zeit.js?v=104"></script>
-  <script src="config.js?v=104"></script>
-  <script src="ha.js?v=104"></script>
-  <script src="ha-panels.js?v=104"></script>
-  <script src="lernen.js?v=104"></script>
-  <script src="clips.js?v=104"></script>
-  <script src="tagesblick.js?v=104"></script>
-  <script src="warnungen.js?v=104"></script>
-  <script src="app.js?v=104"></script>
+  <script src="debug-zeit.js?v=105"></script>
+  <script src="config.js?v=105"></script>
+  <script src="ha.js?v=105"></script>
+  <script src="ha-panels.js?v=105"></script>
+  <script src="lernen.js?v=105"></script>
+  <script src="clips.js?v=105"></script>
+  <script src="tagesblick.js?v=105"></script>
+  <script src="warnungen.js?v=105"></script>
+  <script src="app.js?v=105"></script>
 </body>
 </html>
