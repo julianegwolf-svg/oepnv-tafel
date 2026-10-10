@@ -93,7 +93,11 @@ async function sim(pfad, body) {
   // Bewegung!
   if (sensor) await sim("/sim/state", { entity_id: sensor, state: "on" });
   const t0 = Date.now();
-  await page.waitForFunction(() => !document.getElementById("nightOverlay").classList.contains("is-active"), null, { timeout: 8000 }).catch(() => {});
+  // Wach = Schleier weg oder nur noch normale Nachtdimmung (nachts 22–5 Uhr).
+  await page.waitForFunction(() => {
+    const o = document.getElementById("nightOverlay");
+    return !o.classList.contains("is-active") || parseFloat(o.style.getPropertyValue("--night-dim-opacity")) < 0.9;
+  }, null, { timeout: 8000 }).catch(() => {});
   const reaktion = Date.now() - t0;
   for (const ms of [150, 350, 600, 1000]) {
     const warte = ms - (Date.now() - t0);
@@ -105,13 +109,15 @@ async function sim(pfad, body) {
     const el = document.getElementById("haGreeting");
     return el && el.classList.contains("is-open") ? el.innerText : "";
   });
-  log(/Guten Morgen/.test(gruss), "Begrüßung: " + gruss.replace(/\n+/g, " | "));
+  const stunde = parseInt(JETZT.slice(11, 13), 10);
+  if (stunde >= 5 && stunde < 11) log(/Guten Morgen/.test(gruss), "Begrüßung: " + gruss.replace(/\n+/g, " | "));
+  else log(!gruss, "Nachts kein Morgengruß, nur gestaffeltes Aufwachen");
   log(reaktion < 3000, "Aufwachen nach " + reaktion + " ms (inkl. Simulator-Weg)");
   await shot("gruss");
   await page.waitForTimeout(9000);
   await shot("danach");
   const panel = await page.evaluate(() => activeSequence[panelIndex]);
-  log(panel === "tagesblick" || panel === "departures", "Danach: Panel " + panel);
+  log(stunde < 5 || stunde >= 11 || panel === "tagesblick" || panel === "departures", "Danach: Panel " + panel);
   await page.waitForTimeout(3000);
   await shot("danach-2");
   if (typeof arg("extra", "") === "string" && arg("extra", "")) {

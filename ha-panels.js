@@ -2420,7 +2420,8 @@
   function maybeMorningGreeting() {
     if (REAKTION.morgengruss === false) return false;
     const now = new Date();
-    if (now.getHours() < 5 || now.getHours() >= 11) return false;
+    const ab = REAKTION.morgengrussAb != null ? REAKTION.morgengrussAb : 5;
+    if (now.getHours() < ab || now.getHours() >= 11) return false;
     const today = now.getFullYear() + "-" + (now.getMonth() + 1) + "-" + now.getDate();
     let last = "";
     try { last = window.localStorage.getItem(GRUSS_KEY) || ""; } catch (e) { last = ""; }

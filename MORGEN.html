@@ -48,7 +48,7 @@
 <body>
 <div class="wrap">
 
-<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code></div>
+<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 06:20</div>
 <h1>Deine Tafel ist jetzt eine Smart-Home-Zentrale.</h1>
 <p class="lead">Kurz und ehrlich, was diese Nacht entstanden ist – alles gegen einen Home-Assistant-<b>Simulator</b> mit deinem echten Haushalt getestet, nie gegen dein echtes HA. Die Bilder zeigen Desktop-WebKit bei 1024×768 (wie das iPad), nicht das iPad selbst.</p>
 
@@ -56,7 +56,7 @@
 <ol>
   <li><b>Dein dringender Fehler ist weg:</b> Die Tafel springt nicht mehr nach 1 Stunde in die Riesen-Uhr – das Karussell läuft (geprüft nach 2, 6 und 24 h ohne Berührung).</li>
   <li><b>Home Assistant komplett:</b> Login mit deinem HA-Konto, Räume mit echter Lichtfarbe, Licht/Szenen/Helligkeit mit einem Tipp, deine Automationen als Schnellaktionen mit Countdown + Rückgängig, Einkaufsliste zum Abhaken, Bad-Klima mit echtem Lüftungsrat, HomePod mit Radio.</li>
-  <li><b>Die Tafel denkt mit:</b> Sie lernt deinen Rhythmus aus dem HA-Verlauf („Du gehst werktags meist um 07:32 los – Bahn in 17 Min“, „Wie jeden Abend: Gute Nacht?“), begrüßt dich beim Heimkommen und morgens mit dem einen wichtigen Satz.</li>
+  <li><b>Die Tafel denkt mit:</b> Sie lernt deinen Rhythmus aus dem HA-Verlauf („Du gehst werktags meist um 07:32 los – Bahn in 17 Min“, „Wie jeden Abend: Gute Nacht?“), begrüßt dich beim Heimkommen – und morgens taucht aus dem Dunkel der eine Satz auf, der zählt: „12 °C, es regnet – nimm die 23 um 07:35.“ (die richtige Linie <i>und</i> Richtung, siehe 2b).</li>
   <li><b>Mehr Alltag:</b> „Tagesblick“ morgens (Wetter, Bahn, Termin, Müll) und abends als „Morgen früh“, amtliche DWD-Unwetterwarnungen, Luft/UV/Pollen nur wenn relevant, Müll erst am Vorabend (mit Feiertagsverschiebung), Regenradar und „tagesschau in 100 Sekunden“.</li>
   <li><b>Die ganze Tafel sieht neu aus:</b> dunkle Farbwelt überall, Abfahrten wie eine echte Anzeigetafel (60-px-Minuten, echte Linienfarben), Uhr 56 statt 30 px, keine verdeckten Inhalte mehr. Und: Auf dem echten iPad waren Nachtdimmung/Ambient/Übersicht kaputt (Safari-12-CSS) – behoben.</li>
 </ol>
@@ -95,6 +95,21 @@
   <figure><img src="belege/2026-10-10/ha/24-begruessung.png" alt=""><figcaption><b>Heimkommen:</b> Tafel springt aufs Zuhause-Panel und begrüßt dich.</figcaption></figure>
 </div>
 
+<h2>2b · Der erste Moment des Tages: Morgengruß</h2>
+<p class="note">Erste Bewegung am Schlafzimmer-Melder zwischen 5 und 11 Uhr (hier nach „Gute Nacht“, Tafel schwarz). Probe: <code>node tool/pruefe-morgengruss.js --jetzt 2026-10-12T05:50</code> – Montag, Samstag und nachts geprüft, alles grün.</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/morgengruss/vorher-03-aufwachen-350ms.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>350 ms nach der Bewegung: Abfahrten, Gruß und Tagesblick liegen halbdurchsichtig übereinander.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/morgengruss/1012T0550-03-aufwachen-350ms.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Der Gruß liegt schon unter dem schwarzen Schleier und taucht mit ihm auf – nichts scheint durch.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/morgengruss/vorher-06-gruss.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>„nimm die 29 um 06:02“ – irgendeine Bahn, um 05:50 sinnlos; dazu „2 Geräte mit schwacher Batterie“ als Morgenbotschaft.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/morgengruss/1012T0550-06-gruss.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>„nimm die 23 um 07:35“ = die späteste Bahn deiner Arbeitslinie in deiner Richtung (Huckelriede), die mit 5 Min Puffer pünktlich ankommt – auch um 05:50 schon, die Tafel fragt die Zeit gezielt ab.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/morgengruss/1012T0705-08-danach-2.png" alt=""><figcaption><b>Danach Tagesblick</b> mit derselben Rechnung: „Bahn zur Arbeit · 23 07:35 → Huckelriede · Los um 07:27 · Arbeit ca. 07:55“ (vorher: „Nächste Bahn 29“ mit „in 2 min los“).</figcaption></figure>
+  <figure><img src="belege/2026-10-10/morgengruss/1010T0730-06-gruss.png" alt=""><figcaption><b>Samstag:</b> keine Bahn, dafür die amtliche Warnung. Hast du heute einen Termin, steht stattdessen „um 11:00 …“ da (hier nicht im Bild: dein Kalender lässt sich von localhost aus nicht abrufen).</figcaption></figure>
+</div>
+<div class="grid">
+  <figure><video src="belege/2026-10-10/morgengruss/1012T0550-morgengruss.webm" controls muted loop playsinline></video><figcaption><b>Video:</b> Tiefschlaf → Bewegung → Gruß taucht aus dem Schwarz auf → Tagesblick baut sich gestaffelt auf.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/morgengruss/abfahrten-richtung-01-departures.png" alt=""><figcaption><b>Nebenbei behoben:</b> Die 23 fährt an der Föhrenstraße in beide Richtungen – die Aktentasche „Arbeit an …“ stand bisher auch an „23 Universität“. Jetzt nur noch in deiner Richtung.</figcaption></figure>
+</div>
+
 <h3>Für Geräte, die du (noch) nicht hast</h3>
 <p class="note">Heizung, Fenster, Waschmaschine, Saugroboter, Steckdosen werden bei dir <b>nicht</b> angezeigt – kommen sie in HA dazu, erscheinen sie automatisch. Getestet mit dem Simulator-Schalter <code>--extras</code>:</p>
 <div class="grid">
@@ -113,7 +128,10 @@
   <figure><video src="belege/2026-10-10/animationen/verbindung.webm" controls muted loop playsinline></video><figcaption><b>Verbindung weg:</b> Punkt atmet, Bedienung graut aus, kommt von selbst zurück.</figcaption></figure>
   <figure><video src="belege/2026-10-10/animationen/ziffern.webm" controls muted loop playsinline></video><figcaption><b>Zahlenwechsel:</b> nur die geänderte Ziffer rollt.</figcaption></figure>
   <figure><video src="belege/2026-10-10/animationen/begruessung.webm" controls muted loop playsinline></video><figcaption><b>Heimkommen:</b> Sprung aufs Zuhause-Panel, Begrüßung blendet gestaffelt ein.</figcaption></figure>
+  <figure><video src="belege/2026-10-10/los-balken/streifen-video.webm" controls muted loop playsinline></video><figcaption><b>„in 3 min los“ / „LOS!“ mit ablaufendem Balken</b> (Zeitraffer ×10): so lange ist die Bahn noch zu schaffen; ist er leer, verschwindet die Zeile. <a href="belege/2026-10-10/los-balken/banner-video.webm">Banner-Variante</a>.</figcaption></figure>
+  <figure><video src="belege/2026-10-10/morgengruss/nacht-0310-morgengruss.webm" controls muted loop playsinline></video><figcaption><b>Bewegung weckt die Tafel</b> (nachts, ohne Gruß): Kopfzeile, dann Abfahrten, dann Hinweiszeile – gestaffelt statt alles auf einmal.</figcaption></figure>
 </div>
+<div class="strip"><img src="belege/2026-10-10/los-balken/los-balken-streifen.png" alt=""></div>
 <div class="strip"><img src="belege/2026-10-10/animationen/schnellaktion-streifen.png" alt=""></div>
 <div class="strip"><img src="belege/2026-10-10/animationen/licht-kachel-streifen.png" alt=""></div>
 
@@ -255,6 +273,8 @@
   <li>Quiz-Fragen bleiben englisch (Open Trivia DB hat kein Deutsch) – FRAGEN 17.</li>
   <li>ÖPNV-Störungen: keine offene Quelle für BSAG/VBN gefunden; die Tafel zeigt Meldungen automatisch, sobald Transitous sie mitliefert.</li>
   <li>Der Simulator wertet Templates in Automationen nicht aus; deine Automationen hat er so nachgebaut, wie HA sie vermutlich ausführt.</li>
+  <li>Morgengruß: Der Melder hängt im Schlafzimmer, nicht an der Tafel. Der Gruß kommt bei der <i>ersten</i> Bewegung ab 5 Uhr (einmal pro Tag) – stehst du um 5:10 kurz auf, ist er verbraucht. Der Tagesblick danach zeigt dieselbe Bahn aber weiter bis 11 Uhr. Siehe FRAGEN 18.</li>
+  <li>„Richtung“ der Arbeitslinie kommt aus der Transitous-Route (Zielangabe der ersten Fahrt). Passt die Schreibweise mal nicht, fällt die Tafel auf „nur Linie“ zurück – wie bisher.</li>
 </ul>
 
 <p class="note" style="margin-top:50px">Ansehen: <code>./vorschau.sh</code> → <code>http://localhost:8765/MORGEN.html</code>. Live ausprobieren ohne dein HA: <code>node tool/ha-simulator/server.js</code> → <code>http://localhost:8124/local/tafel/index.html</code> (Login tafel / tafel-passwort).</p>

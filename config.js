@@ -491,10 +491,12 @@ const CONFIG = {
     batterieGrenze: 20, // % → "Batterie fast leer"
     stromWarnungW: 3000, // Gesamtverbrauch, ab dem ein Hinweis kommt
     reaktionen: {
-      bewegungWeckt: true, // Bewegung im Flur weckt aus Ambient/Tiefschlaf
-      weckSensoren: [], // leer = Bewegungsmelder in Flur/Diele/Eingang
+      bewegungWeckt: true, // Bewegung (Melder im Schlafzimmer) weckt aus Ambient/Tiefschlaf
+      weckSensoren: [], // leer = jeder Bewegungs-/Belegungsmelder
       niemandDaAmbient: true, // alle person.* weg → Ambient-Modus
       ereignisSprung: true, // Waschmaschine fertig / Tür offen → Zuhause-Panel
+      morgengruss: true, // erste Bewegung am Morgen → "Guten Morgen" + der eine Satz des Tages
+      morgengrussAb: 5, // frühestens ab dieser Stunde (bis 11 Uhr), einmal pro Tag
     },
   },
 };
