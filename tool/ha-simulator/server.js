@@ -778,6 +778,27 @@ async function steuerRoute(req, res, url) {
     sim.uebernimm(body.entity_id);
     return antwortJson(res, 200, JSON.parse(zustandJson(welt.zustand(body.entity_id))));
   }
+  // Registry ändern wie in der HA-Oberfläche (Raum wechseln, umbenennen,
+  // ausblenden) – feuert entity_registry_updated wie HA (action "update",
+  // changes = alte Werte) und schreibt den Zustand neu (friendly_name).
+  // Body: { entity_id, area_id?, name?, hidden? }
+  if (p === '/sim/registry') {
+    let body;
+    try { body = JSON.parse((await leseKoerper(req, 65536)) || '{}'); } catch (err) { return antwortJson(res, 400, { fehler: 'JSON erwartet' }); }
+    const e = body && typeof body.entity_id === 'string' ? welt.eintragNachId.get(body.entity_id) : null;
+    if (!e) return antwortJson(res, 404, { fehler: 'Entität nicht in der Registry' });
+    if (body.area_id !== undefined && body.area_id !== null && !welt.bereichIds.has(body.area_id)) return antwortJson(res, 400, { fehler: 'Unbekannte area_id' });
+    const changes = {};
+    if (body.area_id !== undefined) { changes.area_id = e.area_id; e.area_id = body.area_id; }
+    if (body.name !== undefined) { changes.name = e.name; e.name = body.name || null; }
+    if (body.hidden !== undefined) { changes.hidden_by = e.hidden_by; e.hidden_by = body.hidden ? 'user' : null; }
+    e.modified_at = Date.now() / 1000;
+    welt.feuere('entity_registry_updated', { action: 'update', entity_id: e.entity_id, changes: changes }, welt.kontext());
+    const z = welt.zustand(e.entity_id);
+    if (z) welt.setze(e.entity_id, z.state, z.attributes, welt.kontext());
+    log('Registry: ' + e.entity_id + ' geändert (' + Object.keys(changes).join(', ') + ')');
+    return antwortJson(res, 200, { ok: true, entity_id: e.entity_id, area_id: e.area_id, name: e.name, hidden_by: e.hidden_by });
+  }
   const sz = /^\/sim\/szenario\/([a-z0-9-]+)$/.exec(p);
   if (sz) {
     const fn = H.SZENARIEN[sz[1]];

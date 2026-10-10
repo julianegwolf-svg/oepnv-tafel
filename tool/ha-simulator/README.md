@@ -141,3 +141,7 @@ Den Server startet der Test nicht selbst. Er prüft Protokoll, Registries, Licht
 ## Dateien
 
 `server.js` (HTTP, WebSocket, Steuer-API) · `welt.js` (Registries, Zustände, Events, Verlauf, Ziel-Auflösung) · `modelle.js` (Verhalten, Automationen, Logbuch) · `dienste.js` (Services, Schema-Prüfung, Fehlercodes) · `auth.js` (Login/Tokens) · `historie.js` (24-h-Kurven, History-Abfrage) · `wochen.js` (Wochen-Verlauf) · `haushalt.js` (fiktiver Haushalt, Szenarien) · `haushalt-echt.js` (Laden der privaten haushalt.json, Extras) · `yaml.js` (kleiner YAML-Leser) · `farben.js`, `cover.js`, `werkzeuge.js` · `selbsttest.js`.
+
+### Registry ändern (`POST /sim/registry`)
+
+Wie in der HA-Oberfläche: `{"entity_id": "light.…", "area_id": "buro"}` (Raum wechseln), `"name": "Leselampe"` (umbenennen), `"hidden": true` (ausblenden). Feuert `entity_registry_updated` (`action: "update"`, `changes` = alte Werte) wie HA und schreibt den Zustand neu (neuer `friendly_name`). Die Tafel lädt daraufhin die Registries nach – ohne Neuverbinden.

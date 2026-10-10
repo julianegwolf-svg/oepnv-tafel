@@ -655,16 +655,29 @@
     emit("state", d.entity_id, d.new_state, d.old_state);
   }
 
-  function syncAll() {
-    const c = conn;
-    if (!c) return;
-    // Erst abonnieren, dann Zustände holen: HA arbeitet die Nachrichten
-    // einer Verbindung der Reihe nach ab, dadurch geht zwischen Snapshot
-    // und Abo keine Änderung verloren.
-    const sub = c.request({ type: "subscribe_events", event_type: "state_changed" }, REQUEST_TIMEOUT_MS, onStateChanged);
-    const states = c.request({ type: "get_states" }, 30000);
-    // Registries sind "nice to have" (Raumzuordnung) — schlägt eine fehl,
-    // läuft die Tafel trotzdem, nur ohne Räume.
+  // Registries in den Speicher übernehmen (null = Abruf fehlgeschlagen,
+  // dann bleibt der alte Stand).
+  function applyRegistries(areas, devices, entities) {
+    if (areas) {
+      store.areas = areas.map(function (a) { return { area_id: a.area_id, name: a.name, icon: a.icon || null }; });
+      store.areaById = {};
+      for (let i = 0; i < store.areas.length; i++) store.areaById[store.areas[i].area_id] = store.areas[i];
+    }
+    if (devices) {
+      const devs = {};
+      for (let i = 0; i < devices.length; i++) {
+        const d = devices[i];
+        devs[d.id] = { area_id: d.area_id || null, name: d.name_by_user || d.name || "" };
+      }
+      store.devices = devs;
+    }
+    if (entities) {
+      store.entities = entities;
+      store.hasRegistry = true;
+    }
+  }
+
+  function fetchRegistries(c) {
     const areas = c.request({ type: "config/area_registry/list" }, 30000).catch(function () { return null; });
     const devices = c.request({ type: "config/device_registry/list" }, 30000).catch(function () { return null; });
     const entities = c.request({ type: "config/entity_registry/list_for_display" }, 30000)
@@ -674,35 +687,58 @@
           .then(registryFromFull)
           .catch(function () { return null; });
       });
+    return Promise.all([areas, devices, entities]);
+  }
+
+  // Neue/verschobene/umbenannte Geräte und Räume sofort übernehmen statt
+  // erst nach Neuverbinden oder dem 3-h-Neuladen: HA meldet Registry-
+  // Änderungen als Ereignis (auch an Nicht-Admins). Mehrere Änderungen
+  // kurz hintereinander (z. B. ein neues Gerät mit fünf Entitäten) werden
+  // gebündelt: 3 s nach der letzten wird einmal neu geladen.
+  let registryTimer = null;
+  const REGISTRY_EVENTS = ["entity_registry_updated", "device_registry_updated", "area_registry_updated"];
+
+  function onRegistryChanged() {
+    if (registryTimer) clearTimeout(registryTimer);
+    registryTimer = setTimeout(function () {
+      registryTimer = null;
+      const c = conn;
+      if (!c || !c.isOpen()) return;
+      fetchRegistries(c).then(function (r) {
+        if (c !== conn) return;
+        applyRegistries(r[0], r[1], r[2]);
+        store.version++;
+        emit("sync", false);
+      });
+    }, 3000);
+  }
+
+  function syncAll() {
+    const c = conn;
+    if (!c) return;
+    REGISTRY_EVENTS.forEach(function (typ) {
+      c.request({ type: "subscribe_events", event_type: typ }, REQUEST_TIMEOUT_MS, onRegistryChanged).catch(function () {});
+    });
+    // Erst abonnieren, dann Zustände holen: HA arbeitet die Nachrichten
+    // einer Verbindung der Reihe nach ab, dadurch geht zwischen Snapshot
+    // und Abo keine Änderung verloren.
+    const sub = c.request({ type: "subscribe_events", event_type: "state_changed" }, REQUEST_TIMEOUT_MS, onStateChanged);
+    const states = c.request({ type: "get_states" }, 30000);
+    // Registries sind "nice to have" (Raumzuordnung) — schlägt eine fehl,
+    // läuft die Tafel trotzdem, nur ohne Räume.
+    const regs = fetchRegistries(c);
 
     c.request({ type: "auth/current_user" }).then(function (u) {
       store.userName = u && u.name ? u.name : "";
     }).catch(function () {});
 
-    Promise.all([sub, states, areas, devices, entities]).then(function (r) {
+    Promise.all([sub, states, regs]).then(function (r) {
       if (c !== conn) return;
       const nextStates = {};
       const list = r[1] || [];
       for (let i = 0; i < list.length; i++) nextStates[list[i].entity_id] = list[i];
       store.states = nextStates;
-
-      if (r[2]) {
-        store.areas = r[2].map(function (a) { return { area_id: a.area_id, name: a.name, icon: a.icon || null }; });
-        store.areaById = {};
-        for (let i = 0; i < store.areas.length; i++) store.areaById[store.areas[i].area_id] = store.areas[i];
-      }
-      if (r[3]) {
-        const devs = {};
-        for (let i = 0; i < r[3].length; i++) {
-          const d = r[3][i];
-          devs[d.id] = { area_id: d.area_id || null, name: d.name_by_user || d.name || "" };
-        }
-        store.devices = devs;
-      }
-      if (r[4]) {
-        store.entities = r[4];
-        store.hasRegistry = true;
-      }
+      applyRegistries(r[2][0], r[2][1], r[2][2]);
       store.version++;
       store.lastSyncAt = Date.now();
       const first = !store.everReady;
