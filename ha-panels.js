@@ -1956,15 +1956,34 @@
     const span = 24 * 3600 * 1000;
     const range = (hi - lo) || 1;
     let d = "";
-    // Auf höchstens ~60 Punkte ausdünnen: reicht für 280 px Breite.
-    const step = Math.max(1, Math.floor(pts.length / 60));
-    for (let i = 0; i < pts.length; i += step) {
-      const x = clamp((pts[i][0] - t0) / span, 0, 1) * w;
-      const y = h - ((pts[i][1] - lo) / range) * h;
+    const punkt = function (p) {
+      const x = clamp((p[0] - t0) / span, 0, 1) * w;
+      const y = h - ((p[1] - lo) / range) * h;
       d += (d ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+    };
+    // Nach Zeit ausdünnen statt nach Index: je 12-Minuten-Fenster Minimum
+    // und Maximum in zeitlicher Reihenfolge. Sensoren melden unregelmäßig
+    // (beim Duschen alle paar Sekunden, nachts kaum) – jeder n-te Punkt
+    // ballte dichte Phasen zu einem dicken senkrechten Strich und konnte
+    // die Feuchte-Spitze verschlucken.
+    const FENSTER = 120;
+    let fenster = -1, min = null, max = null;
+    const ausgeben = function () {
+      if (!min) return;
+      if (min === max) punkt(min);
+      else if (min[0] <= max[0]) { punkt(min); punkt(max); }
+      else { punkt(max); punkt(min); }
+    };
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      const f = Math.min(FENSTER - 1, Math.floor(clamp((p[0] - t0) / span, 0, 1) * FENSTER));
+      if (f !== fenster) { ausgeben(); fenster = f; min = max = p; continue; }
+      if (p[1] < min[1]) min = p;
+      if (p[1] > max[1]) max = p;
     }
+    ausgeben();
     const last = pts[pts.length - 1];
-    d += "L" + (clamp((last[0] - t0) / span, 0, 1) * w).toFixed(1) + " " + (h - ((last[1] - lo) / range) * h).toFixed(1);
+    if (last !== min && last !== max) punkt(last);
     return d;
   }
 
@@ -2014,7 +2033,9 @@
     return { good: false, humid: humid, text: "Lüften bringt gerade wenig", detail: detail };
   }
 
-  function klimaCardHtml(room, wide) {
+  // ohneRat: Die Lüft-Empfehlung steht dann in der Draußen-Karte daneben
+  // (Balkenvergleich), hier nicht noch einmal – die Kurve bekommt den Platz.
+  function klimaCardHtml(room, wide, ohneRat) {
     const sum = HA.roomSummary(room);
     const limit = humidityLimit(room);
     const humid = sum.hum != null && sum.hum >= limit;
@@ -2059,13 +2080,13 @@
     else if (sum.openIds.length) badge = '<span class="ha-chip is-info">' + icon("window") + "offen</span>";
 
     let advice = "";
-    const adv = wide ? ventilationAdvice(room, sum) : null;
+    const adv = wide && !ohneRat ? ventilationAdvice(room, sum) : null;
     if (adv) {
       advice = '<div class="ha-advice' + (adv.good && adv.humid ? " is-go" : "") + '">' + icon(adv.good ? "window" : "drop") +
         '<div><div class="ha-advice-text">' + esc(adv.text) + '</div><div class="ha-advice-detail num">' + esc(adv.detail) + "</div></div></div>";
     }
 
-    return '<div class="ha-klima' + (humid ? " is-humid" : "") + (wide ? " is-wide" : "") + (sum.openIds.length && sum.heating ? " is-venting" : "") + '">' +
+    return '<div class="ha-klima' + (humid ? " is-humid" : "") + (wide ? " is-wide" : "") + (ohneRat ? " ohne-rat" : "") + (sum.openIds.length && sum.heating ? " is-venting" : "") + '">' +
       '<div class="ha-klima-top"><span class="ha-klima-name">' + esc(room.name) + "</span>" + badge + "</div>" +
       '<div class="ha-klima-values"><span class="ha-klima-temp num">' + digits(fmtTemp(sum.temp)) + "</span>" +
       (sum.hum != null ? '<span class="ha-klima-hum num' + (humid ? " is-warn" : "") + '">' + icon("drop") + digits(Math.round(sum.hum)) + " %</span>" : "") +
@@ -2079,7 +2100,51 @@
       "</div>";
   }
 
-  function outdoorCardHtml(compact) {
+  // Draußen-Karte neben breiten Raumkarten: "Wasser in der Luft" als
+  // Balken je Raum und draußen, darunter das Urteil, ob Lüften trocknet.
+  // Vorher standen hier nur zwei Zahlen über einer leeren Mitte, und die
+  // Empfehlung stand klein in der Raumkarte.
+  function luftVergleichHtml(rooms, out, ah) {
+    const zeilen = [];
+    let rat = null, ratRaum = null, ratSum = null, bestDiff = -Infinity;
+    (rooms || []).forEach(function (room) {
+      const sum = HA.roomSummary(room);
+      if (sum.temp == null || sum.hum == null) return;
+      const drinnen = absHumidity(sum.temp, sum.hum);
+      zeilen.push({ name: room.name, wert: drinnen, cls: "is-drinnen" });
+      const adv = ventilationAdvice(room, sum);
+      // Urteil für den Raum, der es am nötigsten hat: erst feucht, dann
+      // größter Unterschied zu draußen.
+      const diff = drinnen - ah + (adv && adv.humid ? 100 : 0);
+      if (adv && diff > bestDiff) { bestDiff = diff; rat = adv; ratRaum = room.name; ratSum = sum; }
+    });
+    if (!zeilen.length) return "";
+    zeilen.push({ name: "Draußen", wert: ah, cls: "is-draussen" });
+    const max = Math.max.apply(null, zeilen.map(function (z) { return z.wert; })) || 1;
+    let html = '<div class="ha-luft"><div class="ha-luft-titel">Wasser in der Luft</div>';
+    zeilen.forEach(function (z) {
+      html += '<div class="ha-luft-zeile ' + z.cls + '"><div class="ha-luft-kopf"><span class="ha-luft-name">' + esc(z.name) + "</span>" +
+        '<span class="ha-luft-wert num">' + fmtNum(z.wert, 1) + "<small> g/m³</small></span></div>" +
+        '<span class="ha-luft-spur"><i style="transform:scaleX(' + (z.wert / max).toFixed(3) + ')"></i></span></div>';
+    });
+    html += "</div>";
+    if (rat) {
+      const text = (zeilen.length > 2 ? ratRaum + ": " : "") + rat.text;
+      // Was Durchlüften bringt: Außenluft, auf Raumtemperatur erwärmt, hätte
+      // diese relative Feuchte (Obergrenze – Wände geben Feuchte nach).
+      let danach = "";
+      if (rat.good && ratSum) {
+        const rh = Math.round(ah / absHumidity(ratSum.temp, 100) * 100);
+        if (rh < ratSum.hum) danach = "Durchgelüftet etwa " + rh + "\u00a0% statt " + Math.round(ratSum.hum) + "\u00a0%";
+      }
+      html += '<div class="ha-advice' + (rat.good ? " is-go" : "") + '">' + icon(rat.good ? "window" : "drop") +
+        '<div><div class="ha-advice-text">' + esc(text) + "</div>" +
+        (danach ? '<div class="ha-advice-detail num">' + esc(danach) + "</div>" : "") + "</div></div>";
+    }
+    return html;
+  }
+
+  function outdoorCardHtml(compact, rooms) {
     const out = outdoor();
     if (!out) return "";
     const ah = out.hum != null ? absHumidity(out.temp, out.hum) : null;
@@ -2091,11 +2156,12 @@
         (ah != null ? '<div class="ha-outdoor-ah num">' + fmtNum(ah, 1) + " g/m³<span>Wasser in der Luft – Lüften trocknet nur, wenn es drinnen mehr ist</span></div>" : "") +
         "</div>";
     }
+    const vergleich = ah != null ? luftVergleichHtml(rooms, out, ah) : "";
     return '<div class="ha-klima ha-outdoor">' +
       '<div class="ha-klima-top"><span class="ha-klima-name">Draußen</span><span class="ha-chip">' + esc(CONDITION_DE[out.condition] || out.condition) + "</span></div>" +
       '<div class="ha-klima-values"><span class="ha-klima-temp num">' + fmtTemp(out.temp) + "</span>" +
       (out.hum != null ? '<span class="ha-klima-hum num">' + icon("drop") + Math.round(out.hum) + " %</span>" : "") + "</div>" +
-      (ah != null ? '<div class="ha-outdoor-ah num">' + fmtNum(ah, 1) + ' g/m³<span>Wasser in der Luft</span></div>' : "") +
+      (vergleich || (ah != null ? '<div class="ha-outdoor-ah num">' + fmtNum(ah, 1) + ' g/m³<span>Wasser in der Luft</span></div>' : "")) +
       '<div class="ha-outdoor-note">Lüften trocknet nur, wenn draußen weniger Wasser in der Luft ist als drinnen – die Tafel rechnet das für dich aus.</div>' +
       "</div>";
   }
@@ -2123,8 +2189,8 @@
       for (let i = 0; i < n; i++) els.klimaGrid.appendChild(mk("div", "ha-klima-slot"));
       els.klimaGrid._haKeys = keys;
     }
-    for (let i = 0; i < rooms.length; i++) setHtml(els.klimaGrid.children[i], klimaCardHtml(rooms[i], wide));
-    if (withOutdoor) setHtml(els.klimaGrid.children[rooms.length], outdoorCardHtml(!wide));
+    for (let i = 0; i < rooms.length; i++) setHtml(els.klimaGrid.children[i], klimaCardHtml(rooms[i], wide, wide && withOutdoor));
+    if (withOutdoor) setHtml(els.klimaGrid.children[rooms.length], outdoorCardHtml(!wide, wide ? rooms : null));
 
     const klimaHints = hints.filter(function (h) { return h.ziel === "klima"; });
     if (klimaHints.length) {
