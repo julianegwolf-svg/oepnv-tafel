@@ -48,7 +48,7 @@
 <body>
 <div class="wrap">
 
-<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 07:30</div>
+<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 07:40</div>
 <h1>Deine Tafel ist jetzt eine Smart-Home-Zentrale.</h1>
 <p class="lead">Kurz und ehrlich, was diese Nacht entstanden ist – alles gegen einen Home-Assistant-<b>Simulator</b> mit deinem echten Haushalt getestet, nie gegen dein echtes HA. Die Bilder zeigen Desktop-WebKit bei 1024×768 (wie das iPad), nicht das iPad selbst.</p>
 
@@ -58,6 +58,7 @@
   <li><b>Home Assistant komplett:</b> Login mit deinem HA-Konto, Räume mit echter Lichtfarbe, Licht/Szenen/Helligkeit mit einem Tipp, deine Automationen als Schnellaktionen mit Countdown + Rückgängig, Einkaufsliste zum Abhaken, Bad-Klima mit echtem Lüftungsrat, HomePod mit Radio.</li>
   <li><b>Die Tafel denkt mit:</b> Sie lernt deinen Rhythmus aus dem HA-Verlauf („Du gehst werktags meist um 07:32 los – Bahn in 17 Min“, „Wie jeden Abend: Gute Nacht?“), begrüßt dich beim Heimkommen – und morgens taucht aus dem Dunkel der eine Satz auf, der zählt: „12 °C, es regnet – nimm die 23 um 07:35.“ (die richtige Linie <i>und</i> Richtung, siehe 2b).</li>
   <li><b>Mehr Alltag:</b> „Tagesblick“ morgens (Wetter, Bahn, Termin, Müll) und abends als „Morgen früh“, amtliche DWD-Unwetterwarnungen, Luft/UV/Pollen nur wenn relevant, Müll erst am Vorabend (mit Feiertagsverschiebung), Regenradar und „tagesschau in 100 Sekunden“.</li>
+  <li><b>Dein dringendster Punkt, noch einmal abgesichert:</b> Bisher konnte schon ein einziger Fehler beim Panelwechsel das Karussell bis zum Neuladen anhalten. Jetzt läuft es trotzdem weiter, und ein Wächter wirft es nach spätestens 3 Minuten wieder an. Geprüft: Die alte Fassung fällt bei 5 von 6 Prüfungen durch, die neue besteht alle, der 24-h-Zeitraffer ist grün.</li>
   <li><b>Seit 6 Uhr (2c):</b> Der Tagesblick zeigt einen echten Fahrplan („07:35 pünktlich · 07:45 5 min zu spät“), und alle Stellen nennen dieselbe Bahn. Die Tafel merkt, wenn deine Automation nichts schaltet. Das Wetter zeigt 5 Tage, an der Einkaufsliste holst du Abgehaktes mit einem Tipp zurück. Und ein Fund für den Umzug: Dein <b>Kalender-Worker</b> muss die HA-Adresse erlauben.</li>
   <li><b>Die ganze Tafel sieht neu aus:</b> dunkle Farbwelt überall, Abfahrten wie eine echte Anzeigetafel (60-px-Minuten, echte Linienfarben), Uhr 56 statt 30 px, keine verdeckten Inhalte mehr. Und: Auf dem echten iPad waren Nachtdimmung/Ambient/Übersicht kaputt (Safari-12-CSS) – behoben.</li>
 </ol>
@@ -289,7 +290,7 @@
   <figure><img src="belege/2026-10-10/ideen/ue1-uebersicht.png" alt=""><figcaption><b>Übersicht:</b> Symbole statt Emoji, Schließen-Knopf, Smart-Home zuerst.</figcaption></figure>
   <figure><img src="belege/2026-10-10/ideen/e23-stand-01-departures.png" alt=""><figcaption><b>Datenalter:</b> hängt eine Quelle, steht ehrlich „Stand 07:11“ in der Kopfzeile.</figcaption></figure>
 </div>
-<p class="note">Nach allen Änderungen von heute früh erneut: 24-h-Zeitraffer ohne Wachstum (<code>belege/2026-10-10/zeitraffer-4.log</code>).</p>
+<p class="note">Nach allen Änderungen von heute früh erneut: 24-h-Zeitraffer ohne Wachstum (<code>belege/2026-10-10/zeitraffer-6.log</code>), Dauerlauf ohne Berührung 2/6/24 h grün ohne Code-Fehler (<code>dauerlauf-s3/</code>). Neu: <code>tool/pruefe-karussell-waechter.js</code> – Fehler beim Wechsel, verlorener Timer, gewollte Pause.</p>
 <p class="note">Dauerbetrieb: 24-h-Zeitraffer der ganzen Tafel (Playwright-Uhr, 5× Selbst-Neuladen) – DOM, Listener, Timer, Bilder wachsen nicht (<code>tool/pruefe-zeitraffer.js</code>, <code>belege/2026-10-10/zeitraffer.log</code>); HA-Dauerlauf mit Verbindungsabbrüchen ebenso.</p>
 
 <h2>7c · Alle übrigen Panels</h2>
