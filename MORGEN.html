@@ -48,7 +48,7 @@
 <body>
 <div class="wrap">
 
-<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 06:15</div>
+<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 06:45</div>
 <h1>Deine Tafel ist jetzt eine Smart-Home-Zentrale.</h1>
 <p class="lead">Kurz und ehrlich, was diese Nacht entstanden ist – alles gegen einen Home-Assistant-<b>Simulator</b> mit deinem echten Haushalt getestet, nie gegen dein echtes HA. Die Bilder zeigen Desktop-WebKit bei 1024×768 (wie das iPad), nicht das iPad selbst.</p>
 
@@ -69,6 +69,8 @@
   <li>Im Repo: <code>./tool/nach-ha-kopieren.sh /Volumes/config/www/tafel</code> (beim allerersten Mal danach HA einmal neu starten).</li>
   <li>In HA einen Benutzer <b>tafel</b> anlegen (kein Admin, nur lokal).</li>
   <li>Am iPad Guided Access beenden, in Safari <code>http://homeassistant.local:8123/local/tafel/index.html</code> → <b>Zum Home-Bildschirm</b> → neue App öffnen → als <b>tafel</b> anmelden → Guided Access wieder starten.</li>
+  <li><b>Neu:</b> In deinem Cloudflare-Kalender-Worker die Adresse <code>http://homeassistant.local:8123</code> erlauben – sonst fehlen nach dem Umzug die Termine (Code-Schnipsel in HOME_ASSISTANT.md, Schritt 5; Kontrolle am iPad: lange auf die Uhr → Datenquellen).</li>
+  <li>Optional, aber empfohlen: <i>Bett Fertig</i> und <i>Arbeitsmodus</i> in HA reparieren (je Lampe nur <code>color_temp_kelvin</code> oder <code>rgb_color</code>) – die Tafel zeigt sonst „hat nichts geschaltet“ (2c).</li>
 </ol>
 <p class="note">Alles Schritt für Schritt (und warum GitHub Pages dafür nicht reicht): <a href="HOME_ASSISTANT.md">HOME_ASSISTANT.md</a>. Fragen an dich: <a href="FRAGEN.md">FRAGEN.md</a> – darin auch zwei Fehler, die beim Nachbauen deiner echten Automationen aufgefallen sind.</p>
 </div>
@@ -108,6 +110,35 @@
 <div class="grid">
   <figure><video src="belege/2026-10-10/morgengruss/1012T0550-morgengruss.webm" controls muted loop playsinline></video><figcaption><b>Video:</b> Tiefschlaf → Bewegung → Gruß taucht aus dem Schwarz auf → Tagesblick baut sich gestaffelt auf.</figcaption></figure>
   <figure><img src="belege/2026-10-10/morgengruss/abfahrten-richtung-01-departures.png" alt=""><figcaption><b>Nebenbei behoben:</b> Die 23 fährt an der Föhrenstraße in beide Richtungen – die Aktentasche „Arbeit an …“ stand bisher auch an „23 Universität“. Jetzt nur noch in deiner Richtung.</figcaption></figure>
+</div>
+
+<h2>2c · Neu seit 6 Uhr (Sitzung 3)</h2>
+<h3>Tagesblick: ein Fahrplan statt leerer Fläche</h3>
+<p class="note">Die Bahnkarte war zu 60 % leer und beantwortete die zweite Frage des Morgens nicht: „Und wenn ich die nicht schaffe?“ Jetzt stehen darunter die Bahn davor, die empfohlene und die nächsten – mit Losgehzeit, Ankunft und Ampel. „Zuhause“ nennt die Räume, in denen Licht brennt; an trockenen Tagen zeigt das Wetter „Bedeckt/Wolkig“ statt einer Spalte leerer Regenbalken. Jede Karte wird nach dem Zeichnen eingepasst – mit Hinweiszeile unten wird nichts abgeschnitten.</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/tagesblick-2/vorher-ohneha-mo0720.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Montag früh ohne HA: rechts eine Zeile Information, darunter 450 px nichts; links 0-%-Balken.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/tagesblick-2/nachher-ohneha-mo0640-01-tagesblick.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>07:25 pünktlich · <b>07:35 empfohlen</b> · 07:45 „5 min zu spät“ · 07:55 „15 min zu spät“. Acht Stunden mit Himmel statt leerer Balken.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/tagesblick-2/vorher-mitha-so2030.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Sonntagabend mit HA: „7 Lichter an“ – aber wo?</figcaption></figure>
+  <figure><img src="belege/2026-10-10/tagesblick-2/nachher-mitha-so2030-01-tagesblick.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>„Morgen früh“: die 23 um 07:35 und die nächste mit Ankunft; Büro 4, Wohnzimmer 2, Schlafzimmer 1.</figcaption></figure>
+</div>
+<div class="grid">
+  <figure><img src="belege/2026-10-10/tagesblick-2/morgengruss/08-danach-2.png" alt=""><figcaption><b>Mit Hinweiszeile unten</b> (direkt nach dem Morgengruß): Die Karte ist kleiner – die Tafel lässt die doppelte Zusammenfassung weg und behält „07:35 / 07:45“. Vorher wurde hier die zweite Zeile abgeschnitten.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/tagesblick-2/nachher-mitha-kal-112030-01-tagesblick.png" alt=""><figcaption><b>Vier Karten</b> (mit Termin): kurze Wetterwörter passen auch in die schmale Spalte („Wolkig“ statt „Teilweise b…“).</figcaption></figure>
+</div>
+
+<h3>Die Tafel merkt, wenn deine Automation nichts tut</h3>
+<p class="note">Home Assistant meldet Fehler in Automationen nicht zurück – <i>Bett Fertig</i> bricht bei dir vermutlich an der ersten Licht-Aktion ab, und die Tafel zeigte trotzdem „erledigt“ und dunkelte ab. Jetzt prüft sie, ob danach irgendein Gerät mit dem Kontext dieser Automation reagiert hat (bis 5 s). Geprüft mit einem Simulator-Modus, der wie echtes HA abbricht (<code>HA_SIM_STRENG=1</code>), und der Gegenprobe ohne Fehler: <code>node tool/pruefe-wirkung.js</code>.</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/wirkung/streng/02-rueckmeldung.png" alt=""><figcaption><span class="tag vorher">wie echtes HA</span><br>„Gute Nacht hat nichts geschaltet – Automation in HA prüfen“, Knopf gelb, die Tafel bleibt hell (die Lichter sind ja noch an).</figcaption></figure>
+  <figure><img src="belege/2026-10-10/wirkung/streng/04-hinweis-danach.png" alt=""><figcaption><span class="tag vorher">danach</span><br>Der Hinweis bleibt im Band, bis die Aktion wieder wirkt (höchstens 12 h). Antippen führt zum Zuhause-Panel.</figcaption></figure>
+</div>
+<p class="note">Kein Fehlalarm: Wirkt die Automation (Simulator ohne Fehler, oder „Ich geh raus“, die bei dir korrekt ist), steht wie bisher „erledigt“ und „Gute Nacht“ dunkelt ab (<code>belege/2026-10-10/wirkung/locker/</code>, <code>streng-raus/</code>). Die volle HA-Probe ist weiterhin grün.</p>
+
+<h3>Datenquellen – wichtig für den Umzug nach HA</h3>
+<p class="note">Beim Prüfen aller Quellen mit der Herkunft <code>http://homeassistant.local:8123</code> fiel auf: <b>Nur dein Kalender-Worker</b> lässt sie nicht zu (er erlaubt nur github.io). Ohne Änderung im Worker fehlen nach dem Umzug die Termine – still. Die Einstellungsseite (lange auf die Uhr drücken) zeigt jetzt je Quelle, wann sie zuletzt geladen hat, und bei fehlendem Kalender die Adresse, die freigegeben werden muss.</p>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/lernen/einstellungen-gelernt.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Kein Hinweis, warum ein Panel fehlt.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/quellen/aus-ha-einstellungen.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Aus dem Simulator geöffnet (wie später aus HA): „Termine – lädt nicht“ mit der Adresse, die der Worker erlauben muss.</figcaption></figure>
 </div>
 
 <h3>Für Geräte, die du (noch) nicht hast</h3>
@@ -278,7 +309,9 @@
   <li>Morgengruß: Der Melder hängt im Schlafzimmer, nicht an der Tafel. Der Gruß kommt bei der <i>ersten</i> Bewegung ab 5 Uhr (einmal pro Tag) – stehst du um 5:10 kurz auf, ist er verbraucht. Der Tagesblick danach zeigt dieselbe Bahn aber weiter bis 11 Uhr. Siehe FRAGEN 18.</li>
   <li>„Richtung“ der Arbeitslinie kommt aus der Transitous-Route (Zielangabe der ersten Fahrt). Passt die Schreibweise mal nicht, fällt die Tafel auf „nur Linie“ zurück – wie bisher.</li>
   <li><b>Code-Review der HA-Teile</b> (heute früh): Behoben sind ein leeres Panel nach zwei schnellen Wechseln, die Regler, die beim Scrollen die Lampe verstellten, „fehlgeschlagen“ bei langsamen Automationen, eine zu großzügige Erkennung der Schnellaktionen und die Einkaufsliste bei mehr als drei Listen. Offen, weil es deinen Haushalt nicht betrifft: neue Räume/Geräte erscheinen erst nach dem nächsten Neuladen (spätestens 3 h), Lichtgruppen mit versteckten Mitgliedern, mehrere Thermostate je Raum.</li>
-  <li><b>Wichtig:</b> Deine Automationen <i>Bett Fertig</i> und <i>Arbeitsmodus</i> brechen in echtem HA vermutlich bei der ersten Licht-Aktion ab. Die Tafel meldet dann trotzdem „erledigt“, weil HA den Fehler nicht zurückgibt (FRAGEN 4 und 19).</li>
+  <li><b>Wichtig:</b> Deine Automationen <i>Bett Fertig</i> und <i>Arbeitsmodus</i> brechen in echtem HA vermutlich bei der ersten Licht-Aktion ab (FRAGEN 4 und 19). Die Tafel erkennt das jetzt und meldet „hat nichts geschaltet“ (2c) – reparieren musst du sie in HA.</li>
+  <li>Die Wirkungsprüfung warnt auch, wenn „Gute Nacht“/„Arbeiten“ nichts zu tun hat, weil schon alles so ist, wie die Automation es will. Das ist selten; falls es stört: FRAGEN 21.</li>
+  <li>Kalender nach dem Umzug nach HA: nur mit der Änderung im Worker (FRAGEN 20). Geprüft per <code>curl</code> mit der HA-Herkunft, nicht am iPad.</li>
 </ul>
 
 <p class="note" style="margin-top:50px">Ansehen: <code>./vorschau.sh</code> → <code>http://localhost:8765/MORGEN.html</code>. Live ausprobieren ohne dein HA: <code>node tool/ha-simulator/server.js</code> → <code>http://localhost:8124/local/tafel/index.html</code> (Login tafel / tafel-passwort).</p>
