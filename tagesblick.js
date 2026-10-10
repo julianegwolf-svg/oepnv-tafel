@@ -256,22 +256,22 @@
       }).join("") + "</div>";
   }
 
-  function arbeitsKarte(s, ab) {
+  function arbeitsKarte(s, ab, titel, tag) {
     if (!ab.dep) {
       return '<div class="tb-card tb-bahn">' +
-        '<div class="tb-eyebrow">Arbeitsweg</div>' +
+        '<div class="tb-eyebrow">' + (titel ? esc(titel) : "Arbeitsweg") + "</div>" +
         '<div class="tb-big num">' + hhmm(ab.losMs) + "</div>" +
         '<div class="tb-line">Spätestens dann los' + (ab.linie ? " – mit der " + esc(ab.linie) : "") + "</div></div>";
     }
     const d = ab.dep;
     const inMin = Math.max(0, Math.round((d.leaveByMs - Date.now()) / 60000));
     return '<div class="tb-card tb-bahn">' +
-      '<div class="tb-eyebrow">Bahn zur Arbeit</div>' +
+      '<div class="tb-eyebrow">' + esc(titel || "Bahn zur Arbeit") + "</div>" +
       '<div class="tb-bahn-main">' + badge(d.line, d.color, d.textColor) + '<span class="tb-big num">' + esc(d.clock) + "</span></div>" +
       '<div class="tb-bahn-dest">→ ' + esc(zielText(d.dest)) + "</div>" +
       (inMin <= 4 ? '<div class="tb-pill' + (inMin <= 1 ? " is-now" : " is-soon") + '">' + (inMin <= 1 ? "jetzt los" : "in " + inMin + " min los") + "</div>" : "") +
       '<div class="tb-line tb-bahn-sum">Los um ' + hhmm(d.leaveByMs) + " · Arbeit ca. " + hhmm(ab.ankunftMs) + (ab.spaet ? " (zu spät)" : "") + "</div>" +
-      fahrplanHtml(ab.alle, d, ab.ptMin, s.walkMinutes || 0, startOfDay(new Date())) +
+      fahrplanHtml(ab.alle, d, ab.ptMin, s.walkMinutes || 0, tag || startOfDay(new Date())) +
       "</div>";
   }
 
@@ -318,6 +318,12 @@
         '<div class="tb-big">Frei</div>' +
         '<div class="tb-line">Morgen ist ' + esc(frei) + " – kein Arbeitsweg.</div></div>";
     }
+    // Dieselbe Rechnung wie morgens, Arbeitsweg-Panel und Morgengruß
+    // (arbeitsBahnAm, app.js): die späteste pünktliche Bahn. Vorher nahm
+    // die Karte die erste nach der gewohnten Losgehzeit – bei spätem
+    // Rhythmus wäre das eine Bahn gewesen, die zu spät ankommt.
+    const abM = typeof arbeitsBahnAm === "function" ? arbeitsBahnAm(tag) : null;
+    if (abM) return arbeitsKarte(s, abM, "Bahn morgen früh", tag);
     holeBahnMorgen(tag);
     if (!morgen.deps || morgen.fuer !== String(tag.getTime())) {
       return '<div class="tb-card tb-bahn"><div class="tb-eyebrow">Bahn morgen früh</div><div class="tb-line">wird abgefragt …</div></div>';
@@ -380,10 +386,13 @@
       ziel.stand = Date.now();
       ziel.laedt = false;
       render();
+      // Das Arbeitsweg-Panel nennt dieselbe Bahn – gleich nachziehen.
+      if (typeof aktualisiereBusZeile === "function") aktualisiereBusZeile();
     });
   }
 
-  // Für arbeitsBahnHeute (app.js): Abfahrten heute ab abMs (Losgehen).
+  // Für arbeitsBahnAm (app.js): Abfahrten ab abMs (Losgehen), heute oder
+  // an einem späteren Arbeitstag.
   // Liefert die schon geholten (oder null) und holt bei Bedarf neu.
   function bahnenAb(abMs) {
     const key = String(Math.floor(abMs / (15 * 60000)));

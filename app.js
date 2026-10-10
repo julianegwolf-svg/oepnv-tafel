@@ -4253,14 +4253,27 @@ function renderCommuteMap(coords, results) {
 // "ab 07:45" (Prognose fürs Losgehen um 07:30), dort "die 23 um 07:35".
 // Wird auch beim Zeigen des Panels erneuert: die gezielt geholten
 // Abfahrten kommen oft erst nach dem Routenabruf.
+// Abends und am Wochenende kam hier die Route "ab 07:30 von zu Hause"
+// durch – also die 23 um 07:45, die um 08:05 ankommt, während der
+// Tagesblick daneben die 07:35 empfahl. Jetzt dieselbe Rechnung für den
+// Tag der Prognose; solange die Abfahrten noch geholt werden, wenigstens
+// die späteste Losgehzeit statt einer zu späten Bahn.
 function aktualisiereBusZeile() {
   const el = document.querySelector(".commute-race-extra.is-bus");
   if (!el) return;
   let text = el._standard || "";
-  const ab = arbeitsBahnHeute();
+  const hm = function (ms) { return new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }); };
+  let ab = arbeitsBahnHeute();
+  let tagText = "";
+  if (!ab) {
+    const prognose = nextCommuteDepartureDate();
+    ab = arbeitsBahnAm(prognose);
+    tagText = " " + prognose.toLocaleDateString("de-DE", { weekday: "short" }).replace(/\.$/, "");
+  }
   if (ab && ab.dep && !ab.spaet) {
-    const hm = function (ms) { return new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }); };
-    text = "Bahn zur Arbeit: " + ab.dep.line + " um " + ab.dep.clock + " · los " + hm(ab.dep.leaveByMs) + " · an " + hm(ab.ankunftMs);
+    text = "Bahn zur Arbeit" + tagText + ": " + ab.dep.line + " um " + ab.dep.clock + " · los " + hm(ab.dep.leaveByMs) + " · an " + hm(ab.ankunftMs);
+  } else if (ab && !ab.dep && ab.losMs && tagText) {
+    text = "Bahn zur Arbeit" + tagText + ": " + (ab.linie ? ab.linie + ", " : "") + "spätestens " + hm(ab.losMs) + " los";
   }
   if (el.textContent !== text) el.textContent = text;
 }
@@ -4616,28 +4629,36 @@ function tafelSnapshot() {
   };
 }
 
-// Bahn zur Arbeit heute (Morgengruß, Tagesblick – eine Rechnung für
-// beide): an Arbeitstagen die späteste Abfahrt der Linie, mit der der
-// Arbeitsweg beginnt, die mit 5 Min Puffer pünktlich ankommt. Früh am
-// Morgen steht die noch nicht in der Abfahrtsliste (nächste Stunde) –
-// dann holt der Tagesblick die Abfahrten um diese Zeit gezielt; bis dahin
-// nur die Losgehzeit. null = heute kein Arbeitsweg (Wochenende, Feiertag,
-// Arbeitsbeginn vorbei) oder noch keine Fahrzeit bekannt.
+// Bahn zur Arbeit (Morgengruß, Tagesblick, Arbeitsweg, Lern-Vorschlag –
+// eine Rechnung für alle): an Arbeitstagen die späteste Abfahrt der Linie,
+// mit der der Arbeitsweg beginnt, die mit 5 Min Puffer pünktlich ankommt.
+// Früh am Morgen steht die noch nicht in der Abfahrtsliste (nächste
+// Stunde) – dann holt der Tagesblick die Abfahrten um diese Zeit gezielt;
+// bis dahin nur die Losgehzeit. Für einen späteren Tag (abends "Morgen
+// früh", Arbeitsweg-Prognose) zählt nur die gezielte Abfrage. null = an
+// dem Tag kein Arbeitsweg (Wochenende, Feiertag, Arbeitsbeginn vorbei)
+// oder noch keine Fahrzeit bekannt.
 function arbeitsBahnHeute() {
-  const now = new Date();
-  if (now.getDay() === 0 || now.getDay() === 6 || holidayOn(now)) return null;
+  return arbeitsBahnAm(new Date());
+}
+
+function arbeitsBahnAm(tag) {
+  if (tag.getDay() === 0 || tag.getDay() === 6 || holidayOn(tag)) return null;
   const pt = lastCommutePtMinutes;
   const t = String(CONFIG.workArrivalTarget || "").split(":");
   if (pt == null || t.length !== 2) return null;
+  const now = new Date();
   const nowMs = Date.now();
-  const ziel = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(t[0], 10) || 0, parseInt(t[1], 10) || 0).getTime();
+  const heute = tag.getFullYear() === now.getFullYear() && tag.getMonth() === now.getMonth() && tag.getDate() === now.getDate();
+  const ziel = new Date(tag.getFullYear(), tag.getMonth(), tag.getDate(), parseInt(t[0], 10) || 0, parseInt(t[1], 10) || 0).getTime();
   const spaetestens = ziel - (pt + 5) * 60000; // späteste Abfahrt, die pünktlich ankommt
   if (spaetestens < nowMs - 20 * 60000) return null;
   const walkMs = (walkMinutesToStop || 0) * 60000;
   const linie = lastCommuteFirstLine;
   const fmt = function (ms) { return new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }); };
 
-  const liste = (lastDepartureSnapshot || []).slice();
+  // Die Live-Liste (nächste Stunde) gilt nur für heute.
+  const liste = heute ? (lastDepartureSnapshot || []).slice() : [];
   let bis = 0;
   liste.forEach(function (d) { if (d.whenMs > bis) bis = d.whenMs; });
   // Die gezielt geholten Abfahrten (bis 30 min alt) ergänzen nur, was
