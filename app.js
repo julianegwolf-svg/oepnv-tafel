@@ -2691,10 +2691,12 @@ let quoteTypeTimer = null;
 // selbst bei voller Deckkraft (im Browser mit einem knallroten Debug-
 // Hintergrund nachgewiesen). Ein echtes DOM-Element statt eines Pseudo-
 // Elements umgeht das Problem zuverlässig.
-function appendPanelWatermark(container) {
+// glyph: "„" für den Spruch, "?" für Rätsel/Quiz – ein Anführungszeichen
+// hinter einer Quizfrage ergab keinen Sinn.
+function appendPanelWatermark(container, glyph) {
   const mark = document.createElement("div");
-  mark.className = "panel-watermark";
-  mark.textContent = "„";
+  mark.className = "panel-watermark" + (glyph === "?" ? " is-frage" : "");
+  mark.textContent = glyph || "„";
   container.appendChild(mark);
 }
 
@@ -2919,7 +2921,7 @@ function buildTriviaChoices(correctYear) {
 function renderTriviaShell() {
   if (!els.triviaBlock) return;
   els.triviaBlock.innerHTML = "";
-  appendPanelWatermark(els.triviaBlock);
+  appendPanelWatermark(els.triviaBlock, "?");
   appendKnowledgeScoreBadge(els.triviaBlock);
 
   const now = new Date();
@@ -2954,6 +2956,8 @@ function startTriviaReveal() {
   const cursorEl = document.getElementById("triviaCursor");
   const choicesEl = document.getElementById("triviaChoices");
   if (!typedEl || !choicesEl) return;
+  const ratenBlock = choicesEl.parentNode;
+  if (ratenBlock) ratenBlock.classList.remove("is-raten");
 
   if (triviaTypeTimer) clearInterval(triviaTypeTimer);
   if (triviaRevealTimer) clearTimeout(triviaRevealTimer);
@@ -3051,7 +3055,7 @@ function decodeHtmlEntities(str) {
 function renderQuizShell() {
   if (!els.quizBlock) return;
   els.quizBlock.innerHTML = "";
-  appendPanelWatermark(els.quizBlock);
+  appendPanelWatermark(els.quizBlock, "?");
   appendKnowledgeScoreBadge(els.quizBlock);
 
   const category = document.createElement("div");
@@ -3085,6 +3089,7 @@ function renderQuizShell() {
 function startRevealCountdown(block, ms) {
   if (!block) return;
   block.classList.remove("is-revealed-block");
+  block.classList.add("is-raten"); // Antworten stehen – Mitrate-Hinweis zeigen
   let box = block.querySelector(".reveal-countdown");
   if (!box) {
     box = document.createElement("div");
@@ -3117,6 +3122,8 @@ function startQuizReveal() {
   const choicesEl = document.getElementById("quizChoices");
   const categoryEl = document.getElementById("quizCategory");
   if (!typedEl || !choicesEl) return;
+  const ratenBlock = choicesEl.parentNode;
+  if (ratenBlock) ratenBlock.classList.remove("is-raten");
 
   if (quizTypeTimer) clearInterval(quizTypeTimer);
   if (quizRevealTimer) clearTimeout(quizRevealTimer);
@@ -3259,7 +3266,7 @@ function pickNextRiddle() {
 function renderRiddleShell() {
   if (!els.riddleBlock) return;
   els.riddleBlock.innerHTML = "";
-  appendPanelWatermark(els.riddleBlock);
+  appendPanelWatermark(els.riddleBlock, "?");
 
   const label = document.createElement("div");
   label.className = "trivia-date";
