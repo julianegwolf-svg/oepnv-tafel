@@ -2981,6 +2981,10 @@ const TRIVIA_MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Ju
 
 let triviaFullText = null;
 let triviaYear = null;
+let triviaBild = null;      // { gross, klein, w, h, titel } oder null
+let triviaStapel = [];      // heutige Ereignisse, gemischt (jede Runde das nächste)
+let triviaStapelPos = 0;
+let triviaStapelTag = "";
 let triviaTypeTimer = null;
 let triviaRevealTimer = null;
 
@@ -3006,11 +3010,101 @@ function buildTriviaChoices(correctYear) {
   return all;
 }
 
+// Bild zum Ereignis: das erste Vorschaubild der verlinkten Artikel. Seiten
+// mit Jahreszahl im Titel ("Rugby-Union-Weltmeisterschaft 2003") fallen weg –
+// deren Bild ist oft ein Logo mit genau der Zahl, nach der gefragt wird.
+function triviaBildVon(ev) {
+  const pages = (ev && ev.pages) || [];
+  for (let i = 0; i < pages.length; i++) {
+    const p = pages[i];
+    const th = p && p.thumbnail;
+    if (!th || !th.source || !th.width || !th.height) continue;
+    const titel = (p.titles && p.titles.normalized) || p.normalizedtitle || "";
+    if (/\d{3,4}/.test(titel)) continue;
+    // Wikimedia rechnet nur Standardbreiten (330, 500, 960 …); 500 px ist
+    // auf dem Retina-iPad scharf genug und kostet ~60 KB. Kleinere Originale
+    // lassen sich nicht hochrechnen – dann bleibt es beim Vorschaubild.
+    const gross = th.width >= 330 ? th.source.replace(/\/\d+px-/, "/500px-") : th.source;
+    return { gross: gross, klein: th.source, w: th.width, h: th.height, titel: titel };
+  }
+  return null;
+}
+
+// Für die Wand: kurze Ereignisse (40–170 Zeichen, in einem Zug aus 3 m
+// lesbar – vorher kamen auch 390-Zeichen-Absätze, die nach 22 s noch
+// getippt wurden), mit Bild bevorzugt, gemischt.
+function triviaStapelBauen(events) {
+  const brauchbar = events.filter(function (e) { return e && e.text && e.year; });
+  let kurz = brauchbar.filter(function (e) { return e.text.length >= 40 && e.text.length <= 170; });
+  if (kurz.length < 5) {
+    kurz = brauchbar.slice().sort(function (a, b) { return a.text.length - b.text.length; })
+      .slice(0, Math.max(5, Math.ceil(brauchbar.length / 2)));
+  }
+  const mitBild = kurz.filter(function (e) { return !!triviaBildVon(e); });
+  const wahl = mitBild.length >= 5 ? mitBild : kurz;
+  for (let i = wahl.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = wahl[i]; wahl[i] = wahl[j]; wahl[j] = tmp;
+  }
+  return wahl;
+}
+
+// Jede Runde ein anderes Ereignis des Tages statt eine Stunde lang dasselbe.
+function naechstesTriviaEreignis() {
+  if (!triviaStapel.length) return false;
+  const ev = triviaStapel[triviaStapelPos % triviaStapel.length];
+  triviaStapelPos++;
+  triviaFullText = ev.text;
+  triviaYear = ev.year;
+  triviaBild = triviaBildVon(ev);
+  renderTriviaShell();
+  return true;
+}
+
+function renderTriviaBild(block) {
+  const b = triviaBild;
+  if (!b) return;
+  // Kasten nach dem Seitenverhältnis: quer 320 px breit, hoch 360 px hoch.
+  const r = Math.max(0.7, Math.min(1.6, b.w / b.h));
+  const bw = r >= 1 ? 320 : Math.round(360 * r);
+  const bh = Math.round(bw / r);
+
+  const fig = document.createElement("figure");
+  fig.className = "trivia-bild";
+  fig.style.width = bw + "px";
+  const rahmen = document.createElement("div");
+  rahmen.className = "trivia-bild-rahmen";
+  rahmen.style.height = bh + "px";
+  const img = document.createElement("img");
+  img.alt = "";
+  img.onload = function () { fig.classList.add("is-geladen"); };
+  img.onerror = function () {
+    if (img.getAttribute("src") !== b.klein) { img.src = b.klein; return; }
+    if (fig.parentNode) fig.parentNode.removeChild(fig);
+    block.classList.remove("mit-bild");
+    block.style.paddingRight = "";
+  };
+  rahmen.appendChild(img);
+  fig.appendChild(rahmen);
+  if (b.titel) {
+    const cap = document.createElement("figcaption");
+    cap.textContent = b.titel;
+    fig.appendChild(cap);
+  }
+  block.appendChild(fig);
+  block.classList.add("mit-bild");
+  block.style.paddingRight = (bw + 48 + 44) + "px";
+  img.src = b.gross;
+}
+
 function renderTriviaShell() {
   if (!els.triviaBlock) return;
   els.triviaBlock.innerHTML = "";
+  els.triviaBlock.classList.remove("mit-bild");
+  els.triviaBlock.style.paddingRight = "";
   appendPanelWatermark(els.triviaBlock, "?");
   appendKnowledgeScoreBadge(els.triviaBlock);
+  renderTriviaBild(els.triviaBlock);
 
   const now = new Date();
   const dateLabel = document.createElement("div");
@@ -3101,17 +3195,21 @@ function updateTrivia() {
     return res.json();
   }).then(function (data) {
     const events = (data && data.events) || [];
-    const usable = events.filter(function (e) { return e && e.text && e.year; });
-    if (!usable.length) throw new Error("Keine Trivia-Ereignisse erhalten");
+    const stapel = triviaStapelBauen(events);
+    if (!stapel.length) throw new Error("Keine Trivia-Ereignisse erhalten");
 
-    const pick = usable[Math.floor(Math.random() * usable.length)];
-    triviaFullText = pick.text;
-    triviaYear = pick.year;
-    renderTriviaShell();
-
-    const panelEl = document.getElementById("panel-trivia");
-    const isActive = panelEl && panelEl.className.indexOf("active") !== -1;
-    if (isActive) startTriviaReveal();
+    // Stündlicher Abruf am selben Tag lässt die Reihenfolge weiterlaufen,
+    // ein neuer Tag beginnt einen neuen Stapel.
+    const tag = mm + "-" + dd;
+    if (tag !== triviaStapelTag) {
+      triviaStapel = stapel;
+      triviaStapelPos = 0;
+      triviaStapelTag = tag;
+      naechstesTriviaEreignis();
+      const panelEl = document.getElementById("panel-trivia");
+      const isActive = panelEl && panelEl.className.indexOf("active") !== -1;
+      if (isActive) startTriviaReveal();
+    }
 
     triviaAvailable = true;
   }).catch(function (err) {
@@ -5384,6 +5482,7 @@ function showPanel(name) {
   }
 
   if (name === "trivia") {
+    naechstesTriviaEreignis();
     startTriviaReveal();
   }
 
