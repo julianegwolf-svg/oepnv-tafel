@@ -57,7 +57,7 @@
   <li><b>Dein dringender Fehler ist weg:</b> Die Tafel springt nicht mehr nach 1 Stunde in die Riesen-Uhr – das Karussell läuft (geprüft nach 2, 6 und 24 h ohne Berührung).</li>
   <li><b>Home Assistant komplett:</b> Login mit deinem HA-Konto, Räume mit echter Lichtfarbe, Licht/Szenen/Helligkeit mit einem Tipp, deine Automationen als Schnellaktionen mit Countdown + Rückgängig, Einkaufsliste zum Abhaken, Bad-Klima mit echtem Lüftungsrat, HomePod mit Radio.</li>
   <li><b>Die Tafel denkt mit:</b> Sie lernt deinen Rhythmus aus dem HA-Verlauf („Du gehst werktags meist um 07:32 los – Bahn in 17 Min“, „Wie jeden Abend: Gute Nacht?“), begrüßt dich beim Heimkommen und morgens mit dem einen wichtigen Satz.</li>
-  <li><b>Bewegte Bilder:</b> Regenradar im Wetter-Panel, wenn Regen kommt; „tagesschau in 100 Sekunden“ morgens und abends.</li>
+  <li><b>Mehr Alltag:</b> „Tagesblick“ morgens (Wetter, Bahn, Termin, Müll) und abends als „Morgen früh“, amtliche DWD-Unwetterwarnungen, Luft/UV/Pollen nur wenn relevant, Müll erst am Vorabend (mit Feiertagsverschiebung), Regenradar und „tagesschau in 100 Sekunden“.</li>
   <li><b>Die ganze Tafel sieht neu aus:</b> dunkle Farbwelt überall, Abfahrten wie eine echte Anzeigetafel (60-px-Minuten, echte Linienfarben), Uhr 56 statt 30 px, keine verdeckten Inhalte mehr. Und: Auf dem echten iPad waren Nachtdimmung/Ambient/Übersicht kaputt (Safari-12-CSS) – behoben.</li>
 </ol>
 </div>
@@ -156,11 +156,27 @@
   <figure><img src="belege/vorher/02-arbeitsweg.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Zeiten auf den Balken kaum lesbar.</figcaption></figure>
   <figure><img src="belege/2026-10-10/nachher/02-commute.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>Dunkel, Zeiten lesbar.</figcaption></figure>
   <figure><img src="belege/2026-10-10/ideen/f1-vorher-01-sport.png" alt=""><figcaption><span class="tag vorher">vorher</span><br>Fehler: das gestrige Spiel als „Nächstes Spiel“.</figcaption></figure>
-  <figure><img src="belege/2026-10-10/nachher/13-sport.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>„Letztes Ergebnis – Ergebnis folgt“, solange OpenLigaDB noch nichts meldet.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/nachher/14-sport.png" alt=""><figcaption><span class="tag nachher">nachher</span><br>„Letztes Ergebnis – Ergebnis folgt“, solange OpenLigaDB noch nichts meldet.</figcaption></figure>
   <figure><img src="belege/vorher/11-veranstaltungen.png" alt=""><figcaption><span class="tag vorher">vorher</span></figcaption></figure>
   <figure><img src="belege/2026-10-10/nachher/10-events.png" alt=""><figcaption><span class="tag nachher">nachher</span></figcaption></figure>
 </div>
-<p class="note">Panel-Wechsel jetzt überall gleich: neues Panel blendet ein und steigt 8 px auf (<a href="belege/2026-10-10/ideen/r6-video.webm">Video</a>). Noch offen aus der Top-10: Wetter-Tagesverlauf in der leeren Mitte, Nachrichten als Überschrift + Teaser, Nachtthema, Arbeitsweg „Los um …“.</p>
+<p class="note">Panel-Wechsel jetzt überall gleich: neues Panel blendet ein und steigt 8 px auf (<a href="belege/2026-10-10/ideen/r6-video.webm">Video</a>). Alle zehn Top-Ideen aus IDEEN.md sind gebaut – die übrigen siehe unten.</p>
+
+<h2>7b · Neue Alltagsfunktionen</h2>
+<div class="grid">
+  <figure><img src="belege/2026-10-10/tagesblick/morgens-01-tagesblick.png" alt=""><figcaption><b>Tagesblick morgens:</b> Wetter mit Regenzeitpunkt und Stundenleiste, nächste Bahn mit „jetzt los“, Termin. Der Morgengruß springt danach hierher.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/tagesblick/abends-01-tagesblick.png" alt=""><figcaption><b>„Morgen früh“ abends:</b> Wetter zur gewohnten Losgehzeit, die erste passende Bahn morgen (eigener Abruf), erster Termin morgen.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/tagesblick/samstagabend-01-tagesblick.png" alt=""><figcaption><b>Wochenende/Feiertag:</b> „Frei – kein Arbeitsweg“ statt einer Montags-Prognose.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/warnung/v2-01-tagesblick.png" alt=""><figcaption><b>DWD-Unwetterwarnung</b> (echte Windböen-Warnung heute Nacht) als Karte und unten als Chip auf allen Panels.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/warnung/detail-01-departures.png" alt=""><figcaption>Antippen zeigt Beschreibung und Handlungsempfehlung des DWD.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/warnung/umwelt-01-weather.png" alt=""><figcaption><b>Luft/UV/Pollen</b> nur bei Relevanz (hier mit Testwerten: „Luft schlecht – lieber nicht lüften“).</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ideen/w1-mit-radar-01-weather.png" alt=""><figcaption><b>Wetter:</b> 12-h-Verlauf in der bisher leeren Mitte, Regenradar rechts, Mondphase.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ideen/aw-nachher-01-commute.png" alt=""><figcaption><b>Arbeitsweg:</b> „Los um 07:49“ statt einer Dauer, lesbare Zeiten; nur noch werktags im Karussell. Nebenbei behoben: ÖPNV-Prognose fragte „ab jetzt“ statt zur Pendelzeit.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ideen/n1-rechts-01-news.png" alt=""><figcaption><b>Nachrichten:</b> 40-px-Überschrift + Teaser neben dem Foto statt abgeschnittenem Volltext darauf.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ideen/ue1-uebersicht.png" alt=""><figcaption><b>Übersicht:</b> Symbole statt Emoji, Schließen-Knopf, Smart-Home zuerst.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ideen/e23-stand-01-departures.png" alt=""><figcaption><b>Datenalter:</b> hängt eine Quelle, steht ehrlich „Stand 07:11“ in der Kopfzeile.</figcaption></figure>
+</div>
+<p class="note">Dauerbetrieb: 24-h-Zeitraffer der ganzen Tafel (Playwright-Uhr, 5× Selbst-Neuladen) – DOM, Listener, Timer, Bilder wachsen nicht (<code>tool/pruefe-zeitraffer.js</code>, <code>belege/2026-10-10/zeitraffer.log</code>); HA-Dauerlauf mit Verbindungsabbrüchen ebenso.</p>
 
 <h2>8 · Zur Wahl (FRAGEN.md)</h2>
 <p class="note">Beides ist gebaut und per <code>config.js</code> umschaltbar; ich arbeite mit dem Vorschlag weiter, bis du entscheidest.</p>
@@ -174,8 +190,24 @@
   <figure><img src="belege/2026-10-10/ideen/a2-variante-zeile-01-departures.png" alt=""><figcaption><b>zeile</b> – „LOS!“ als Pille in der Zeile der nächsten Bahn, 5 Zeilen.</figcaption></figure>
   <figure><img src="belege/2026-10-10/ideen/a2-variante-banner-01-departures.png" alt=""><figcaption><b>banner</b> – kompaktes Banner mit Ankunftszeit darüber, 4 Zeilen.</figcaption></figure>
 </div>
+<h3>Nachrichten – <code>nachrichtenLayout: "rechts" | "oben" | "klassisch"</code> (Vorschlag: rechts)</h3>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/ideen/n1-rechts-01-news.png" alt=""><figcaption><b>rechts</b></figcaption></figure>
+  <figure><img src="belege/2026-10-10/ideen/n1-oben-01-news.png" alt=""><figcaption><b>oben</b></figcaption></figure>
+</div>
+<h3>Nachts – <code>nachtModus: "schleier" | "ansicht"</code>, <code>nachtFarbe: "bernstein" | "grau"</code> (Vorschlag: vorerst schleier)</h3>
+<div class="grid three">
+  <figure><img src="belege/2026-10-10/ideen/na1-nacht-schleier.png" alt=""><figcaption><b>schleier</b> – Karussell läuft gedimmt weiter.</figcaption></figure>
+  <figure><img src="belege/2026-10-10/ideen/na1-nacht-bernstein.png" alt=""><figcaption><b>ansicht · bernstein</b></figcaption></figure>
+  <figure><img src="belege/2026-10-10/ideen/na1-nacht-grau.png" alt=""><figcaption><b>ansicht · grau</b></figcaption></figure>
+</div>
+<h3>Wetter-Mitte – <code>wetterMitte: "verlauf" | "leer"</code> (Vorschlag: verlauf)</h3>
+<div class="pair">
+  <figure><img src="belege/2026-10-10/ideen/w1-verlauf-01-weather.png" alt=""><figcaption><b>verlauf</b></figcaption></figure>
+  <figure><img src="belege/vorher/03-wetter.png" alt=""><figcaption><b>leer</b> (bisher)</figcaption></figure>
+</div>
 <ul class="gaps">
-  <li>Kartenhintergrund Radar (Esri, schlüsselfrei) ok? tagesschau-Zeiten ok? Schnellaktionen-Zuordnung ok? – Details in FRAGEN.md.</li>
+  <li>Außerdem in FRAGEN.md: Radar-Karte (Esri), tagesschau-Zeiten, Schnellaktionen-Zuordnung, Müll-Feiertagsregel bitte gegen den echten Kalender prüfen.</li>
 </ul>
 
 <h2>9 · Ehrliche Lücken</h2>
@@ -183,7 +215,8 @@
   <li>Alles nur im <b>Desktop-WebKit</b> und gegen den <b>Simulator</b> geprüft – nicht auf dem iPad, nicht gegen dein echtes HA. Das erste echte Anmelden ist der eigentliche Test.</li>
   <li>Schieberegler: Mausziehen ist geprüft; echte Touch-Ereignisse lassen sich im Desktop-WebKit nicht erzeugen. Der Touch-Code (touchstart/move mit preventDefault) ist Safari-12-tauglich geschrieben, aber am iPad unbestätigt.</li>
   <li>Stumme Autoplay-Videos sollten auf iOS 12 laufen (muted + playsinline) – am Gerät unbestätigt.</li>
-  <li>Aus IDEEN.md noch nicht gebaut: Wetter-Tagesverlauf, Nachrichten-Layout, Nachtthema, Arbeitsweg-Umbau, Morgen-Überblick, DWD-Warnungen – nächste Sitzungen.</li>
+  <li>Aus IDEEN.md noch offen: Fußball-Karten größer (F2), Termine/Veranstaltungen nach Tagen gruppiert (K1/V1), Musik Top 10 zweispaltig (M1), Spruch auf Deutsch (S1) – nächste Sitzungen.</li>
+  <li>ÖPNV-Störungen: keine offene Quelle für BSAG/VBN gefunden; die Tafel zeigt Meldungen automatisch, sobald Transitous sie mitliefert.</li>
   <li>Der Simulator wertet Templates in Automationen nicht aus; deine Automationen hat er so nachgebaut, wie HA sie vermutlich ausführt.</li>
 </ul>
 
