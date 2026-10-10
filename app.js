@@ -4268,13 +4268,15 @@ let letzteArbeitswegKarte = null;
 
 // Beim Zeigen des Panels: Hat sich das Kartenfeld seit dem Zeichnen in der
 // Größe geändert (Hinweiszeile kam oder ging), Bild neu anfordern – sonst
-// wäre die Karte gestaucht.
+// wäre die Karte gestaucht. Ebenso nach dem Wechsel der Farbwelt
+// (farbwelt "auto" bei Sonnenuntergang), sonst bliebe die Karte hell.
 function pruefeArbeitswegKarte() {
   const k = letzteArbeitswegKarte;
   if (!k || !els.commuteMapWrap || !els.commuteUnten || !els.commuteUnten.classList.contains("mit-karte")) return;
   const w = els.commuteMapWrap.offsetWidth, h = els.commuteMapWrap.offsetHeight;
   if (!w || !h) return;
-  if (Math.abs(w - k.w) > 6 || Math.abs(h - k.h) > 6) renderCommuteMap(k.coords, k.results);
+  const nacht = document.body.classList.contains("farbe-dunkel");
+  if (Math.abs(w - k.w) > 6 || Math.abs(h - k.h) > 6 || nacht !== k.nacht) renderCommuteMap(k.coords, k.results);
 }
 
 function renderCommuteMap(coords, results) {
@@ -4318,13 +4320,13 @@ function renderCommuteMap(coords, results) {
   // aus style.css (.commute-unten.mit-karte).
   const W = Math.round(els.commuteMapWrap.offsetWidth) || 600;
   const H = Math.round(els.commuteMapWrap.offsetHeight) || 396;
-  letzteArbeitswegKarte = { coords: coords, results: results, w: W, h: H };
   const color = (CONFIG.commuteModeColors && CONFIG.commuteModeColors[winner.key]) || "#5b6b78";
   // Dunkle Farbwelt: TomToms Nachtstil statt einer hellen Fläche mitten im
   // dunklen Panel; die Linie dort kräftig und hell (gleicher Farbton), sonst
   // verschwindet das Braun des Autos zwischen den beigen Hauptstraßen.
   const nacht = document.body.classList.contains("farbe-dunkel");
   const linie = nacht ? farbeLeuchtend(color) : color;
+  letzteArbeitswegKarte = { coords: coords, results: results, w: W, h: H, nacht: nacht };
 
   // center+zoom statt bbox — siehe Kommentar bei zoomForBounds() weiter
   // oben für den Grund (bbox+width/height gibt bei TomTom immer HTTP 400).
