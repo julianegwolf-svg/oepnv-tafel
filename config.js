@@ -213,6 +213,10 @@ const CONFIG = {
   // Wie lange jeder Artikel in der News-Diashow einzeln zu sehen ist,
   // bevor automatisch zum nächsten gewechselt wird.
   newsSlideIntervalMs: 6 * 1000,
+  // Layout der Nachrichten (IDEEN N1): "rechts" = Foto rechts, links
+  // Kicker + große Überschrift + Teaser; "oben" = Foto oben über die volle
+  // Breite, Text darunter; "klassisch" = Volltext über dem Foto (bisher).
+  nachrichtenLayout: "rechts",
 
   // Musik-Panel: Deezers offizielle "Top Germany"-Redaktions-Playlist
   // (von Deezer selbst kuratiert und laufend aktualisiert, echte

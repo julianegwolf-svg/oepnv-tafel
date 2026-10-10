@@ -1748,7 +1748,9 @@ function buildNewsSlide(entry, index) {
   badge.textContent = badgeLabel;
   content.appendChild(badge);
 
-  if (item.topline) {
+  // Kicker nur, wenn er etwas anderes sagt als das Badge (sonst stand
+  // "BREMEN" doppelt untereinander).
+  if (item.topline && item.topline.toLowerCase() !== String(badgeLabel).toLowerCase()) {
     const top = document.createElement("div");
     top.className = "news-slide-topline";
     top.textContent = item.topline;
@@ -1760,7 +1762,13 @@ function buildNewsSlide(entry, index) {
   title.textContent = item.title || "";
   content.appendChild(title);
 
-  const bodyText = body || (item.firstSentence ? "<p>" + item.firstSentence + "</p>" : "");
+  // Neues Layout (IDEEN N1): nur der Teaser — einen Volltext liest an der
+  // Wand niemand, er lief bisher unten aus dem Bild. "klassisch" behält
+  // den alten Volltext über dem Foto.
+  const layout = CONFIG.nachrichtenLayout || "rechts";
+  const bodyText = layout === "klassisch"
+    ? (body || (item.firstSentence ? "<p>" + item.firstSentence + "</p>" : ""))
+    : (item.firstSentence ? "<p>" + item.firstSentence + "</p>" : (body ? "<p>" + String(body).replace(/<[^>]+>/g, " ").split(/(?:\. )/)[0] + ".</p>" : ""));
   if (bodyText) {
     const bodyEl = document.createElement("div");
     bodyEl.className = "news-slide-body";
@@ -1808,6 +1816,8 @@ function showNewsSlide(index) {
   for (let i = 0; i < dots.length; i++) {
     dots[i].className = "news-progress-dot" + (i === index ? " active" : "");
   }
+  const count = document.getElementById("newsProgressCount");
+  if (count) count.textContent = (index + 1) + " / " + slides.length;
 
   newsSlideIndex = index;
 }
@@ -1899,6 +1909,11 @@ function updateNews() {
     entries.forEach(function (entry, index) {
       els.newsList.appendChild(buildNewsSlide(entry, index));
     });
+    const newsPanel = document.getElementById("panel-news");
+    if (newsPanel) {
+      newsPanel.classList.remove("news-layout-rechts", "news-layout-oben", "news-layout-klassisch");
+      newsPanel.classList.add("news-layout-" + (CONFIG.nachrichtenLayout || "rechts"));
+    }
 
     // Fortschritts-Punkte, ein Punkt pro Meldung — sonst nicht erkennbar,
     // wie viele Slides insgesamt in dieser Runde kommen.
@@ -1910,6 +1925,12 @@ function updateNews() {
         dot.className = "news-progress-dot";
         progress.appendChild(dot);
       });
+      // "3 / 12" statt nur winziger Punkte (IDEEN N1).
+      const count = document.createElement("span");
+      count.className = "news-progress-count";
+      count.id = "newsProgressCount";
+      count.textContent = "1 / " + entries.length;
+      progress.appendChild(count);
       els.newsList.appendChild(progress);
     }
 
@@ -4577,7 +4598,7 @@ function showPanel(name) {
 // Uhr rechts — statt je Panel woanders stehender Mini-Labels. Panels mit
 // eigenem großem Kopf (Home Assistant, Video) zeigen hier keinen Titel.
 const PANELS_OHNE_KOPFTITEL = ["home", "klima", "medien", "tagesschau", "weather", "tagesblick"];
-const PANELS_VOLLBILD = ["weather", "news", "sport", "tagesschau"];
+const PANELS_VOLLBILD = ["weather", "sport", "tagesschau"];
 
 // ---------- Datenalter (AUSBAU E23) ----------
 // Jede Quelle meldet ihren letzten erfolgreichen Abruf. Hängt die Quelle
@@ -4626,7 +4647,9 @@ function updateTopbarTitle(name) {
     if (accent) els.topbarTitle.style.setProperty("--accent", accent.trim());
   }
   const shell = document.querySelector(".panel");
-  if (shell) shell.classList.toggle("is-fullbleed", PANELS_VOLLBILD.indexOf(name) !== -1);
+  const fullbleed = PANELS_VOLLBILD.indexOf(name) !== -1 ||
+    (name === "news" && (CONFIG.nachrichtenLayout || "rechts") !== "rechts");
+  if (shell) shell.classList.toggle("is-fullbleed", fullbleed);
   updateStaleBadge();
 }
 

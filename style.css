@@ -3121,3 +3121,152 @@ html, body {
 .commute-race-row:not(.is-winner) .commute-race-fill {
   background: #3a4657;
 }
+
+
+/* ---------- Nachrichten (IDEEN N1) ----------
+   Eine Meldung in 10 s erfassen: Überschrift 40 px (max. 4 Zeilen),
+   Teaser 22 px (max. 5 Zeilen), Foto daneben bzw. darüber — kein
+   abgeschnittener Volltext mehr auf dem Foto. Badge und Kicker nicht
+   doppelt ("BREMEN" + "BREMEN"). Zähler "3 / 12" statt winziger Punkte. */
+.news-layout-rechts .news-slide,
+.news-layout-oben .news-slide {
+  background: transparent;
+  border: none;
+}
+
+.news-layout-rechts .news-slide-scrim,
+.news-layout-oben .news-slide-scrim {
+  display: none;
+}
+
+.news-layout-rechts .news-slide-content,
+.news-layout-oben .news-slide-content {
+  max-height: none;
+  overflow: hidden;
+  color: var(--ink);
+}
+
+.news-layout-rechts .news-slide:not(.no-media) .news-slide-content,
+.news-layout-oben .news-slide:not(.no-media) .news-slide-content {
+  color: var(--ink);
+}
+
+.news-layout-rechts .news-slide-title,
+.news-layout-oben .news-slide-title {
+  font-size: 40px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.news-layout-rechts .news-slide-body,
+.news-layout-oben .news-slide-body {
+  font-size: 22px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.news-layout-rechts .news-slide-topline,
+.news-layout-oben .news-slide-topline {
+  font-size: 16px;
+}
+
+.news-layout-rechts .news-slide-badge,
+.news-layout-oben .news-slide-badge {
+  font-size: 13px;
+  padding: 4px 12px;
+}
+
+/* Variante "rechts": Foto rechts 440×600, Text links. */
+#panel-news.news-layout-rechts.panel-view {
+  padding: 88px 24px 20px;
+}
+
+.news-layout-rechts .news-slide {
+  justify-content: center;
+}
+
+.news-layout-rechts .news-slide-media {
+  left: auto;
+  width: 440px;
+  border-radius: 24px;
+}
+
+.news-layout-rechts .news-slide:not(.no-media) .news-slide-content {
+  margin-right: 470px;
+  padding: 0 8px 40px 4px;
+}
+
+.news-layout-rechts .news-slide.no-media .news-slide-content {
+  padding: 0 8px 40px 4px;
+}
+
+/* Variante "oben": Foto oben über die volle Breite, Verlauf nach unten. */
+.news-layout-oben .news-slide-media {
+  bottom: auto;
+  height: 380px;
+}
+
+.news-layout-oben .news-slide-media::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 160px;
+  background: linear-gradient(180deg, rgba(13, 18, 25, 0), var(--bg));
+}
+
+.news-layout-oben .news-slide {
+  justify-content: flex-start;
+}
+
+.news-layout-oben .news-slide-content {
+  margin-top: 350px;
+  padding: 0 32px 48px;
+}
+
+.news-layout-oben .news-slide-title {
+  font-size: 36px;
+  -webkit-line-clamp: 3;
+}
+
+.news-layout-oben .news-slide-body {
+  font-size: 20px;
+  -webkit-line-clamp: 3;
+}
+
+.news-progress-count {
+  margin-left: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.news-layout-rechts .news-progress {
+  right: auto;
+  left: 4px;
+  bottom: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.news-layout-rechts .news-progress-dot {
+  background: rgba(127, 127, 127, 0.4);
+}
+
+.news-layout-rechts .news-progress-dot.active {
+  background: var(--accent);
+}
+
+.news-layout-rechts .news-progress-count {
+  color: var(--ink-dim);
+}
