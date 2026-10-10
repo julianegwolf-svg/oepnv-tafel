@@ -48,7 +48,7 @@
 <body>
 <div class="wrap">
 
-<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 06:00</div>
+<div class="eyebrow">SmartTafel · Nacht zum 10. Oktober 2026 · Branch <code>ausbau</code> · Stand Sa 06:15</div>
 <h1>Deine Tafel ist jetzt eine Smart-Home-Zentrale.</h1>
 <p class="lead">Kurz und ehrlich, was diese Nacht entstanden ist – alles gegen einen Home-Assistant-<b>Simulator</b> mit deinem echten Haushalt getestet, nie gegen dein echtes HA. Die Bilder zeigen Desktop-WebKit bei 1024×768 (wie das iPad), nicht das iPad selbst.</p>
 
@@ -277,6 +277,8 @@
   <li>Der Simulator wertet Templates in Automationen nicht aus; deine Automationen hat er so nachgebaut, wie HA sie vermutlich ausführt.</li>
   <li>Morgengruß: Der Melder hängt im Schlafzimmer, nicht an der Tafel. Der Gruß kommt bei der <i>ersten</i> Bewegung ab 5 Uhr (einmal pro Tag) – stehst du um 5:10 kurz auf, ist er verbraucht. Der Tagesblick danach zeigt dieselbe Bahn aber weiter bis 11 Uhr. Siehe FRAGEN 18.</li>
   <li>„Richtung“ der Arbeitslinie kommt aus der Transitous-Route (Zielangabe der ersten Fahrt). Passt die Schreibweise mal nicht, fällt die Tafel auf „nur Linie“ zurück – wie bisher.</li>
+  <li><b>Code-Review der HA-Teile</b> (heute früh): Behoben sind ein leeres Panel nach zwei schnellen Wechseln, die Regler, die beim Scrollen die Lampe verstellten, „fehlgeschlagen“ bei langsamen Automationen, eine zu großzügige Erkennung der Schnellaktionen und die Einkaufsliste bei mehr als drei Listen. Offen, weil es deinen Haushalt nicht betrifft: neue Räume/Geräte erscheinen erst nach dem nächsten Neuladen (spätestens 3 h), Lichtgruppen mit versteckten Mitgliedern, mehrere Thermostate je Raum.</li>
+  <li><b>Wichtig:</b> Deine Automationen <i>Bett Fertig</i> und <i>Arbeitsmodus</i> brechen in echtem HA vermutlich bei der ersten Licht-Aktion ab. Die Tafel meldet dann trotzdem „erledigt“, weil HA den Fehler nicht zurückgibt (FRAGEN 4 und 19).</li>
 </ul>
 
 <p class="note" style="margin-top:50px">Ansehen: <code>./vorschau.sh</code> → <code>http://localhost:8765/MORGEN.html</code>. Live ausprobieren ohne dein HA: <code>node tool/ha-simulator/server.js</code> → <code>http://localhost:8124/local/tafel/index.html</code> (Login tafel / tafel-passwort).</p>
